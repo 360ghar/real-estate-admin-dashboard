@@ -10,7 +10,7 @@ import './services/bookingsApi'
 import './services/amenitiesApi'
 import './services/uploadApi'
 import './services/coreApi'
-import './services/reviewsApi'
+// Reviews module removed
 
 export const store = configureStore({
   reducer: {

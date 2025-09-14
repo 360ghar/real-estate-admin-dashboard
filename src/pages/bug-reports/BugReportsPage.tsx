@@ -22,7 +22,7 @@ import {
   useCreateBugReportWithMediaMutation
 } from '@/store/services/coreApi'
 import { format, parseISO } from 'date-fns'
-import { Bug, Plus, Edit, Paperclip, Image, Video, FileText, AlertTriangle, CheckCircle, Clock, User, Calendar } from 'lucide-react'
+import { Bug, Plus, Edit, Paperclip, Image, Video, FileText, AlertTriangle, CheckCircle, Clock, User, Calendar, X } from 'lucide-react'
 
 const bugReportSchema = z.object({
   source: z.enum(['web', 'mobile', 'api']),
@@ -88,15 +88,15 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
                   {bugReport.description}
                 </p>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge className={severityColors[bugReport.severity]}>
+                  <Badge className={severityColors[bugReport.severity as keyof typeof severityColors]}>
                     {bugReport.severity}
                   </Badge>
                   <Badge variant="outline">{bugReport.bug_type.replace('_', ' ')}</Badge>
-                  <Badge className={statusColors[bugReport.status]}>
+                  <Badge className={statusColors[bugReport.status as keyof typeof statusColors]}>
                     {bugReport.status.replace('_', ' ')}
                   </Badge>
                   {bugReport.priority && (
-                    <Badge className={priorityColors[bugReport.priority]}>
+                    <Badge className={priorityColors[bugReport.priority as keyof typeof priorityColors]}>
                       Priority: {bugReport.priority}
                     </Badge>
                   )}
@@ -337,8 +337,8 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
   const [attachments, setAttachments] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const createBugReport = useCreateBugReportMutation()
-  const createBugReportWithMedia = useCreateBugReportWithMediaMutation()
+  const [createBugReport] = useCreateBugReportMutation()
+  const [createBugReportWithMedia] = useCreateBugReportWithMediaMutation()
 
   const form = useForm<BugReportFormData>({
     resolver: zodResolver(bugReportSchema),
@@ -622,9 +622,9 @@ const BugReportsPage: React.FC = () => {
     bug_type: typeFilter === 'all' ? undefined : typeFilter,
   })
 
-  const updateBugReport = useUpdateBugReportMutation()
+  const [updateBugReport] = useUpdateBugReportMutation()
 
-  const filteredReports = bugReports?.items.filter(report => {
+  const filteredReports = (bugReports || []).filter(report => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       return (
@@ -655,11 +655,11 @@ const BugReportsPage: React.FC = () => {
 
   // Statistics
   const stats = {
-    total: bugReports?.items.length || 0,
-    open: bugReports?.items.filter(r => r.status === 'open').length || 0,
-    inProgress: bugReports?.items.filter(r => r.status === 'in_progress').length || 0,
-    resolved: bugReports?.items.filter(r => r.status === 'resolved').length || 0,
-    critical: bugReports?.items.filter(r => r.severity === 'critical').length || 0,
+    total: bugReports?.length || 0,
+    open: (bugReports || []).filter(r => r.status === 'open').length || 0,
+    inProgress: (bugReports || []).filter(r => r.status === 'in_progress').length || 0,
+    resolved: (bugReports || []).filter(r => r.status === 'resolved').length || 0,
+    critical: (bugReports || []).filter(r => r.severity === 'critical').length || 0,
   }
 
   return (

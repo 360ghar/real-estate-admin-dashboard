@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Eye, Save, X, FileText } from 'lucide-react'
+import React, { useState } from 'react'
+import { Plus, Edit, Eye, Save, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -17,16 +17,16 @@ import {
   useUpdatePageMutation,
   useDeletePageMutation
 } from '@/store/services/coreApi'
+import type { Page } from '@/types/api'
 
 interface PageFormData {
+  unique_name: string
   title: string
-  slug: string
   content: string
-  page_type: 'information' | 'faq' | 'terms' | 'privacy' | 'about' | 'contact' | 'custom'
-  is_published: boolean
-  meta_title?: string
-  meta_description?: string
-  order: number
+  format: 'html' | 'markdown'
+  custom_config_text?: string
+  is_active: boolean
+  is_draft: boolean
 }
 
 const PagesManagementPage: React.FC = () => {
@@ -37,14 +37,13 @@ const PagesManagementPage: React.FC = () => {
   const [editingPage, setEditingPage] = useState<Page | null>(null)
   const [previewMode, setPreviewMode] = useState(false)
   const [formData, setFormData] = useState<PageFormData>({
+    unique_name: '',
     title: '',
-    slug: '',
     content: '',
-    page_type: 'information',
-    is_published: false,
-    meta_title: '',
-    meta_description: '',
-    order: 0
+    format: 'html',
+    custom_config_text: '',
+    is_active: true,
+    is_draft: false,
   })
 
   // API hooks
@@ -54,12 +53,13 @@ const PagesManagementPage: React.FC = () => {
   const [deletePage, { isLoading: isDeleting }] = useDeletePageMutation()
 
   // Filter pages
-  const filteredPages = pagesData?.results?.filter(page => {
+  const pages = pagesData || []
+  const filteredPages = pages.filter((page) => {
     const matchesSearch = page.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         page.slug.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = filterType === 'all' || page.page_type === filterType
+      page.unique_name.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesType = filterType === 'all' || page.format === filterType
     return matchesSearch && matchesType
-  }) || []
+  })
 
   // Generate slug from title
   const generateSlug = (title: string) => {
@@ -69,18 +69,13 @@ const PagesManagementPage: React.FC = () => {
       .replace(/(^-|-$)/g, '')
   }
 
-  const handleInputChange = (field: keyof PageFormData, value: string | boolean | number) => {
+  const handleInputChange = (field: keyof PageFormData, value: string | boolean) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value }
 
-      // Auto-generate slug when title changes
+      // Auto-generate unique_name when title changes (if not editing)
       if (field === 'title' && !editingPage) {
-        newData.slug = generateSlug(value as string)
-      }
-
-      // Auto-generate meta title if not set
-      if (field === 'title' && !newData.meta_title) {
-        newData.meta_title = value as string
+        newData.unique_name = generateSlug(value as string)
       }
 
       return newData
@@ -92,25 +87,38 @@ const PagesManagementPage: React.FC = () => {
 
     try {
       if (editingPage) {
-        await updatePage({ id: editingPage.id, ...formData }).unwrap()
+        // Parse custom_config if provided
+        const updateData: any = {
+          title: formData.title,
+          content: formData.content,
+          format: formData.format,
+          is_active: formData.is_active,
+          is_draft: formData.is_draft,
+        }
+        if (formData.custom_config_text) {
+          try { updateData.custom_config = JSON.parse(formData.custom_config_text) } catch {}
+        }
+        await updatePage({ uniqueName: editingPage.unique_name, data: updateData }).unwrap()
         toast({ title: 'Success', description: 'Page updated successfully' })
       } else {
-        await createPage(formData).unwrap()
+        const createData: any = {
+          unique_name: formData.unique_name,
+          title: formData.title,
+          content: formData.content,
+          format: formData.format,
+          is_active: formData.is_active,
+          is_draft: formData.is_draft,
+        }
+        if (formData.custom_config_text) {
+          try { createData.custom_config = JSON.parse(formData.custom_config_text) } catch {}
+        }
+        await createPage(createData).unwrap()
         toast({ title: 'Success', description: 'Page created successfully' })
       }
 
       setIsDialogOpen(false)
       setEditingPage(null)
-      setFormData({
-        title: '',
-        slug: '',
-        content: '',
-        page_type: 'information',
-        is_published: false,
-        meta_title: '',
-        meta_description: '',
-        order: 0
-      })
+      setFormData({ unique_name: '', title: '', content: '', format: 'html', custom_config_text: '', is_active: true, is_draft: false })
       refetch()
     } catch (error: any) {
       toast({
@@ -124,23 +132,22 @@ const PagesManagementPage: React.FC = () => {
   const handleEdit = (page: Page) => {
     setEditingPage(page)
     setFormData({
+      unique_name: page.unique_name,
       title: page.title,
-      slug: page.slug,
       content: page.content,
-      page_type: page.page_type,
-      is_published: page.is_published,
-      meta_title: page.meta_title || '',
-      meta_description: page.meta_description || '',
-      order: page.order
+      format: page.format,
+      custom_config_text: page.custom_config ? JSON.stringify(page.custom_config, null, 2) : '',
+      is_active: page.is_active,
+      is_draft: page.is_draft,
     })
     setIsDialogOpen(true)
   }
 
-  const handleDelete = async (pageId: number) => {
+  const handleDelete = async (uniqueName: string) => {
     if (!confirm('Are you sure you want to delete this page?')) return
 
     try {
-      await deletePage(pageId).unwrap()
+      await deletePage(uniqueName).unwrap()
       toast({ title: 'Success', description: 'Page deleted successfully' })
       refetch()
     } catch (error: any) {
@@ -155,30 +162,20 @@ const PagesManagementPage: React.FC = () => {
   const handlePreview = (page: Page) => {
     setEditingPage(page)
     setFormData({
+      unique_name: page.unique_name,
       title: page.title,
-      slug: page.slug,
       content: page.content,
-      page_type: page.page_type,
-      is_published: page.is_published,
-      meta_title: page.meta_title || '',
-      meta_description: page.meta_description || '',
-      order: page.order
+      format: page.format,
+      custom_config_text: page.custom_config ? JSON.stringify(page.custom_config, null, 2) : '',
+      is_active: page.is_active,
+      is_draft: page.is_draft,
     })
     setPreviewMode(true)
   }
 
   const resetForm = () => {
     setEditingPage(null)
-    setFormData({
-      title: '',
-      slug: '',
-      content: '',
-      page_type: 'information',
-      is_published: false,
-      meta_title: '',
-      meta_description: '',
-      order: 0
-    })
+    setFormData({ unique_name: '', title: '', content: '', format: 'html', custom_config_text: '', is_active: true, is_draft: false })
     setPreviewMode(false)
   }
 
@@ -232,12 +229,12 @@ const PagesManagementPage: React.FC = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="slug">Slug *</Label>
+                  <Label htmlFor="unique_name">Unique Name *</Label>
                   <Input
-                    id="slug"
-                    value={formData.slug}
-                    onChange={(e) => handleInputChange('slug', e.target.value)}
-                    placeholder="page-url-slug"
+                    id="unique_name"
+                    value={formData.unique_name}
+                    onChange={(e) => handleInputChange('unique_name', e.target.value)}
+                    placeholder="privacy-policy"
                     required
                   />
                 </div>
@@ -245,35 +242,18 @@ const PagesManagementPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="page_type">Page Type</Label>
-                  <Select
-                    value={formData.page_type}
-                    onValueChange={(value) => handleInputChange('page_type', value)}
-                  >
+                  <Label htmlFor="format">Format</Label>
+                  <Select value={formData.format} onValueChange={(value) => handleInputChange('format', value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="information">Information</SelectItem>
-                      <SelectItem value="faq">FAQ</SelectItem>
-                      <SelectItem value="terms">Terms & Conditions</SelectItem>
-                      <SelectItem value="privacy">Privacy Policy</SelectItem>
-                      <SelectItem value="about">About Us</SelectItem>
-                      <SelectItem value="contact">Contact</SelectItem>
-                      <SelectItem value="custom">Custom</SelectItem>
+                      <SelectItem value="html">HTML</SelectItem>
+                      <SelectItem value="markdown">Markdown</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="order">Display Order</Label>
-                  <Input
-                    id="order"
-                    type="number"
-                    value={formData.order}
-                    onChange={(e) => handleInputChange('order', parseInt(e.target.value) || 0)}
-                    min="0"
-                  />
-                </div>
+                <div className="space-y-2" />
               </div>
 
               <div className="space-y-2">
@@ -288,37 +268,44 @@ const PagesManagementPage: React.FC = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="meta_title">Meta Title</Label>
-                  <Input
-                    id="meta_title"
-                    value={formData.meta_title}
-                    onChange={(e) => handleInputChange('meta_title', e.target.value)}
-                    placeholder="SEO title (optional)"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="meta_description">Meta Description</Label>
-                  <Textarea
-                    id="meta_description"
-                    value={formData.meta_description}
-                    onChange={(e) => handleInputChange('meta_description', e.target.value)}
-                    placeholder="SEO description (optional)"
-                    rows={2}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="custom_config">Custom Config (JSON)</Label>
+                <Textarea
+                  id="custom_config"
+                  value={formData.custom_config_text}
+                  onChange={(e) => handleInputChange('custom_config_text', e.target.value)}
+                  placeholder={'{ "show_footer": true }'}
+                  rows={4}
+                />
               </div>
 
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is_published"
-                  checked={formData.is_published}
-                  onChange={(e) => handleInputChange('is_published', e.target.checked)}
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="is_published">Publish this page</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="is_active">Active</Label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="is_active"
+                      checked={formData.is_active}
+                      onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="is_active">This page is active</Label>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="is_draft">Draft</Label>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="is_draft"
+                      checked={formData.is_draft}
+                      onChange={(e) => handleInputChange('is_draft', e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <Label htmlFor="is_draft">Save as draft</Label>
+                  </div>
+                </div>
               </div>
 
               <DialogFooter>
@@ -379,30 +366,25 @@ const PagesManagementPage: React.FC = () => {
       ) : (
         <div className="grid gap-4">
           {filteredPages.map((page) => (
-            <Card key={page.id}>
+            <Card key={page.unique_name}>
               <CardContent className="pt-6">
                 <div className="flex justify-between items-start">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold">{page.title}</h3>
-                      <Badge className={getPageTypeColor(page.page_type)}>
-                        {page.page_type}
-                      </Badge>
-                      {!page.is_published && (
+                      <Badge variant="outline">{page.format}</Badge>
+                      {page.is_draft && (
                         <Badge variant="secondary">Draft</Badge>
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      /{page.slug}
+                      /{page.unique_name}
                     </p>
                     <p className="text-sm line-clamp-2">
                       {page.content.replace(/<[^>]*>/g, '').substring(0, 150)}...
                     </p>
                     <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <span>Order: {page.order}</span>
-                      {page.meta_title && (
-                        <span>Meta: {page.meta_title}</span>
-                      )}
+                      <span>Status: {page.is_active ? 'Active' : 'Inactive'}</span>
                       <span>Updated: {new Date(page.updated_at).toLocaleDateString()}</span>
                     </div>
                   </div>
@@ -421,13 +403,8 @@ const PagesManagementPage: React.FC = () => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(page.id)}
-                      disabled={isDeleting}
-                    >
-                      <Trash2 className="h-4 w-4" />
+                    <Button variant="outline" size="sm" onClick={() => handleDelete(page.unique_name)} disabled={isDeleting}>
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -458,9 +435,9 @@ const PagesManagementPage: React.FC = () => {
               </div>
               <Alert>
                 <AlertDescription>
-                  <strong>Meta Information:</strong><br />
-                  Title: {formData.meta_title || formData.title}<br />
-                  Description: {formData.meta_description || 'No meta description set'}
+                  <strong>Details:</strong><br />
+                  Unique Name: {formData.unique_name}<br />
+                  Format: {formData.format}
                 </AlertDescription>
               </Alert>
             </div>

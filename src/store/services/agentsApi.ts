@@ -48,9 +48,16 @@ export interface AgentProfile {
 
 export const agentsApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // List agents (admin only)
-    listAgents: builder.query<{ results: AgentSummary[]; count?: number }, { include_inactive?: boolean } | void>({
-      query: (params) => ({ url: '/agents/', params: params as Record<string, any> | undefined }),
+    // List agents (admin only) - transform to results for existing UI
+    listAgents: builder.query<{ results: AgentSummary[]; count?: number }, { include_inactive?: boolean; page?: number; limit?: number } | void>({
+      query: (params) => ({
+        url: '/agents/',
+        params: { page: 1, limit: 20, ...(params || {}) } as Record<string, any>
+      }),
+      transformResponse: (response: PaginatedResponse<AgentSummary>) => ({
+        results: response.items,
+        count: response.total,
+      }),
       providesTags: (res) =>
         res?.results
           ? [
@@ -62,7 +69,7 @@ export const agentsApi = api.injectEndpoints({
 
     // Get agent by ID
     getAgent: builder.query<AgentSummary & Record<string, any>, number>({
-      query: (id) => `/agents/${id}/`,
+      query: (id) => `/agents/${id}`,
       providesTags: (res, _e, id) => [{ type: 'Agent', id }],
     }),
 
@@ -117,10 +124,10 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get available agents
-    getAvailableAgents: builder.query<Agent[], { specialization?: string; agentType?: string }>({
+    getAvailableAgents: builder.query<PaginatedResponse<Agent>, { specialization?: string; agentType?: string; page?: number; limit?: number }>({
       query: (params) => ({
         url: '/agents/available/',
-        params
+        params: { page: 1, limit: 20, ...(params || {}) }
       }),
       providesTags: ['Agent']
     }),
@@ -147,14 +154,20 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get agents by type
-    getAgentsByType: builder.query<Agent[], string>({
-      query: (agentType) => `/agents/types/${agentType}`,
+    getAgentsByType: builder.query<PaginatedResponse<Agent>, { agentType: string; page?: number; limit?: number }>({
+      query: ({ agentType, ...params }) => ({
+        url: `/agents/types/${agentType}`,
+        params: { page: 1, limit: 20, ...params }
+      }),
       providesTags: ['Agent']
     }),
 
     // Get agents by specialization
-    getAgentsBySpecialization: builder.query<Agent[], string>({
-      query: (specialization) => `/agents/specializations/${specialization}`,
+    getAgentsBySpecialization: builder.query<PaginatedResponse<Agent>, { specialization: string; page?: number; limit?: number }>({
+      query: ({ specialization, ...params }) => ({
+        url: `/agents/specializations/${specialization}`,
+        params: { page: 1, limit: 20, ...params }
+      }),
       providesTags: ['Agent']
     }),
 

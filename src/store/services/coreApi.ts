@@ -16,7 +16,7 @@ import type {
   AppUpdateCheckRequest,
   AppUpdateCheckResponse,
   HealthResponse,
-  PaginatedResponse
+  AppConfig,
 } from '@/types/api'
 
 export const coreApi = api.injectEndpoints({
@@ -41,15 +41,15 @@ export const coreApi = api.injectEndpoints({
       invalidatesTags: ['BugReport']
     }),
 
-    getBugReports: builder.query<PaginatedResponse<BugReport>, BugReportsQuery>({
+    getBugReports: builder.query<BugReport[], BugReportsQuery | void>({
       query: (params) => ({
         url: '/bugs/',
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, offset: 0, ...(params || {}) }
       }),
       providesTags: (res) =>
-        res?.items
+        res && Array.isArray(res)
           ? [
-              ...res.items.map((b) => ({ type: 'BugReport' as const, id: b.id })),
+              ...res.map((b) => ({ type: 'BugReport' as const, id: b.id })),
               { type: 'BugReport' as const, id: 'LIST' },
             ]
           : [{ type: 'BugReport' as const, id: 'LIST' }],
@@ -79,15 +79,15 @@ export const coreApi = api.injectEndpoints({
       invalidatesTags: ['Page']
     }),
 
-    getPages: builder.query<PaginatedResponse<Page>, PagesQuery>({
+    getPages: builder.query<Page[], PagesQuery | void>({
       query: (params) => ({
         url: '/pages/',
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, offset: 0, ...(params || {}) }
       }),
       providesTags: (res) =>
-        res?.items
+        res && Array.isArray(res)
           ? [
-              ...res.items.map((p) => ({ type: 'Page' as const, id: p.unique_name })),
+              ...res.map((p) => ({ type: 'Page' as const, id: p.unique_name })),
               { type: 'Page' as const, id: 'LIST' },
             ]
           : [{ type: 'Page' as const, id: 'LIST' }],
@@ -137,15 +137,15 @@ export const coreApi = api.injectEndpoints({
       })
     }),
 
-    getAppUpdates: builder.query<PaginatedResponse<AppUpdate>, AppUpdatesQuery | void>({
+    getAppUpdates: builder.query<AppUpdate[], AppUpdatesQuery | void>({
       query: (params) => ({
         url: '/updates/',
-        params: { page: 1, limit: 10, ...(params || {}) }
+        params: { limit: 10, offset: 0, ...(params || {}) }
       }),
       providesTags: (res) =>
-        res?.items
+        res && Array.isArray(res)
           ? [
-              ...res.items.map((u) => ({ type: 'AppUpdate' as const, id: u.id })),
+              ...res.map((u) => ({ type: 'AppUpdate' as const, id: u.id })),
               { type: 'AppUpdate' as const, id: 'LIST' },
             ]
           : [{ type: 'AppUpdate' as const, id: 'LIST' }],
@@ -160,17 +160,14 @@ export const coreApi = api.injectEndpoints({
       invalidatesTags: (res, _e, { id }) => [{ type: 'AppUpdate', id }]
     }),
 
-    deleteAppUpdate: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/updates/${id}`,
-        method: 'DELETE',
-      }),
-      invalidatesTags: (res, _e, id) => [{ type: 'AppUpdate', id }, { type: 'AppUpdate', id: 'LIST' }],
-    }),
-
     // Health Check
     healthCheck: builder.query<HealthResponse, void>({
       query: () => '/health'
+    }),
+
+    // Public Config
+    getConfig: builder.query<AppConfig, void>({
+      query: () => '/config'
     }),
   }),
 })
@@ -191,6 +188,6 @@ export const {
   useCheckForUpdatesQuery,
   useGetAppUpdatesQuery,
   useUpdateAppUpdateMutation,
-  useDeleteAppUpdateMutation,
   useHealthCheckQuery,
+  useGetConfigQuery,
 } = coreApi

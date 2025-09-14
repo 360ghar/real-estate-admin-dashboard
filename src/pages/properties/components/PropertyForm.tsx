@@ -451,7 +451,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
                     <FormLabel>Amenities</FormLabel>
                     <FormControl>
                       <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-                        {amenities.data?.results?.map((a) => (
+                        {amenities.data?.map((a) => (
                           <label key={a.id} className="flex items-center gap-2 text-sm">
                             <input
                               type="checkbox"

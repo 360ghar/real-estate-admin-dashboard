@@ -23,7 +23,6 @@ import BookingManagementPage from './pages/bookings/BookingManagementPage'
 import BugReportsPage from './pages/bug-reports/BugReportsPage'
 import PagesManagementPage from './pages/pages/PagesManagementPage'
 import AppUpdatesPage from './pages/app-updates/AppUpdatesPage'
-import ReviewsManagementPage from './pages/reviews/ReviewsManagementPage'
 
 function App() {
   return (
@@ -69,7 +68,7 @@ function App() {
                 <Route path="/bug-reports" element={<BugReportsPage />} />
                 <Route path="/pages" element={<PagesManagementPage />} />
                 <Route path="/app-updates" element={<AppUpdatesPage />} />
-                <Route path="/reviews" element={<ReviewsManagementPage />} />
+                {/* Reviews module removed */}
               </Route>
             </Route>
           </Route>

@@ -19,7 +19,7 @@ const BookingDetail = ({ id }: { id: number }) => {
 
   const doCancel = async () => {
     try {
-      await cancel({ id, reason: text || undefined }).unwrap()
+      await cancel({ bookingId: id, reason: text || 'Changed plans' }).unwrap()
       toast({ title: 'Cancelled', description: 'Booking cancelled' })
       setOpen(null)
     } catch (e: any) {
@@ -28,7 +28,7 @@ const BookingDetail = ({ id }: { id: number }) => {
   }
   const doPay = async () => {
     try {
-      await pay({ id, payment_method: payment.method, transaction_id: payment.txn, amount: Number(payment.amount) }).unwrap()
+      await pay({ bookingId: id, paymentData: { payment_method: payment.method, transaction_id: payment.txn, amount: Number(payment.amount) } }).unwrap()
       toast({ title: 'Payment processed', description: 'Payment recorded' })
       setOpen(null)
     } catch (e: any) {
@@ -40,7 +40,7 @@ const BookingDetail = ({ id }: { id: number }) => {
       const [ratingStr, ...rest] = text.split(' ')
       const rating = Number(ratingStr) || 5
       const reviewText = rest.join(' ') || 'Great stay.'
-      await review({ id, rating, review: reviewText }).unwrap()
+      await review({ bookingId: id, reviewData: { rating, review_text: reviewText } as any }).unwrap()
       toast({ title: 'Review added', description: 'Thank you' })
       setOpen(null)
     } catch (e: any) {
@@ -59,8 +59,8 @@ const BookingDetail = ({ id }: { id: number }) => {
           <div className="grid gap-2 text-sm">
             <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
             <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
-            <div><span className="text-muted-foreground">Stay:</span> {data ? `${new Date(data.check_in).toLocaleDateString()} – ${new Date(data.check_out).toLocaleDateString()}` : '-'}</div>
-            <div><span className="text-muted-foreground">Nights:</span> {data?.nights}</div>
+            <div><span className="text-muted-foreground">Stay:</span> {data ? `${new Date(data.check_in_date).toLocaleDateString()} – ${new Date(data.check_out_date).toLocaleDateString()}` : '-'}</div>
+            <div><span className="text-muted-foreground">Nights:</span> {data?.total_nights}</div>
             <div><span className="text-muted-foreground">Amount:</span> ₹{data?.total_amount}</div>
             <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
             <div><span className="text-muted-foreground">Payment:</span> {data?.payment_status || '-'}</div>

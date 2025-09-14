@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Download, Smartphone, Monitor, CheckCircle } from 'lucide-react'
+import { Plus, Edit, Download, Smartphone, Monitor, CheckCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -16,7 +16,7 @@ import {
   useGetAppUpdatesQuery,
   useCreateAppUpdateMutation,
   useUpdateAppUpdateMutation,
-  useDeleteAppUpdateMutation
+  
 } from '@/store/services/coreApi'
 import type { AppUpdate } from '@/types/api'
 
@@ -53,10 +53,10 @@ const AppUpdatesPage: React.FC = () => {
   const { data: updatesData, isLoading, refetch } = useGetAppUpdatesQuery()
   const [createUpdate, { isLoading: isCreating }] = useCreateAppUpdateMutation()
   const [updateUpdate, { isLoading: isUpdating }] = useUpdateAppUpdateMutation()
-  const [deleteUpdate, { isLoading: isDeleting }] = useDeleteAppUpdateMutation()
+  const [isDeleting, setIsDeleting] = useState(false)
 
   // Filter updates
-  const filteredUpdates = updatesData?.items?.filter((update) => {
+  const filteredUpdates = (updatesData || []).filter((update) => {
     const matchesSearch = update.version.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           (update.release_notes || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesPlatform = filterPlatform === 'all' || update.platform === filterPlatform
@@ -136,21 +136,21 @@ const AppUpdatesPage: React.FC = () => {
     setIsDialogOpen(true)
   }
 
-  const handleDelete = async (updateId: number) => {
-    if (!confirm('Are you sure you want to delete this update?')) return
-
+  const handleDeactivate = async (update: AppUpdate) => {
+    if (!confirm('Deactivate this update?')) return
+    setIsDeleting(true)
     try {
-      await deleteUpdate(updateId).unwrap()
-      toast({ title: 'Success', description: 'App update deleted successfully' })
+      await updateUpdate({ id: update.id, data: { is_active: false } }).unwrap()
+      toast({ title: 'Success', description: 'Update deactivated successfully' })
       refetch()
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.data?.message || 'Failed to delete update',
-        variant: 'destructive'
-      })
+      toast({ title: 'Error', description: error?.data?.message || 'Failed to deactivate', variant: 'destructive' })
+    } finally {
+      setIsDeleting(false)
     }
   }
+
+  // Deletion is not supported in API; deactivation is handled above.
 
   const resetForm = () => {
     setEditingUpdate(null)
@@ -411,13 +411,8 @@ const AppUpdatesPage: React.FC = () => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDelete(update.id)}
-                      disabled={isDeleting}
-                    >
-                      <Trash2 className="h-4 w-4" />
+                    <Button variant="outline" size="sm" onClick={() => handleDeactivate(update)} disabled={isDeleting}>
+                      <X className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>

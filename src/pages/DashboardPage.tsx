@@ -98,28 +98,28 @@ const DashboardPage = () => {
           <>
             <StatCard
               title="Properties Managed"
-              value={agentStats.data?.properties_managed ?? '--'}
+              value={(agentStats.data as any)?.properties_managed ?? '--'}
               icon={Building2}
               trend={{ value: 12, label: 'from last month' }}
               isLoading={isLoading}
             />
             <StatCard
               title="Active Users"
-              value={agentStats.data?.users_assigned ?? '--'}
+              value={(agentStats.data as any)?.users_assigned ?? '--'}
               icon={Users}
               trend={{ value: 8, label: 'from last month' }}
               isLoading={isLoading}
             />
             <StatCard
               title="Upcoming Visits"
-              value={agentStats.data?.upcoming_visits ?? '--'}
+              value={(agentStats.data as any)?.upcoming_visits ?? '--'}
               icon={Calendar}
               trend={{ value: 15, label: 'from last week' }}
               isLoading={isLoading}
             />
             <StatCard
               title="Pending Bookings"
-              value={agentStats.data?.pending_bookings ?? '--'}
+              value={(agentStats.data as any)?.pending_bookings ?? '--'}
               icon={DollarSign}
               trend={{ value: -3, label: 'from last month' }}
               isLoading={isLoading}

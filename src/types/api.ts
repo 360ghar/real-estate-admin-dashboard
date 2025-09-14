@@ -26,7 +26,8 @@ export interface User {
   phone?: string
   role: 'user' | 'agent' | 'admin'
   is_active: boolean
-  is_verified?: boolean
+  is_verified: boolean
+  supabase_user_id: string
   agent_id?: number
   agent?: Agent
   created_at: string
@@ -539,8 +540,8 @@ export interface BugReportUpdate {
 export interface BugReportsQuery {
   status?: string
   bug_type?: string
-  page?: number
   limit?: number
+  offset?: number
 }
 
 // Pages Types
@@ -586,8 +587,8 @@ export interface PagePublicResponse {
 export interface PagesQuery {
   is_active?: boolean
   is_draft?: boolean
-  page?: number
   limit?: number
+  offset?: number
 }
 
 // App Updates Types
@@ -644,8 +645,8 @@ export interface AppUpdateCheckResponse {
 export interface AppUpdatesQuery {
   platform?: string
   is_active?: boolean
-  page?: number
   limit?: number
+  offset?: number
 }
 
 // Health Check
@@ -654,6 +655,15 @@ export interface HealthResponse {
   timestamp: string
   service: string
   details?: Record<string, any>
+}
+
+// App Configuration (non-sensitive)
+export interface AppConfig {
+  app_name?: string
+  environment?: string
+  features?: Record<string, boolean>
+  ui?: Record<string, any>
+  [key: string]: any
 }
 
 // Upload Types
