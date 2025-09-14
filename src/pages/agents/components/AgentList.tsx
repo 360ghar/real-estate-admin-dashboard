@@ -1,46 +1,89 @@
+import { useState } from 'react'
 import { useListAgentsQuery } from '@/store/services/agentsApi'
 import { Card } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DataTable } from '@/components/ui/data-table'
+import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Edit, BarChart3 } from 'lucide-react'
+import {
+  ColumnDef,
+} from '@tanstack/react-table'
+import { AgentSummary } from '@/store/services/agentsApi'
+
+type Agent = AgentSummary
+
+const agentColumns: ColumnDef<Agent>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Name',
+  },
+  {
+    accessorKey: 'email',
+    header: 'Email',
+  },
+  {
+    accessorKey: 'phone',
+    header: 'Phone',
+  },
+  {
+    accessorKey: 'is_active',
+    header: 'Status',
+    cell: ({ row }) => {
+      const isActive = row.getValue('is_active') as boolean | undefined
+      return <Badge variant={isActive ? 'default' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
+    },
+  },
+  {
+    accessorKey: 'users_assigned',
+    header: 'Users Assigned',
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => {
+      const agent = row.original
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm">
+              Actions
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem asChild>
+              <Link to={`/agents/${agent.id}`}>Edit</Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link to={`/agents/${agent.id}/stats`}>Stats</Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )
+    },
+  },
+]
 
 const AgentList = () => {
   const { data, isFetching } = useListAgentsQuery({ include_inactive: true })
+
+  if (isFetching) {
+    return (
+      <Card>
+        <div className="absolute inset-0 bg-muted/50 rounded-lg">
+          <Skeleton className="h-full w-full" />
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Users Assigned</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.results?.map((a) => (
-            <TableRow key={a.id}>
-              <TableCell>{a.name}</TableCell>
-              <TableCell>{a.email || '-'}</TableCell>
-              <TableCell>{a.phone || '-'}</TableCell>
-              <TableCell>{a.is_active ? 'Active' : 'Inactive'}</TableCell>
-              <TableCell>{a.users_assigned ?? '-'}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <Link className="text-blue-600 hover:underline" to={`/agents/${a.id}`}>Edit</Link>
-                  <Link className="text-blue-600 hover:underline" to={`/agents/${a.id}/stats`}>Stats</Link>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {!isFetching && (!data?.results || data.results.length === 0) && (
-            <TableRow>
-              <TableCell className="text-slate-500" colSpan={6}>No agents found.</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <DataTable
+        columns={agentColumns}
+        data={data?.results || []}
+      />
     </Card>
   )
 }

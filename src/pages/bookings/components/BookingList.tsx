@@ -1,14 +1,87 @@
 import { useMemo, useState } from 'react'
 import { useListBookingsQuery } from '@/store/services/bookingsApi'
-// native select for filters
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DataTable } from '@/components/ui/data-table'
+import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Link } from 'react-router-dom'
 import Pagination from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Button } from '@/components/ui/button'
+import {
+  ColumnDef,
+} from '@tanstack/react-table'
+
+type Booking = {
+  id: number
+  property?: { title: string }
+  user?: { full_name: string }
+  check_in?: string
+  check_out?: string
+  amount?: number
+  status?: string
+  payment_status?: string
+} & Record<string, any>
+
+const bookingColumns: ColumnDef<Booking>[] = [
+  {
+    accessorKey: 'id',
+    header: 'Ref',
+  },
+  {
+    accessorKey: 'property',
+    header: 'Property',
+    cell: ({ row }) => row.original.property?.title || '-',
+  },
+  {
+    accessorKey: 'user',
+    header: 'User',
+    cell: ({ row }) => row.original.user?.full_name || '-',
+  },
+  {
+    accessorKey: 'check_in',
+    header: 'Check-in/out',
+    cell: ({ row }) => {
+      const checkIn = row.getValue('check_in') as string | undefined
+      const checkOut = row.getValue('check_out') as string | undefined
+      if (!checkIn || !checkOut) return '-'
+      return `${new Date(checkIn).toLocaleDateString()} – ${new Date(checkOut).toLocaleDateString()}`
+    },
+  },
+  {
+    accessorKey: 'amount',
+    header: 'Amount',
+    cell: ({ row }) => {
+      const amount = row.getValue('amount') as number | undefined
+      return amount ? `₹${amount.toLocaleString()}` : '-'
+    },
+  },
+  {
+    accessorKey: 'status',
+    header: 'Status',
+    cell: ({ row }) => {
+      const status = row.getValue('status') as string
+      return <Badge variant={status === 'confirmed' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}>{status}</Badge>
+    },
+  },
+  {
+    accessorKey: 'payment_status',
+    header: 'Payment',
+  },
+  {
+    id: 'actions',
+    cell: ({ row }) => {
+      const booking = row.original
+      return (
+        <Button variant="ghost" size="sm" asChild>
+          <Link to={`/bookings/${booking.id}`}>View</Link>
+        </Button>
+      )
+    },
+  },
+]
 
 const BookingList = () => {
   const [status, setStatus] = useState('')
@@ -23,7 +96,7 @@ const BookingList = () => {
     return base
   }, [status, paymentStatus, dq])
   const [page, setPage] = useState(1)
-  const pageSize = 10
+  const [pageSize, setPageSize] = useState(10)
   const { data, isFetching } = useListBookingsQuery({ ...params, page, page_size: pageSize })
 
   return (
@@ -49,54 +122,18 @@ const BookingList = () => {
           </SelectContent>
         </Select>
         <Input placeholder="Search property/user" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
+        <Button onClick={() => { /* refetch on state change */ }} disabled={isFetching}>Filter</Button>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Ref</TableHead>
-            <TableHead>Property</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead>Check-in/out</TableHead>
-            <TableHead>Amount</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Payment</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isFetching && (!data || !data.results) && (
-            <>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={`sk-${i}`}>
-                  <TableCell colSpan={8}><Skeleton className="h-6 w-full" /></TableCell>
-                </TableRow>
-              ))}
-            </>
-          )}
-          {data?.results?.map((b) => (
-            <TableRow key={b.id}>
-              <TableCell>#{b.id}</TableCell>
-              <TableCell>#{b.property_id}</TableCell>
-              <TableCell>#{b.user_id}</TableCell>
-              <TableCell>
-                {new Date(b.check_in).toLocaleDateString()} – {new Date(b.check_out).toLocaleDateString()}
-              </TableCell>
-              <TableCell>₹{b.total_amount}</TableCell>
-              <TableCell>{b.status}</TableCell>
-              <TableCell>{b.payment_status || '-'}</TableCell>
-              <TableCell>
-                <Link className="text-blue-600 hover:underline" to={`/bookings/${b.id}`}>View</Link>
-              </TableCell>
-            </TableRow>
-          ))}
-          {!isFetching && (!data?.results || data.results.length === 0) && (
-            <TableRow>
-              <TableCell className="text-slate-500" colSpan={8}>No bookings found.</TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-      <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
+      <DataTable
+        columns={bookingColumns}
+        data={data?.results || []}
+      />
+      <Pagination
+        page={page}
+        pageSize={pageSize}
+        total={data?.count}
+        onChange={setPage}
+      />
     </Card>
   )
 }
