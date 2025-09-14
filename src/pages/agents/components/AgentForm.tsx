@@ -15,6 +15,10 @@ const schema = z.object({
   name: z.string().min(2),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
+  user_id: z.coerce.number().min(1, 'Linked user is required'),
+  employee_id: z.string().min(1, 'Employee ID is required'),
+  specialization: z.string().min(1, 'Specialization is required'),
+  agent_type: z.enum(['general', 'specialist', 'senior']),
   is_active: z.preprocess(toBool, z.boolean().optional()),
   is_available: z.preprocess(toBool, z.boolean().optional()),
 })
@@ -26,21 +30,37 @@ const AgentForm = ({ id }: { id?: number }) => {
   const [update, updateState] = useUpdateAgentMutation()
   const { toast } = useToast()
   const isEdit = !!id
-  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { is_active: true, is_available: true } })
+  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { is_active: true, is_available: true, agent_type: 'general' } })
 
   useEffect(() => {
     if (data) {
-      form.reset({ name: data.name, email: data.email || '', phone: data.phone || '', is_active: data.is_active, is_available: data.is_available })
+      form.reset({
+        name: (data as any).name || data.user?.full_name || '',
+        email: data.user?.email || '',
+        phone: data.user?.phone || '',
+        user_id: data.user_id,
+        employee_id: data.employee_id,
+        specialization: data.specialization,
+        agent_type: data.agent_type as any,
+        is_active: (data as any).is_active ?? true,
+        is_available: data.is_available,
+      })
     }
   }, [data, form])
 
   const onSubmit = async (values: FormValues) => {
     try {
       if (isEdit && id) {
-        await update({ id, data: values }).unwrap()
+        await update({ id, data: values as any }).unwrap()
         toast({ title: 'Saved', description: 'Agent updated' })
       } else {
-        await create(values).unwrap()
+        await create({
+          user_id: values.user_id,
+          employee_id: values.employee_id,
+          specialization: values.specialization,
+          agent_type: values.agent_type,
+          is_available: values.is_available,
+        } as any).unwrap()
         toast({ title: 'Created', description: 'Agent created' })
       }
     } catch (e: any) {
@@ -73,6 +93,32 @@ const AgentForm = ({ id }: { id?: number }) => {
               />
               <FormField
                 control={form.control}
+                name="user_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Linked User ID</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="employee_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Employee ID</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="email"
                 render={({ field }) => (
                   <FormItem>
@@ -93,6 +139,41 @@ const AgentForm = ({ id }: { id?: number }) => {
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="specialization"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Specialization</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="agent_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Agent Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="general">General</SelectItem>
+                        <SelectItem value="specialist">Specialist</SelectItem>
+                        <SelectItem value="senior">Senior</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

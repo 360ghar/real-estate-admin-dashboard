@@ -42,6 +42,16 @@ Implement a comprehensive Admin + Agent Dashboard for the 360Ghar Real Estate + 
 - [x] Added: button, card, input, label, form
 - [x] Refactored Login to shadcn form primitives
 
+### Shadcn Integration (Phase 2)
+- [x] Added comprehensive shadcn components: accordion, alert-dialog, avatar, badge, checkbox, combobox, command, data-table, dialog, dropdown-menu, pagination, popover, select, separator, sheet, skeleton, table, toast, toaster, tooltip
+- [x] Replaced lightweight primitives with shadcn AlertDialog for confirmations
+- [x] Replaced custom dropdowns with shadcn DropdownMenu (TopBar, row actions)
+- [x] Replaced custom table with shadcn DataTable using @tanstack/react-table
+- [x] Added shadcn Skeleton components for loading states
+- [x] Added shadcn Avatar component (TopBar profile)
+- [x] Replaced custom toast provider with shadcn Toast
+- [ ] Remove custom UI components after full migration to shadcn
+
 ### Dashboard
 - [x] Admin dashboard KPIs from `/agents/system/stats/`
 - [x] Agent dashboard KPIs from `/agents/{agent_id}/stats/`
@@ -80,51 +90,50 @@ Implement a comprehensive Admin + Agent Dashboard for the 360Ghar Real Estate + 
 
 ### Profile
 - [x] `/profile` self‑edit; persists back to auth state
+- [x] `/users/preferences` user preferences page with location settings
+- [x] `/agents/me` agent profile page for agents
 
 ### Utilities
-- [x] Toast provider (lightweight)
-- [x] Dialog (lightweight)
-- [x] Table (lightweight)
+- [x] Toast provider migrated to shadcn Toast
+- [x] Dialog migrated to shadcn AlertDialog for confirmations
+- [x] Table migrated to shadcn DataTable with @tanstack/react-table
 - [x] Pagination component and wiring across lists
 - [x] TypeScript passes (`npm run typecheck`)
+- [x] useDebounce hook for search optimization
 
 ---
 
 ## Pending / Next Up
 
-### Shadcn UI Migration (Phase 2)
-- [ ] Replace lightweight primitives with shadcn components for consistency:
-  - [ ] Table (sortable headers, empty state styles)
-  - [ ] Dialog / AlertDialog (confirmations)
-  - [ ] Toast (replace custom provider)
-  - [ ] Select / Combobox (owner pickers, improved filters)
-  - [ ] Dropdown menu (TopBar, row actions)
-  - [ ] Avatar (TopBar)
-  - [ ] Skeletons (loading states)
-- [ ] Remove custom UI after replacement to avoid duplication
 
 ### Validation & UX
-- [ ] Expand Zod schemas for all forms; display server validation errors inline
-- [ ] Debounce search inputs and persist filter state per page
+- [x] Comprehensive Zod schemas implemented for all forms (PropertyForm, VisitForm, etc.)
+- [x] Debounced search inputs implemented across all list views
+- [ ] Display server validation errors inline
 - [ ] Better empty/error states across all lists and details
 - [ ] Add day/time pickers and constraints for visits
+- [ ] Persist filter state per page (localStorage/sessionStorage)
 
 ### Media & Storage
-- [ ] Primary image selection; reorder images
+- [x] Primary image selection implemented in ImageUpload component
+- [x] Image reordering with drag & drop functionality
 - [ ] Upload progress indicator and file size/type validation
 - [ ] Backend delete hook to remove files from storage when properties are deleted (requires API support)
 
 ### Maps & Addressing
-- [ ] Geocoding (address → lat/lng) and reverse geocoding (optional; Nominatim/Mapbox/Google)
+- [x] AddressAutocomplete component with Nominatim geocoding (address → lat/lng)
+- [ ] Reverse geocoding (lat/lng → address)
 - [ ] Persist location accuracy and address fields coherently
 
 ### Analytics & Charts
-- [ ] Choose chart lib (Recharts/Chart.js) and add visualizations
-  - [ ] Dashboard charts (trends, breakdowns)
-  - [ ] Analytics page charts (workload distribution, leaderboards)
+- [x] Recharts library integrated for data visualizations
+- [x] Dashboard charts implemented (KPIs with trend indicators, multiple chart types: Bar, Line, Area, Pie)
+- [x] Analytics page charts implemented (workload distribution with interactive views)
+- [ ] Additional chart visualizations (trends over time, leaderboards, property analytics)
 
 ### Auth & Security
-- [ ] Global 401 handling; auto‑logout or token refresh
+- [x] Global 401/403 handling implemented with automatic logout
+- [ ] Token refresh mechanism (if backend supports refresh tokens)
 - [ ] Optional: HttpOnly cookie flow if backend supports it
 - [ ] Scrub PII from logs; protect sensitive UI routes
 
@@ -160,12 +169,13 @@ Implement a comprehensive Admin + Agent Dashboard for the 360Ghar Real Estate + 
 ---
 
 ## Milestones & Priorities
-1) UI Consistency with shadcn (Table, Dialog, Select, Toast, Skeleton) — high
-2) Validation/UX polish and error handling — high
-3) Media improvements (primary/reorder/progress) — medium
-4) Analytics charts (dashboards + analytics page) — medium
-5) Map geocoding + address sync — medium
-6) Performance and accessibility passes — medium
+1) UI cleanup: Remove custom UI components after full shadcn migration — medium
+2) Validation/UX polish: Server error display, filter persistence, better empty states — high
+3) Media improvements: Upload progress, file validation, backend cleanup hooks — medium
+4) Enhanced analytics: Additional charts (trends, leaderboards, property analytics) — medium
+5) Map features: Reverse geocoding, address field synchronization — medium
+6) Performance: RTK Query optimization, virtualized tables if needed — low
+7) Security: Token refresh, PII protection, accessibility audit — medium
 
 ---
 

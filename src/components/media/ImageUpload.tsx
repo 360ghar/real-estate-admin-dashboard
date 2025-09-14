@@ -69,19 +69,37 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
           >
             <img src={url} className="h-full w-full object-cover" />
             <div className="absolute left-1 top-1 flex gap-1">
-              <button type="button" onClick={() => onPrimaryChange?.(url)} className={`rounded px-1 text-xs ${primary === url ? 'bg-yellow-400 text-black' : 'bg-black/60 text-white'}`}>{primary === url ? 'Primary' : 'Make Primary'}</button>
+              <Button
+                type="button"
+                size="sm"
+                variant={primary === url ? "default" : "secondary"}
+                className="h-6 px-2 text-xs"
+                onClick={() => onPrimaryChange?.(url)}
+              >
+                {primary === url ? 'Primary' : 'Make Primary'}
+              </Button>
             </div>
-            <button
+            <Button
               type="button"
+              size="sm"
+              variant="secondary"
+              className="absolute bottom-1 left-1 h-6 w-6 p-0"
               draggable
               onDragStart={() => onDragStart(idx)}
               onDragEnd={() => setDragIndex(null)}
-              className="absolute bottom-1 left-1 rounded bg-black/60 p-1 text-white"
               title="Drag to reorder"
             >
-              <GripVertical className="h-4 w-4" />
-            </button>
-            <button type="button" onClick={() => remove(url)} className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-white">×</button>
+              <GripVertical className="h-3 w-3" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="absolute right-1 top-1 h-6 w-6 p-0"
+              onClick={() => remove(url)}
+            >
+              ×
+            </Button>
           </div>
         ))}
       </div>

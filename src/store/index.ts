@@ -1,16 +1,24 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from './slices/authSlice'
-import { authApi } from './services/authApi'
 import { api } from './services/api'
+// Import endpoint modules for side effects so they inject into `api`
+import './services/usersApi'
+import './services/agentsApi'
+import './services/propertiesApi'
+import './services/visitsApi'
+import './services/bookingsApi'
+import './services/amenitiesApi'
+import './services/uploadApi'
+import './services/coreApi'
+import './services/reviewsApi'
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
-    [authApi.reducerPath]: authApi.reducer,
     [api.reducerPath]: api.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(authApi.middleware, api.middleware),
+    getDefaultMiddleware().concat(api.middleware),
 })
 
 export type RootState = ReturnType<typeof store.getState>

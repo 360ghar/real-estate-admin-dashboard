@@ -18,7 +18,7 @@ const VisitDetail = ({ id }: { id: number }) => {
 
   const doReschedule = async () => {
     try {
-      await reschedule({ id, scheduled_date: new Date(date).toISOString(), reason: text || undefined }).unwrap()
+      await reschedule({ visitId: id, newDate: new Date(date).toISOString(), reason: text || 'Rescheduled' }).unwrap()
       toast({ title: 'Rescheduled', description: 'Visit rescheduled' })
       setOpen(null)
     } catch (e: any) {
@@ -27,7 +27,7 @@ const VisitDetail = ({ id }: { id: number }) => {
   }
   const doCancel = async () => {
     try {
-      await cancel({ id, reason: text || undefined }).unwrap()
+      await cancel({ visitId: id, reason: text || 'Cancelled' }).unwrap()
       toast({ title: 'Cancelled', description: 'Visit cancelled' })
       setOpen(null)
     } catch (e: any) {
@@ -36,7 +36,7 @@ const VisitDetail = ({ id }: { id: number }) => {
   }
   const doComplete = async () => {
     try {
-      await complete({ id, notes: text || undefined }).unwrap()
+      await complete({ visitId: id, notes: text || undefined }).unwrap()
       toast({ title: 'Completed', description: 'Visit marked as completed' })
       setOpen(null)
     } catch (e: any) {

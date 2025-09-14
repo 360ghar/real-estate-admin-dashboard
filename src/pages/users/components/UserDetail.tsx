@@ -25,7 +25,7 @@ const UserDetail = ({ id }: { id: number }) => {
   const [update, updateState] = useUpdateUserMutation()
   const { toast } = useToast()
   const me = useAppSelector(selectCurrentUser)
-  const role = me?.agent_id ? 'agent' : 'admin'
+  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
 
   const form = useForm<FormValues>({ resolver: zodResolver(schema) })
   const { reset } = form

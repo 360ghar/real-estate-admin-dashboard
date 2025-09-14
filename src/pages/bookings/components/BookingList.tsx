@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Link } from 'react-router-dom'
 import Pagination from '@/components/ui/pagination'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Button } from '@/components/ui/button'
@@ -97,11 +98,11 @@ const BookingList = () => {
   }, [status, paymentStatus, dq])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching } = useListBookingsQuery({ ...params, page, page_size: pageSize })
+  const { data, isFetching, refetch } = useListBookingsQuery({ ...params, page, limit: pageSize })
 
   return (
     <Card>
-      <div className="mb-4 grid gap-3 md:grid-cols-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-5">
         <Select value={status} onValueChange={(v) => setStatus(v === 'all' ? '' : v)}>
           <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
@@ -123,11 +124,27 @@ const BookingList = () => {
         </Select>
         <Input placeholder="Search property/user" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
         <Button onClick={() => { /* refetch on state change */ }} disabled={isFetching}>Filter</Button>
+        <div>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
+            <SelectTrigger><SelectValue placeholder="Rows" /></SelectTrigger>
+            <SelectContent>
+              {[10,20,50].map(n => (<SelectItem key={n} value={String(n)}>{n} / page</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <DataTable
-        columns={bookingColumns}
-        data={data?.results || []}
-      />
+      {(!isFetching && (!data?.results || data.results.length === 0)) ? (
+        <EmptyState
+          title="No bookings found"
+          description={q || status || paymentStatus ? 'Try adjusting search or filters.' : 'Bookings will appear here once created.'}
+          action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
+        />
+      ) : (
+        <DataTable
+          columns={bookingColumns}
+          data={data?.results || []}
+        />
+      )}
       <Pagination
         page={page}
         pageSize={pageSize}

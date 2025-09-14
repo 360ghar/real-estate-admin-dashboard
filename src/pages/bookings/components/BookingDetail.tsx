@@ -4,6 +4,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 
 const BookingDetail = ({ id }: { id: number }) => {
@@ -84,11 +85,16 @@ const BookingDetail = ({ id }: { id: number }) => {
           {open === 'payment' ? (
             <div className="grid gap-2">
               <label className="text-sm">Payment Method</label>
-              <select className="rounded-md border px-3 py-2 text-sm" value={payment.method} onChange={(e) => setPayment({ ...payment, method: e.target.value })}>
-                <option value="upi">UPI</option>
-                <option value="card">Card</option>
-                <option value="cash">Cash</option>
-              </select>
+              <Select value={payment.method} onValueChange={(value) => setPayment({ ...payment, method: value })}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="card">Card</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                </SelectContent>
+              </Select>
               <label className="text-sm">Transaction ID</label>
               <Input value={payment.txn} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPayment({ ...payment, txn: e.target.value })} />
               <label className="text-sm">Amount</label>

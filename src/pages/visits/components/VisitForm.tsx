@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useCreateVisitMutation } from '@/store/services/visitsApi'
+import { useScheduleVisitMutation } from '@/store/services/visitsApi'
 import { useListUsersQuery } from '@/store/services/usersApi'
 import { useListPropertiesQuery } from '@/store/services/propertiesApi'
 import { Input } from '@/components/ui/input'
@@ -15,10 +15,10 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const schema = z.object({
-  user_id: z.coerce.number().min(1, 'User is required'),
+  // user_id kept for UI selection but not sent to API
+  user_id: z.coerce.number().optional(),
   property_id: z.coerce.number().min(1, 'Property is required'),
   scheduled_date: z.string().min(1, 'Date is required'),
-  status: z.enum(['scheduled', 'completed', 'cancelled']).default('scheduled'),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -27,26 +27,21 @@ const VisitForm = () => {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      user_id: 0,
       property_id: 0,
       scheduled_date: '',
-      status: 'scheduled',
     },
   })
   const { toast } = useToast()
-  const [create, createState] = useCreateVisitMutation()
+  const [scheduleVisit, createState] = useScheduleVisitMutation()
   const users = useListUsersQuery({})
   const properties = useListPropertiesQuery({})
   const { control, handleSubmit, formState: { errors } } = form
 
   const onSubmit = async (values: FormValues) => {
     try {
-      await create({
-        user_id: values.user_id,
+      await scheduleVisit({
         property_id: values.property_id,
         scheduled_date: new Date(values.scheduled_date).toISOString(),
-        status: values.status,
-        agent_id: undefined,
       }).unwrap()
       toast({ title: 'Scheduled', description: 'Visit scheduled' })
       form.reset()
@@ -134,30 +129,7 @@ const VisitForm = () => {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {['scheduled', 'completed', 'cancelled'].map((status) => (
-                          <SelectItem key={status} value={status}>
-                            {status.charAt(0).toUpperCase() + status.slice(1)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Status is server-managed for scheduling; removed from form */}
               <Button type="submit" disabled={createState.isLoading}>
                 {createState.isLoading ? 'Scheduling...' : 'Schedule Visit'}
               </Button>

@@ -9,12 +9,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Link } from 'react-router-dom'
 import Pagination from '@/components/ui/pagination'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Skeleton } from '@/components/ui/skeleton'
 
 const VisitList = () => {
   const me = useAppSelector(selectCurrentUser)
-  const role = me?.agent_id ? 'agent' : 'admin'
+  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
   const [status, setStatus] = useState('')
   const [q, setQ] = useState('')
 
@@ -28,12 +29,12 @@ const VisitList = () => {
   }, [status, dq, role, me?.agent_id])
 
   const [page, setPage] = useState(1)
-  const pageSize = 10
-  const { data, isFetching } = useListVisitsQuery({ ...params, page, page_size: pageSize })
+  const [pageSize, setPageSize] = useState(10)
+  const { data, isFetching, refetch } = useListVisitsQuery({ ...params, page, limit: pageSize })
 
   return (
     <Card>
-      <div className="mb-4 grid gap-3 md:grid-cols-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-5">
         <Select value={status} onValueChange={(v) => setStatus(v === 'all' ? '' : v)}>
           <SelectTrigger><SelectValue placeholder="All Status" /></SelectTrigger>
           <SelectContent>
@@ -45,7 +46,22 @@ const VisitList = () => {
           </SelectContent>
         </Select>
         <Input placeholder="Search property/user" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
+        <div>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
+            <SelectTrigger><SelectValue placeholder="Rows" /></SelectTrigger>
+            <SelectContent>
+              {[10,20,50].map(n => (<SelectItem key={n} value={String(n)}>{n} / page</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+      {(!isFetching && (!data?.results || data.results.length === 0)) ? (
+        <EmptyState
+          title="No visits found"
+          description={q || status ? 'Try adjusting search or filters.' : 'Visits will appear here once scheduled.'}
+          action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
+        />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -77,13 +93,9 @@ const VisitList = () => {
               </TableCell>
             </TableRow>
           ))}
-          {!isFetching && (!data?.results || data.results.length === 0) && (
-            <TableRow>
-              <TableCell className="text-slate-500" colSpan={5}>No visits found.</TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
+      )}
       <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
     </Card>
   )

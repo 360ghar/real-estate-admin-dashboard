@@ -11,10 +11,12 @@ import Pagination from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Skeleton } from '@/components/ui/skeleton'
 import Combobox from '@/components/ui/combobox'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const UserList = () => {
   const me = useAppSelector(selectCurrentUser)
-  const role = me?.agent_id ? 'agent' : 'admin'
+  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
   const [q, setQ] = useState('')
   const [agentId, setAgentId] = useState<number | ''>('')
 
@@ -28,8 +30,8 @@ const UserList = () => {
   }, [dq, agentId, role, me?.agent_id])
 
   const [page, setPage] = useState(1)
-  const pageSize = 10
-  const { data, isFetching } = useListUsersQuery({ ...params, page, page_size: pageSize } as any)
+  const [pageSize, setPageSize] = useState(10)
+  const { data, isFetching, error, refetch } = useListUsersQuery({ ...params, page, limit: pageSize } as any)
   const agents = useListAgentsQuery(
     { include_inactive: false },
     { skip: role !== 'admin' }
@@ -37,7 +39,7 @@ const UserList = () => {
 
   return (
     <Card>
-      <div className="mb-4 grid gap-3 md:grid-cols-4">
+      <div className="mb-4 grid gap-3 md:grid-cols-5">
         <Input placeholder="Search name, phone, email" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
         {role === 'admin' && (
           <Combobox
@@ -47,7 +49,22 @@ const UserList = () => {
             placeholder="Filter agents…"
           />
         )}
+        <div>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
+            <SelectTrigger><SelectValue placeholder="Rows" /></SelectTrigger>
+            <SelectContent>
+              {[10,20,50].map(n => (<SelectItem key={n} value={String(n)}>{n} / page</SelectItem>))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+      {(!isFetching && (!data?.results || data.results.length === 0)) ? (
+        <EmptyState
+          title="No users found"
+          description={q || agentId ? 'Try adjusting search or filters.' : 'Users will appear here once available.'}
+          action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
+        />
+      ) : (
       <Table>
         <TableHeader>
           <TableRow>
@@ -79,13 +96,9 @@ const UserList = () => {
               </TableCell>
             </TableRow>
           ))}
-          {!isFetching && (!data?.results || data.results.length === 0) && (
-            <TableRow>
-              <TableCell className="text-slate-500" colSpan={5}>No users found.</TableCell>
-            </TableRow>
-          )}
         </TableBody>
       </Table>
+      )}
       <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
     </Card>
   )

@@ -21,9 +21,9 @@ const PropertyDetail = ({ id }: { id: number }) => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 md:grid-cols-2">
-            <Item label="Type" value={data?.type} />
+            <Item label="Type" value={data?.property_type} />
             <Item label="Purpose" value={data?.purpose} />
-            <Item label="Price" value={data?.price ? `₹${data.price}` : '-'} />
+            <Item label="Price" value={data?.base_price ? `₹${data.base_price}` : '-'} />
             <Item label="Status" value={data?.status} />
             <Item label="City" value={data?.city} />
             <Item label="Locality" value={data?.locality} />

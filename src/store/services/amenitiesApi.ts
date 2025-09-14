@@ -1,14 +1,16 @@
 import { api } from './api'
-
-export interface Amenity { id: string; name: string }
+import type { Amenity } from '@/types/api'
 
 export const amenitiesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    listAmenities: builder.query<{ results: Amenity[] }, void>({
+    // Get all amenities
+    getAmenities: builder.query<Amenity[], void>({
       query: () => '/amenities/',
+      providesTags: ['Amenity']
     }),
   }),
 })
 
-export const { useListAmenitiesQuery } = amenitiesApi
-
+export const {
+  useGetAmenitiesQuery,
+} = amenitiesApi
