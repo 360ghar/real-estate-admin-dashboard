@@ -1,0 +1,96 @@
+import { useRef, useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { supabase } from '@/lib/supabase'
+import { GripVertical } from 'lucide-react'
+
+type Props = {
+  bucket?: string
+  folder?: string
+  value?: string[]
+  onChange?: (urls: string[]) => void
+  multiple?: boolean
+  primary?: string | null
+  onPrimaryChange?: (url: string) => void
+}
+
+const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onChange, multiple = true, primary = null, onPrimaryChange }: Props) => {
+  const inputRef = useRef<HTMLInputElement | null>(null)
+  const [uploading, setUploading] = useState(false)
+
+  const pick = () => inputRef.current?.click()
+  const remove = (url: string) => onChange?.(value.filter((u) => u !== url))
+
+  const onFiles = async (files: FileList | null) => {
+    if (!files || !supabase) return
+    setUploading(true)
+    try {
+      const urls: string[] = []
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop()
+        const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+        const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false })
+        if (error) throw error
+        const { data } = supabase.storage.from(bucket).getPublicUrl(path)
+        urls.push(data.publicUrl)
+      }
+      onChange?.([...(value || []), ...urls])
+    } catch (e) {
+      // eslint-disable-next-line no-alert
+      alert('Upload failed. Check Supabase config and bucket permissions.')
+    } finally {
+      setUploading(false)
+      if (inputRef.current) inputRef.current.value = ''
+    }
+  }
+
+  // Drag & drop reorder
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const onDragStart = (idx: number) => setDragIndex(idx)
+  const onDragOver = (e: React.DragEvent) => e.preventDefault()
+  const onDrop = (idx: number) => {
+    if (dragIndex === null || dragIndex === idx) return setDragIndex(null)
+    const arr = [...(value || [])]
+    const [moved] = arr.splice(dragIndex, 1)
+    arr.splice(idx, 0, moved)
+    onChange?.(arr)
+    if (arr.length && onPrimaryChange) onPrimaryChange(arr[0])
+    setDragIndex(null)
+  }
+
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap gap-3">
+        {value?.map((url, idx) => (
+          <div
+            key={url}
+            className={`relative h-24 w-24 overflow-hidden rounded-md border transition-transform ${dragIndex === idx ? 'ring-2 ring-blue-500 scale-105' : ''}`}
+            onDragOver={onDragOver}
+            onDrop={() => onDrop(idx)}
+          >
+            <img src={url} className="h-full w-full object-cover" />
+            <div className="absolute left-1 top-1 flex gap-1">
+              <button type="button" onClick={() => onPrimaryChange?.(url)} className={`rounded px-1 text-xs ${primary === url ? 'bg-yellow-400 text-black' : 'bg-black/60 text-white'}`}>{primary === url ? 'Primary' : 'Make Primary'}</button>
+            </div>
+            <button
+              type="button"
+              draggable
+              onDragStart={() => onDragStart(idx)}
+              onDragEnd={() => setDragIndex(null)}
+              className="absolute bottom-1 left-1 rounded bg-black/60 p-1 text-white"
+              title="Drag to reorder"
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={() => remove(url)} className="absolute right-1 top-1 rounded bg-black/60 px-1 text-xs text-white">×</button>
+          </div>
+        ))}
+      </div>
+      <div className="flex items-center gap-2">
+        <Button type="button" onClick={pick} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload Images'}</Button>
+        <input ref={inputRef} type="file" accept="image/*" multiple={multiple} className="hidden" onChange={(e) => onFiles(e.target.files)} />
+      </div>
+    </div>
+  )
+}
+
+export default ImageUpload
