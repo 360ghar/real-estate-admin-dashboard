@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import {
   useGetAllReviewsQuery,
@@ -79,7 +80,7 @@ const ReviewsManagementPage: React.FC = () => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star
         key={i}
-        className={`h-4 w-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+        className={`h-4 w-4 ${i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted-foreground opacity-30'}`}
       />
     ))
   }
@@ -270,11 +271,11 @@ const ReviewsManagementPage: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-8">Loading reviews...</div>
       ) : !reviews.length ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">No reviews found</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<MessageSquare className="h-10 w-10" />}
+          title="No reviews found"
+          description="Try adjusting filters or date range."
+        />
       ) : (
         <div className="space-y-4">
           {reviews.map((review) => (

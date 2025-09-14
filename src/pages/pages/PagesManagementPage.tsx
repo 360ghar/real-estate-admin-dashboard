@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Plus, Edit, Trash2, Eye, Save, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Eye, Save, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import {
   useGetPagesQuery,
@@ -189,9 +190,9 @@ const PagesManagementPage: React.FC = () => {
       privacy: 'bg-purple-100 text-purple-800',
       about: 'bg-pink-100 text-pink-800',
       contact: 'bg-indigo-100 text-indigo-800',
-      custom: 'bg-gray-100 text-gray-800'
+      custom: 'bg-muted text-foreground'
     }
-    return colors[type] || 'bg-gray-100 text-gray-800'
+    return colors[type] || 'bg-muted text-foreground'
   }
 
   return (
@@ -366,11 +367,15 @@ const PagesManagementPage: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-8">Loading pages...</div>
       ) : !filteredPages.length ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">No pages found</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<FileText className="h-10 w-10" />}
+          title="No pages found"
+          description="Create your first page to get started."
+          action={{
+            label: 'New Page',
+            onClick: () => { resetForm(); setIsDialogOpen(true) },
+          }}
+        />
       ) : (
         <div className="grid gap-4">
           {filteredPages.map((page) => (

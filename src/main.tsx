@@ -6,16 +6,18 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import App from './App'
 import './index.css'
 import { store } from './store'
+import { ThemeProvider } from '@/components/theme-provider'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <Provider store={store}>
-      <TooltipProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </Provider>
   </React.StrictMode>
 )
-

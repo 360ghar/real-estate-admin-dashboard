@@ -137,7 +137,7 @@ const Sidebar = () => {
           </div>
         </SheetContent>
       </Sheet>
-      <div className="hidden md:block w-64 flex-shrink-0 border-r bg-white">
+      <div className="hidden md:block w-64 flex-shrink-0 border-r bg-background">
         <div className="h-full p-4">
           <div className="mb-6 text-lg font-semibold">360Ghar Portal</div>
           <nav className="space-y-2">

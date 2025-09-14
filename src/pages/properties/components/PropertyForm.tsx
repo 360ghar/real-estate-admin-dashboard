@@ -469,7 +469,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
                             <span>{a.name}</span>
                           </label>
                         ))}
-                        {!amenities.data && <div className="text-sm text-slate-500">No amenities</div>}
+                        {!amenities.data && <div className="text-sm text-muted-foreground">No amenities</div>}
                       </div>
                     </FormControl>
                     <FormMessage />

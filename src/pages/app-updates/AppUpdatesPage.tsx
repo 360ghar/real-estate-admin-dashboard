@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -346,11 +347,15 @@ const AppUpdatesPage: React.FC = () => {
       {isLoading ? (
         <div className="text-center py-8">Loading updates...</div>
       ) : !filteredUpdates.length ? (
-        <Card>
-          <CardContent className="text-center py-8">
-            <p className="text-muted-foreground">No updates found</p>
-          </CardContent>
-        </Card>
+        <EmptyState
+          icon={<Monitor className="h-10 w-10" />}
+          title="No updates found"
+          description="Create your first app update entry."
+          action={{
+            label: 'New Update',
+            onClick: () => { resetForm(); setIsDialogOpen(true) },
+          }}
+        />
       ) : (
         <div className="grid gap-4">
           {filteredUpdates.map((update) => (

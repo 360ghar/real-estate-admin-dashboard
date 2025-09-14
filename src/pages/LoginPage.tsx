@@ -51,7 +51,7 @@ const LoginPage = () => {
         <div className="absolute inset-0 bg-black/10"></div>
         <div className="relative z-10 text-center">
           <div className="flex justify-center mb-8">
-            <div className="p-4 bg-white/10 rounded-full backdrop-blur-sm">
+            <div className="p-4 bg-primary-foreground/10 rounded-full backdrop-blur-sm">
               <Building2 className="h-16 w-16" />
             </div>
           </div>
@@ -71,7 +71,7 @@ const LoginPage = () => {
 
       {/* Right Side - Login Form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
-        <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+        <Card className="w-full max-w-md shadow-xl border bg-card/80 backdrop-blur-sm">
           <CardHeader className="space-y-1 text-center pb-8">
             <div className="flex justify-center mb-4">
               <div className="p-3 bg-primary/10 rounded-full">

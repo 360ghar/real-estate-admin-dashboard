@@ -53,10 +53,10 @@ const VisitDetail = ({ id }: { id: number }) => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 text-sm">
-            <div><span className="text-slate-500">Property:</span> #{data?.property_id}</div>
-            <div><span className="text-slate-500">User:</span> #{data?.user_id}</div>
-            <div><span className="text-slate-500">Scheduled:</span> {data ? new Date(data.scheduled_date).toLocaleString() : '-'}</div>
-            <div><span className="text-slate-500">Status:</span> {data?.status}</div>
+            <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
+            <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
+            <div><span className="text-muted-foreground">Scheduled:</span> {data ? new Date(data.scheduled_date).toLocaleString() : '-'}</div>
+            <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
           </div>
           <div className="mt-4 flex gap-2">
             {(data?.status === 'scheduled' || data?.status === 'rescheduled') && (

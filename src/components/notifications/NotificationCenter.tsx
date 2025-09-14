@@ -62,9 +62,9 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
       case 'property_available':
         return 'text-purple-600'
       case 'system_message':
-        return 'text-gray-600'
+        return 'text-muted-foreground'
       default:
-        return 'text-gray-600'
+        return 'text-muted-foreground'
     }
   }
 

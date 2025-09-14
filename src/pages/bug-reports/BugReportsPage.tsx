@@ -54,7 +54,7 @@ const severityColors = {
 }
 
 const statusColors = {
-  open: 'bg-gray-100 text-gray-800',
+  open: 'bg-muted text-foreground',
   in_progress: 'bg-blue-100 text-blue-800',
   resolved: 'bg-green-100 text-green-800',
   closed: 'bg-purple-100 text-purple-800',
@@ -176,7 +176,7 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
                           ) : attachment.file_type.startsWith('video/') ? (
                             <Video className="h-5 w-5 text-green-500" />
                           ) : (
-                            <FileText className="h-5 w-5 text-gray-500" />
+                            <FileText className="h-5 w-5 text-muted-foreground" />
                           )}
                           <span className="text-sm truncate">{attachment.file_name}</span>
                           <span className="text-xs text-muted-foreground">
@@ -535,7 +535,7 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
           {/* Attachments */}
           <div className="space-y-2">
             <Label>Attachments (Optional)</Label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+            <div className="border-2 border-dashed border-border rounded-lg p-4">
               <input
                 ref={fileInputRef}
                 type="file"
@@ -545,8 +545,8 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
                 accept="image/*,video/*,.pdf,.doc,.docx"
               />
               <div className="text-center">
-                <Paperclip className="h-8 w-8 mx-auto text-gray-400 mb-2" />
-                <p className="text-sm text-gray-600 mb-2">
+                <Paperclip className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                <p className="text-sm text-muted-foreground mb-2">
                   Drag and drop files here or click to browse
                 </p>
                 <Button
@@ -570,7 +570,7 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
                         ) : file.type.startsWith('video/') ? (
                           <Video className="h-5 w-5 text-green-500" />
                         ) : (
-                          <FileText className="h-5 w-5 text-gray-500" />
+                          <FileText className="h-5 w-5 text-muted-foreground" />
                         )}
                         <span className="text-sm truncate">{file.name}</span>
                         <span className="text-xs text-muted-foreground">

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { User, Settings, LogOut } from 'lucide-react'
+import { ModeToggle } from '@/components/mode-toggle'
 
 const TopBar = () => {
   const user = useAppSelector(selectCurrentUser)
@@ -18,7 +19,7 @@ const TopBar = () => {
   }
 
   return (
-    <header className="flex items-center justify-between border-b bg-white/80 backdrop-blur-sm px-6 py-4 shadow-sm">
+    <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -29,6 +30,7 @@ const TopBar = () => {
       </div>
 
       <div className="flex items-center gap-4">
+        <ModeToggle />
         {/* Current Time */}
         <div className="hidden md:block text-sm text-muted-foreground">
           {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -37,7 +39,7 @@ const TopBar = () => {
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="flex items-center gap-3 rounded-full px-3 py-2 h-auto hover:bg-muted/50">
+            <Button variant="ghost" className="flex items-center gap-3 rounded-full px-3 py-2 h-auto hover:bg-accent">
               <Avatar className="h-9 w-9 ring-2 ring-primary/10">
                 <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
                   {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}

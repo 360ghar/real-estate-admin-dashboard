@@ -57,13 +57,13 @@ const BookingDetail = ({ id }: { id: number }) => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-2 text-sm">
-            <div><span className="text-slate-500">Property:</span> #{data?.property_id}</div>
-            <div><span className="text-slate-500">User:</span> #{data?.user_id}</div>
-            <div><span className="text-slate-500">Stay:</span> {data ? `${new Date(data.check_in).toLocaleDateString()} – ${new Date(data.check_out).toLocaleDateString()}` : '-'}</div>
-            <div><span className="text-slate-500">Nights:</span> {data?.nights}</div>
-            <div><span className="text-slate-500">Amount:</span> ₹{data?.total_amount}</div>
-            <div><span className="text-slate-500">Status:</span> {data?.status}</div>
-            <div><span className="text-slate-500">Payment:</span> {data?.payment_status || '-'}</div>
+            <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
+            <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
+            <div><span className="text-muted-foreground">Stay:</span> {data ? `${new Date(data.check_in).toLocaleDateString()} – ${new Date(data.check_out).toLocaleDateString()}` : '-'}</div>
+            <div><span className="text-muted-foreground">Nights:</span> {data?.nights}</div>
+            <div><span className="text-muted-foreground">Amount:</span> ₹{data?.total_amount}</div>
+            <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
+            <div><span className="text-muted-foreground">Payment:</span> {data?.payment_status || '-'}</div>
           </div>
           <div className="mt-4 flex gap-2">
             {(data?.status === 'pending' || data?.status === 'confirmed') && (

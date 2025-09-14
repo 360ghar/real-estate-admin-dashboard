@@ -202,7 +202,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                           <Star
                             key={i}
                             className={`h-4 w-4 ${
-                              i < booking.review.rating ? 'text-yellow-400 fill-current' : 'text-gray-300'
+                              i < booking.review.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
                             }`}
                           />
                         ))}
@@ -308,7 +308,7 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
                 className={`h-6 w-6 ${
                   rating <= (watch('rating') || 0)
                     ? 'text-yellow-400 fill-current'
-                    : 'text-gray-300'
+                    : 'text-muted-foreground opacity-30'
                 }`}
               />
             </label>

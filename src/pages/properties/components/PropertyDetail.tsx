@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
 
 const Item = ({ label, value }: { label: string; value?: any }) => (
-  <div className="text-sm"><span className="text-slate-500">{label}: </span>{String(value ?? '-')}
+  <div className="text-sm"><span className="text-muted-foreground">{label}: </span>{String(value ?? '-')}
   </div>
 )
 
@@ -13,7 +13,7 @@ const PropertyDetail = ({ id }: { id: number }) => {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Property Detail</h1>
-        <Link to={`/properties/${id}`} className="rounded-md bg-black px-3 py-2 text-sm font-medium text-white hover:bg-black/90">Edit</Link>
+        <Link to={`/properties/${id}`} className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Edit</Link>
       </div>
       <Card>
         <CardHeader>
@@ -44,4 +44,3 @@ const PropertyDetail = ({ id }: { id: number }) => {
 }
 
 export default PropertyDetail
-
