@@ -30,11 +30,32 @@ const UserPreferencesPage = () => {
     longitude: number;
   } | null>(null)
 
+  // Normalize preferences coming from backend (may contain nulls)
+  const normalizePreferences = (p: any): UserPreferences => {
+    const arr = (x: any) => (Array.isArray(x) ? x.filter(Boolean) : [])
+    const num = (x: any) => (typeof x === 'number' && !Number.isNaN(x) ? x : undefined)
+    const purpose = ['buy', 'rent', 'short_stay'].includes(p?.purpose) ? p.purpose : 'rent'
+    return {
+      property_type: arr(p?.property_type),
+      purpose,
+      budget_min: num(p?.budget_min),
+      budget_max: num(p?.budget_max),
+      bedrooms_min: num(p?.bedrooms_min),
+      bedrooms_max: num(p?.bedrooms_max),
+      area_min: num(p?.area_min),
+      area_max: num(p?.area_max),
+      location_preference: arr(p?.location_preference),
+      max_distance_km: typeof p?.max_distance_km === 'number' && !Number.isNaN(p?.max_distance_km)
+        ? p.max_distance_km
+        : 10,
+    }
+  }
+
   // Initialize preferences from profile data
   React.useEffect(() => {
     const profileData = profile as any // Type assertion for profile data
     if (profileData?.preferences) {
-      setPreferences(profileData.preferences)
+      setPreferences(normalizePreferences(profileData.preferences))
     }
     if (profileData?.current_latitude && profileData?.current_longitude) {
       setLocation({
@@ -95,18 +116,18 @@ const UserPreferencesPage = () => {
   const togglePropertyType = (type: string) => {
     setPreferences(prev => ({
       ...prev,
-      property_type: prev.property_type.includes(type)
-        ? prev.property_type.filter(t => t !== type)
-        : [...prev.property_type, type]
+      property_type: (prev.property_type || []).includes(type)
+        ? (prev.property_type || []).filter(t => t !== type)
+        : [...(prev.property_type || []), type]
     }))
   }
 
   const toggleLocationPreference = (location: string) => {
     setPreferences(prev => ({
       ...prev,
-      location_preference: prev.location_preference.includes(location)
-        ? prev.location_preference.filter(l => l !== location)
-        : [...prev.location_preference, location]
+      location_preference: (prev.location_preference || []).includes(location)
+        ? (prev.location_preference || []).filter(l => l !== location)
+        : [...(prev.location_preference || []), location]
     }))
   }
 
@@ -165,7 +186,7 @@ const UserPreferencesPage = () => {
                     <div key={value} className="flex items-center space-x-2">
                       <Checkbox
                         id={`property-type-${value}`}
-                        checked={preferences.property_type.includes(value)}
+                        checked={(preferences.property_type || []).includes(value)}
                         onCheckedChange={() => togglePropertyType(value)}
                       />
                       <Label htmlFor={`property-type-${value}`} className="flex items-center gap-2 text-sm">
@@ -199,8 +220,8 @@ const UserPreferencesPage = () => {
                   <Input
                     id="budget_min"
                     type="number"
-                    value={preferences.budget_min}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, budget_min: Number(e.target.value) }))}
+                    value={preferences.budget_min ?? ''}
+                    onChange={(e) => setPreferences(prev => ({ ...prev, budget_min: e.target.value === '' ? undefined : Number(e.target.value) }))}
                   />
                 </div>
                 <div>
@@ -208,8 +229,8 @@ const UserPreferencesPage = () => {
                   <Input
                     id="budget_max"
                     type="number"
-                    value={preferences.budget_max}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, budget_max: Number(e.target.value) }))}
+                    value={preferences.budget_max ?? ''}
+                    onChange={(e) => setPreferences(prev => ({ ...prev, budget_max: e.target.value === '' ? undefined : Number(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -221,8 +242,8 @@ const UserPreferencesPage = () => {
                   <Input
                     id="bedrooms_min"
                     type="number"
-                    value={preferences.bedrooms_min}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, bedrooms_min: Number(e.target.value) }))}
+                    value={preferences.bedrooms_min ?? ''}
+                    onChange={(e) => setPreferences(prev => ({ ...prev, bedrooms_min: e.target.value === '' ? undefined : Number(e.target.value) }))}
                   />
                 </div>
                 <div>
@@ -230,8 +251,8 @@ const UserPreferencesPage = () => {
                   <Input
                     id="bedrooms_max"
                     type="number"
-                    value={preferences.bedrooms_max}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, bedrooms_max: Number(e.target.value) }))}
+                    value={preferences.bedrooms_max ?? ''}
+                    onChange={(e) => setPreferences(prev => ({ ...prev, bedrooms_max: e.target.value === '' ? undefined : Number(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -243,8 +264,8 @@ const UserPreferencesPage = () => {
                   <Input
                     id="area_min"
                     type="number"
-                    value={preferences.area_min}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, area_min: Number(e.target.value) }))}
+                    value={preferences.area_min ?? ''}
+                    onChange={(e) => setPreferences(prev => ({ ...prev, area_min: e.target.value === '' ? undefined : Number(e.target.value) }))}
                   />
                 </div>
                 <div>
@@ -252,8 +273,8 @@ const UserPreferencesPage = () => {
                   <Input
                     id="area_max"
                     type="number"
-                    value={preferences.area_max}
-                    onChange={(e) => setPreferences(prev => ({ ...prev, area_max: Number(e.target.value) }))}
+                    value={preferences.area_max ?? ''}
+                    onChange={(e) => setPreferences(prev => ({ ...prev, area_max: e.target.value === '' ? undefined : Number(e.target.value) }))}
                   />
                 </div>
               </div>
@@ -264,8 +285,8 @@ const UserPreferencesPage = () => {
                 <Input
                   id="max_distance"
                   type="number"
-                  value={preferences.max_distance_km}
-                  onChange={(e) => setPreferences(prev => ({ ...prev, max_distance_km: Number(e.target.value) }))}
+                  value={preferences.max_distance_km ?? ''}
+                  onChange={(e) => setPreferences(prev => ({ ...prev, max_distance_km: e.target.value === '' ? 0 : Number(e.target.value) }))}
                 />
               </div>
 
@@ -329,7 +350,7 @@ const UserPreferencesPage = () => {
                     <div key={city} className="flex items-center space-x-2">
                       <Checkbox
                         id={`location-${city}`}
-                        checked={preferences.location_preference.includes(city)}
+                        checked={(preferences.location_preference || []).includes(city)}
                         onCheckedChange={() => toggleLocationPreference(city)}
                       />
                       <Label htmlFor={`location-${city}`} className="text-sm">

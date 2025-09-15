@@ -163,10 +163,13 @@ const LoginPage = () => {
               </form>
             </Form>
 
+            <div className="pt-2 flex items-center justify-between text-sm">
+              <a href="/forgot-password" className="text-primary hover:underline">Forgot password?</a>
+              <a href="/signup" className="text-primary hover:underline">New agent? Sign up</a>
+            </div>
+
             <div className="text-center pt-4">
-              <p className="text-sm text-muted-foreground">
-                Secure access to 360Ghar Admin Portal
-              </p>
+              <p className="text-sm text-muted-foreground">Secure access to 360Ghar Admin Portal</p>
             </div>
           </CardContent>
         </Card>
