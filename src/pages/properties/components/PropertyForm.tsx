@@ -10,7 +10,7 @@ import { useCreatePropertyMutation, useGetPropertyQuery, useUpdatePropertyMutati
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/media/ImageUpload'
 import LocationPicker from '@/components/map/LocationPicker'
-import { useListUsersQuery } from '@/store/services/usersApi'
+import { useGetUsersQuery } from '@/store/services/usersApi'
 import { useAppSelector } from '@/hooks/redux'
 import { selectCurrentUser } from '@/store/slices/authSlice'
 import { useGetAmenitiesQuery } from '@/store/services/amenitiesApi'
@@ -19,24 +19,26 @@ import Combobox from '@/components/ui/combobox'
 import AddressAutocomplete from './parts/AddressAutocomplete'
 import MapPreview from './parts/MapPreview'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Textarea } from '@/components/ui/textarea'
+import { useDebounce } from '@/hooks/useDebounce'
 
 const schema = z.object({
   title: z.string().min(3),
-  description: z.string().min(1, "Description is required"),
-  type: z.string().min(1, "Property type is required"),
-  purpose: z.string().min(1, "Purpose is required"),
+  description: z.string().optional(),
+  type: z.enum(['apartment', 'house', 'builder_floor', 'room'], { required_error: 'Property type is required' }),
+  purpose: z.enum(['buy', 'rent', 'short_stay'], { required_error: 'Purpose is required' }),
   status: z.string().optional(),
   price: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1, "Price is required")),
   city: z.string().min(1, "City is required"),
   locality: z.string().min(1, "Locality is required"),
   address: z.string().optional(),
-  latitude: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number()),
-  longitude: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number()),
+  latitude: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().optional()),
+  longitude: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().optional()),
   owner_id: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().optional()),
   is_available: z.preprocess((v) => (v === 'true' ? true : v === 'false' ? false : v), z.boolean().optional()),
   available_from: z.string().optional(),
   amenities: z.array(z.number()).optional(),
-  pincode: z.string().min(1, "Pincode is required"),
+  pincode: z.string().optional(),
   area_sqft: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1, "Area is required")),
   bedrooms: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
   bathrooms: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
@@ -48,8 +50,8 @@ const schema = z.object({
   max_occupancy: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1)),
   minimum_stay_days: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1)),
   features: z.array(z.string()).optional(),
-  owner_name: z.string().min(1, "Owner name is required"),
-  owner_contact: z.string().min(1, "Owner contact is required"),
+  owner_name: z.string().optional(),
+  owner_contact: z.string().optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -60,15 +62,27 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
   const [primaryImage, setPrimaryImage] = useState<string | null>(null)
   const me = useAppSelector(selectCurrentUser)
   const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
-  const users = useListUsersQuery(role === 'agent' && me?.agent_id ? { agent_id: me.agent_id } : {})
+  // Owner selection mode: search or direct ID
+  const [ownerMode, setOwnerMode] = useState<'search' | 'id'>('search')
+  const [ownerSearch, setOwnerSearch] = useState('')
+  const dq = useDebounce(ownerSearch, 300)
+  const users = useGetUsersQuery(
+    {
+      page: 1,
+      limit: 20,
+      q: dq || undefined,
+      ...(role === 'agent' && me?.agent_id ? { agent_id: me.agent_id } : {}),
+    },
+    { skip: ownerMode !== 'search' }
+  )
   const amenities = useGetAmenitiesQuery()
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: '',
       description: '',
-      type: '',
-      purpose: '',
+      type: undefined as any,
+      purpose: undefined as any,
       status: 'available',
       price: undefined,
       city: '',
@@ -174,7 +188,9 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         toast({ title: 'Updated', description: 'Property updated successfully' })
         onSuccess?.(res.id)
       } else {
-        const res = await createProperty({ data: payload }).unwrap()
+        // Pass ownerId only when admin/agent and owner selected
+        const ownerIdParam = (role === 'admin' || role === 'agent') && values.owner_id ? values.owner_id : undefined
+        const res = await createProperty({ data: payload, ownerId: ownerIdParam }).unwrap()
         toast({ title: 'Created', description: 'Property created successfully' })
         onSuccess?.(res.id)
       }
@@ -194,59 +210,84 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Title</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Spacious 2BHK in Gurgaon" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div>
-              <FormField
-                control={form.control}
-                name="type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type</FormLabel>
-                    <FormControl>
-                      <Input placeholder="apartment" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <div>
-              <FormField
-                control={form.control}
-                name="purpose"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Purpose</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="rent">Rent</SelectItem>
-                        <SelectItem value="sale">Sale</SelectItem>
-                        <SelectItem value="short_stay">Short Stay</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+          <FormField
+            control={form.control}
+            name="title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Title</FormLabel>
+                <FormControl>
+                  <Input placeholder="Spacious 2BHK in Gurgaon" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div className="md:col-span-2">
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea rows={4} placeholder="Spacious 3BHK with modern amenities and excellent location" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div>
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Type</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="apartment">Apartment</SelectItem>
+                    <SelectItem value="house">House</SelectItem>
+                    <SelectItem value="builder_floor">Builder Floor</SelectItem>
+                    <SelectItem value="room">Room</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <div>
+          <FormField
+            control={form.control}
+            name="purpose"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Purpose</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="buy">Buy</SelectItem>
+                    <SelectItem value="rent">Rent</SelectItem>
+                    <SelectItem value="short_stay">Short Stay</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
             <div>
               <FormField
                 control={form.control}
@@ -385,25 +426,65 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
                 )}
               />
             </div>
-            <div>
-              <FormField
-                control={form.control}
-                name="owner_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Owner</FormLabel>
-                    <FormControl>
-                      <Combobox
-                        items={(users.data?.results || []).map((u) => ({ value: String(u.id), label: u.full_name || u.phone || `User ${u.id}` }))}
-                        value={String((data as any)?.owner_id || '')}
-                        onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+            {(role === 'admin' || role === 'agent') && (
+              <div className="md:col-span-2 grid gap-2">
+                <FormLabel>Owner Selection</FormLabel>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                  <div>
+                    <FormLabel className="text-xs text-muted-foreground">Mode</FormLabel>
+                    <Select value={ownerMode} onValueChange={(v: any) => setOwnerMode(v)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="search">Search Users</SelectItem>
+                        <SelectItem value="id">Enter User ID</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {ownerMode === 'search' && (
+                    <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-2">
+                      <div>
+                        <FormLabel className="text-xs text-muted-foreground">Search</FormLabel>
+                        <Input placeholder="Search users by name or phone" value={ownerSearch} onChange={(e) => setOwnerSearch(e.target.value)} />
+                      </div>
+                      <FormField
+                        control={form.control}
+                        name="owner_id"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-xs text-muted-foreground">Select User</FormLabel>
+                            <FormControl>
+                              <Combobox
+                                items={(users.data?.items || []).map((u) => ({ value: String(u.id), label: `${u.full_name || 'User'} • ${u.phone || 'N/A'} • #${u.id}` }))}
+                                value={field.value ? String(field.value) : ''}
+                                onChange={(v) => field.onChange(v ? Number(v) : undefined)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
                       />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                    </div>
+                  )}
+                  {ownerMode === 'id' && (
+                    <FormField
+                      control={form.control}
+                      name="owner_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-xs text-muted-foreground">Owner ID</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g. 123" value={field.value ? String(field.value) : ''} onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+                </div>
+              </div>
+            )}
             <div>
               <FormField
                 control={form.control}

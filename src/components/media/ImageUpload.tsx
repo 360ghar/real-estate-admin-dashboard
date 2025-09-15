@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { supabase } from '@/lib/supabase'
 import { GripVertical } from 'lucide-react'
+import { useUploadFileMutation } from '@/store/services/propertiesApi'
 
 type Props = {
   bucket?: string
@@ -16,27 +16,42 @@ type Props = {
 const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onChange, multiple = true, primary = null, onPrimaryChange }: Props) => {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadFile] = useUploadFileMutation()
+
+  const allowedImageTypes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+  ] as const
 
   const pick = () => inputRef.current?.click()
   const remove = (url: string) => onChange?.(value.filter((u) => u !== url))
 
   const onFiles = async (files: FileList | null) => {
-    if (!files || !supabase) return
+    if (!files) return
     setUploading(true)
     try {
       const urls: string[] = []
       for (const file of Array.from(files)) {
-        const ext = file.name.split('.').pop()
-        const path = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-        const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: false })
-        if (error) throw error
-        const { data } = supabase.storage.from(bucket).getPublicUrl(path)
-        urls.push(data.publicUrl)
+        if (!allowedImageTypes.includes(file.type as any)) {
+          // eslint-disable-next-line no-alert
+          alert(`Unsupported file type: ${file.type}. Allowed: ${allowedImageTypes.join(', ')}`)
+          continue
+        }
+        const fd = new FormData()
+        // folder hint (optional, backend may ignore)
+        fd.append('file', file)
+        if (folder) fd.append('folder', folder)
+        if (bucket) fd.append('bucket', bucket)
+        const res = await uploadFile(fd).unwrap()
+        urls.push(res.public_url)
       }
       onChange?.([...(value || []), ...urls])
     } catch (e) {
       // eslint-disable-next-line no-alert
-      alert('Upload failed. Check Supabase config and bucket permissions.')
+      alert('Upload failed. Please try again or check your connection.')
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''
@@ -105,7 +120,14 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
       </div>
       <div className="flex items-center gap-2">
         <Button type="button" onClick={pick} disabled={uploading}>{uploading ? 'Uploading…' : 'Upload Images'}</Button>
-        <input ref={inputRef} type="file" accept="image/*" multiple={multiple} className="hidden" onChange={(e) => onFiles(e.target.files)} />
+        <input
+          ref={inputRef}
+          type="file"
+          accept={allowedImageTypes.join(',')}
+          multiple={multiple}
+          className="hidden"
+          onChange={(e) => onFiles(e.target.files)}
+        />
       </div>
     </div>
   )
