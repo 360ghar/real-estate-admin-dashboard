@@ -160,7 +160,7 @@ const PropertyList = () => {
       accessorKey: 'status',
       header: 'Status',
       cell: ({ row }) => (
-        <Badge variant={row.original.status === 'active' ? 'default' : 'secondary'}>
+        <Badge variant={row.original.status === 'available' ? 'default' : 'secondary'}>
           {row.original.status}
         </Badge>
       ),
@@ -282,8 +282,8 @@ const PropertyList = () => {
                   <SelectItem value="all">All Types</SelectItem>
                   <SelectItem value="apartment">Apartment</SelectItem>
                   <SelectItem value="house">House</SelectItem>
-                  <SelectItem value="villa">Villa</SelectItem>
-                  <SelectItem value="plot">Plot</SelectItem>
+                  <SelectItem value="builder_floor">Builder Floor</SelectItem>
+                  <SelectItem value="room">Room</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -296,8 +296,9 @@ const PropertyList = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="sale">For Sale</SelectItem>
-                  <SelectItem value="rent">For Rent</SelectItem>
+                  <SelectItem value="buy">Buy</SelectItem>
+                  <SelectItem value="rent">Rent</SelectItem>
+                  <SelectItem value="short_stay">Short Stay</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -310,10 +311,10 @@ const PropertyList = () => {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="available">Available</SelectItem>
+                  <SelectItem value="rented">Rented</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="sold">Sold</SelectItem>
-                  <SelectItem value="rented">Rented</SelectItem>
                 </SelectContent>
               </Select>
 
