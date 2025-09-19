@@ -1,4 +1,4 @@
-// ESLint flat config for React + TypeScript
+// ESLint flat config for React + TypeScript (ESLint v8.x)
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactPlugin from 'eslint-plugin-react'
