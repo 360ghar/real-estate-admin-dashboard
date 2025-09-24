@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useAppSelector } from '@/hooks/redux'
 import { selectCurrentUser } from '@/store/slices/authSlice'
 import { useListVisitsQuery } from '@/store/services/visitsApi'
@@ -12,12 +12,33 @@ import Pagination from '@/components/ui/pagination'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useDebounce } from '@/hooks/useDebounce'
 import { Skeleton } from '@/components/ui/skeleton'
+import { 
+  ColumnDef 
+} from '@tanstack/react-table'
+import { useFilterPersistence } from '@/hooks/useFilterPersistence'
+import { DataTable } from '@/components/ui/data-table'
+import { LoadingState } from '@/components/ui/loading-state'
+import { Badge } from '@/components/ui/badge'
 
 const VisitList = () => {
   const me = useAppSelector(selectCurrentUser)
   const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
-  const [status, setStatus] = useState('')
-  const [q, setQ] = useState('')
+
+  // Filter persistence
+  const { filters, setFilters } = useFilterPersistence({
+    key: 'visits',
+    defaultValue: {
+      status: '',
+      q: '',
+    }
+  })
+
+  const [status, setStatus] = useState(filters.status || '')
+  const [q, setQ] = useState(filters.q || '')
+
+  useEffect(() => {
+    setFilters({ status, q })
+  }, [status, q])
 
   const dq = useDebounce(q)
   const params = useMemo(() => {
@@ -32,6 +53,38 @@ const VisitList = () => {
   const [pageSize, setPageSize] = useState(10)
   const { data, isFetching, refetch } = useListVisitsQuery({ ...params, page, limit: pageSize })
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: 'property_id',
+      header: 'Property',
+      cell: ({ row }) => `#${row.original.property_id}`,
+    },
+    {
+      accessorKey: 'user_id',
+      header: 'User',
+      cell: ({ row }) => `#${row.original.user_id}`,
+    },
+    {
+      accessorKey: 'scheduled_date',
+      header: 'Date',
+      cell: ({ row }) => new Date(row.original.scheduled_date).toLocaleString(),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => <Badge>{row.original.status}</Badge>,
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <Link className="text-blue-600 hover:underline" to={`/visits/${row.original.id}`}>
+          View
+        </Link>
+      ),
+    },
+  ]
+
   return (
     <Card>
       <div className="mb-4 grid gap-3 md:grid-cols-5">
@@ -45,7 +98,7 @@ const VisitList = () => {
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
         </Select>
-        <Input placeholder="Search property/user" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
+        <Input placeholder="Search property/user" value={q} onChange={(e) => setQ(e.target.value)} />
         <div>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
             <SelectTrigger><SelectValue placeholder="Rows" /></SelectTrigger>
@@ -62,41 +115,11 @@ const VisitList = () => {
           action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
         />
       ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Property</TableHead>
-            <TableHead>User</TableHead>
-            <TableHead>Date</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isFetching && (!data || !data.results) && (
-            <>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={`sk-${i}`}>
-                  <TableCell colSpan={5}><Skeleton className="h-6 w-full" /></TableCell>
-                </TableRow>
-              ))}
-            </>
-          )}
-          {data?.results?.map((v) => (
-            <TableRow key={v.id}>
-              <TableCell>#{v.property_id}</TableCell>
-              <TableCell>#{v.user_id}</TableCell>
-              <TableCell>{new Date(v.scheduled_date).toLocaleString()}</TableCell>
-              <TableCell>{v.status}</TableCell>
-              <TableCell>
-                <Link className="text-blue-600 hover:underline" to={`/visits/${v.id}`}>View</Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+        <>
+          <DataTable columns={columns} data={data?.results || []} />
+          <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
+        </>
       )}
-      <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
     </Card>
   )
 }

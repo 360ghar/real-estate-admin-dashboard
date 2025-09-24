@@ -41,7 +41,7 @@ const AgentForm = ({ id }: { id?: number }) => {
         user_id: data.user_id,
         employee_id: data.employee_id,
         specialization: data.specialization,
-        agent_type: data.agent_type as any,
+        agent_type: data.agent_type,
         is_active: (data as any).is_active ?? true,
         is_available: data.is_available,
       })

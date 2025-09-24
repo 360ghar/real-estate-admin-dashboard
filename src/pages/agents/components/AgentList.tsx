@@ -33,7 +33,7 @@ const agentColumns: ColumnDef<Agent>[] = [
     accessorKey: 'is_active',
     header: 'Status',
     cell: ({ row }) => {
-      const isActive = row.getValue('is_active') as boolean | undefined
+      const isActive = row.getValue('is_active')
       return <Badge variant={isActive ? 'default' : 'secondary'}>{isActive ? 'Active' : 'Inactive'}</Badge>
     },
   },

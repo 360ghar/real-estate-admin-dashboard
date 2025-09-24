@@ -13,12 +13,32 @@ import { Skeleton } from '@/components/ui/skeleton'
 import Combobox from '@/components/ui/combobox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { LoadingState } from '@/components/ui/loading-state'
+import { 
+  ColumnDef 
+} from '@tanstack/react-table'
+import { useFilterPersistence } from '@/hooks/useFilterPersistence'
+import { DataTable } from '@/components/ui/data-table'
 
 const UserList = () => {
   const me = useAppSelector(selectCurrentUser)
   const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
-  const [q, setQ] = useState('')
-  const [agentId, setAgentId] = useState<number | ''>('')
+
+  // Filter persistence
+  const { filters, setFilters } = useFilterPersistence({
+    key: 'users',
+    defaultValue: {
+      q: '',
+      agentId: '',
+    }
+  })
+
+  const [q, setQ] = useState(filters.q || '')
+  const [agentId, setAgentId] = useState<number | ''>(filters.agentId ? Number(filters.agentId) : '')
+
+  useEffect(() => {
+    setFilters({ q, agentId: agentId ? String(agentId) : '' })
+  }, [q, agentId])
 
   const dq = useDebounce(q)
   const params = useMemo(() => {
@@ -31,16 +51,47 @@ const UserList = () => {
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching, error, refetch } = useListUsersQuery({ ...params, page, limit: pageSize } as any)
+  const { data, isFetching, error, refetch } = useListUsersQuery({ ...params, page, limit: pageSize })
   const agents = useListAgentsQuery(
     { include_inactive: false },
     { skip: role !== 'admin' }
   )
 
+  const columns: ColumnDef<any>[] = [
+    {
+      accessorKey: 'full_name',
+      header: 'Name',
+      cell: ({ row }) => row.original.full_name || '-',
+    },
+    {
+      accessorKey: 'phone',
+      header: 'Phone',
+      cell: ({ row }) => row.original.phone || '-',
+    },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+      cell: ({ row }) => row.original.email || '-',
+    },
+    {
+      header: 'Assigned Agent',
+      cell: ({ row }) => row.original.agent?.name || '-',
+    },
+    {
+      id: 'actions',
+      header: 'Actions',
+      cell: ({ row }) => (
+        <Link className="text-blue-600 hover:underline" to={`/users/${row.original.id}`}>
+          View
+        </Link>
+      ),
+    },
+  ]
+
   return (
     <Card>
       <div className="mb-4 grid gap-3 md:grid-cols-5">
-        <Input placeholder="Search name, phone, email" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
+        <Input placeholder="Search name, phone, email" value={q} onChange={(e) => setQ(e.target.value)} />
         {role === 'admin' && (
           <Combobox
             items={[{ value: '' as any, label: 'All Agents' }, ...(agents.data?.results || []).map((a) => ({ value: String(a.id), label: a.name }))]}
@@ -65,41 +116,11 @@ const UserList = () => {
           action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
         />
       ) : (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Assigned Agent</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {isFetching && (!data || !data.results) && (
-            <>
-              {Array.from({ length: 3 }).map((_, i) => (
-                <TableRow key={`sk-${i}`}>
-                  <TableCell colSpan={5}><Skeleton className="h-6 w-full" /></TableCell>
-                </TableRow>
-              ))}
-            </>
-          )}
-          {data?.results?.map((u) => (
-            <TableRow key={u.id}>
-              <TableCell>{u.full_name || '-'}</TableCell>
-              <TableCell>{u.phone || '-'}</TableCell>
-              <TableCell>{u.email || '-'}</TableCell>
-              <TableCell>-</TableCell>
-              <TableCell>
-                <Link className="text-blue-600 hover:underline" to={`/users/${u.id}`}>View</Link>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+        <>
+          <DataTable columns={columns} data={data?.results || []} />
+          <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
+        </>
       )}
-      <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
     </Card>
   )
 }

@@ -11,6 +11,13 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) headers.set('Authorization', `Bearer ${token}`)
     return headers
   },
+  retry: (failureCount, error) => {
+    // Retry on server errors (5xx), up to 3 times
+    // Don't retry on client errors (4xx) or network issues beyond limit
+    if (failureCount >= 3) return false
+    if (error.status && error.status >= 500) return true
+    return false
+  },
 })
 
 const baseQueryWithAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (

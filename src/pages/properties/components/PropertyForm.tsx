@@ -113,7 +113,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
   const { reset, setValue, watch } = form
 
   const isEdit = !!id
-  const { data, isFetching } = useGetPropertyQuery(id!, { skip: !isEdit })
+  const { data, isLoading } = useGetPropertyQuery(id!, { skip: !isEdit })
   const [createProperty, createState] = useCreatePropertyMutation()
   const [updateProperty, updateState] = useUpdatePropertyMutation()
 
@@ -154,6 +154,12 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
     }
   }, [data, reset])
 
+  /**
+   * Handles form submission for creating or updating a property.
+   * For admins/agents, includes owner_id if selected; for users, creates for self.
+   * Uploads images separately if needed, but here uses pre-uploaded URLs.
+   * @param values - Form values from react-hook-form
+   */
   const onSubmit = async (values: FormValues) => {
     try {
       const payload: PropertyCreate = {
@@ -559,7 +565,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
               />
             </div>
             <div className="md:col-span-2 flex justify-end gap-2">
-              <Button type="submit" disabled={createState.isLoading || updateState.isLoading || isFetching}>
+              <Button type="submit" disabled={createState.isLoading || updateState.isLoading || isLoading}>
                 {isEdit ? (updateState.isLoading ? 'Saving…' : 'Save Changes') : createState.isLoading ? 'Creating…' : 'Create Property'}
               </Button>
             </div>

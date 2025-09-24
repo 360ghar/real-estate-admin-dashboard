@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useListBookingsQuery } from '@/store/services/bookingsApi'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import {
   ColumnDef,
 } from '@tanstack/react-table'
+import { useFilterPersistence } from '@/hooks/useFilterPersistence'
 
 type Booking = {
   id: number
@@ -45,8 +46,8 @@ const bookingColumns: ColumnDef<Booking>[] = [
     accessorKey: 'check_in',
     header: 'Check-in/out',
     cell: ({ row }) => {
-      const checkIn = row.getValue('check_in') as string | undefined
-      const checkOut = row.getValue('check_out') as string | undefined
+      const checkIn = row.getValue('check_in')
+      const checkOut = row.getValue('check_out')
       if (!checkIn || !checkOut) return '-'
       return `${new Date(checkIn).toLocaleDateString()} – ${new Date(checkOut).toLocaleDateString()}`
     },
@@ -55,7 +56,7 @@ const bookingColumns: ColumnDef<Booking>[] = [
     accessorKey: 'amount',
     header: 'Amount',
     cell: ({ row }) => {
-      const amount = row.getValue('amount') as number | undefined
+      const amount = row.getValue('amount')
       return amount ? `₹${amount.toLocaleString()}` : '-'
     },
   },
@@ -63,7 +64,7 @@ const bookingColumns: ColumnDef<Booking>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => {
-      const status = row.getValue('status') as string
+      const status = row.getValue('status')
       return <Badge variant={status === 'confirmed' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}>{status}</Badge>
     },
   },
@@ -85,9 +86,24 @@ const bookingColumns: ColumnDef<Booking>[] = [
 ]
 
 const BookingList = () => {
-  const [status, setStatus] = useState('')
-  const [paymentStatus, setPaymentStatus] = useState('')
-  const [q, setQ] = useState('')
+  // Filter persistence
+  const { filters, setFilters } = useFilterPersistence({
+    key: 'bookings',
+    defaultValue: {
+      status: '',
+      paymentStatus: '',
+      q: '',
+    }
+  })
+
+  const [status, setStatus] = useState(filters.status || '')
+  const [paymentStatus, setPaymentStatus] = useState(filters.paymentStatus || '')
+  const [q, setQ] = useState(filters.q || '')
+
+  useEffect(() => {
+    setFilters({ status, paymentStatus, q })
+  }, [status, paymentStatus, q])
+
   const dq = useDebounce(q)
   const params = useMemo(() => {
     const base: any = {}
