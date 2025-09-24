@@ -46,8 +46,8 @@ const bookingColumns: ColumnDef<Booking>[] = [
     accessorKey: 'check_in',
     header: 'Check-in/out',
     cell: ({ row }) => {
-      const checkIn = row.getValue('check_in')
-      const checkOut = row.getValue('check_out')
+      const checkIn = row.getValue('check_in') as string
+      const checkOut = row.getValue('check_out') as string
       if (!checkIn || !checkOut) return '-'
       return `${new Date(checkIn).toLocaleDateString()} – ${new Date(checkOut).toLocaleDateString()}`
     },
@@ -56,7 +56,7 @@ const bookingColumns: ColumnDef<Booking>[] = [
     accessorKey: 'amount',
     header: 'Amount',
     cell: ({ row }) => {
-      const amount = row.getValue('amount')
+      const amount = row.getValue('amount') as number
       return amount ? `₹${amount.toLocaleString()}` : '-'
     },
   },
@@ -64,7 +64,7 @@ const bookingColumns: ColumnDef<Booking>[] = [
     accessorKey: 'status',
     header: 'Status',
     cell: ({ row }) => {
-      const status = row.getValue('status')
+      const status = row.getValue('status') as string
       return <Badge variant={status === 'confirmed' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}>{status}</Badge>
     },
   },

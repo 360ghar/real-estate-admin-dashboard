@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
+import { retry } from '@reduxjs/toolkit/query'
 import type { RootState } from '..'
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query'
 import { clearCredentials } from '../slices/authSlice'
@@ -11,21 +12,16 @@ const rawBaseQuery = fetchBaseQuery({
     if (token) headers.set('Authorization', `Bearer ${token}`)
     return headers
   },
-  retry: (failureCount, error) => {
-    // Retry on server errors (5xx), up to 3 times
-    // Don't retry on client errors (4xx) or network issues beyond limit
-    if (failureCount >= 3) return false
-    if (error.status && error.status >= 500) return true
-    return false
-  },
 })
+
+const baseQueryWithRetries = retry(rawBaseQuery, { maxRetries: 3 })
 
 const baseQueryWithAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
-  extraOptions
+  extraOptions,
 ) => {
-  const result = await rawBaseQuery(args, api, extraOptions)
+  const result = await baseQueryWithRetries(args, api, extraOptions)
   if (result.error && (result.error.status === 401 || result.error.status === 403)) {
     api.dispatch(clearCredentials())
   }

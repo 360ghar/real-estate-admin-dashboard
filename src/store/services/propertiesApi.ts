@@ -64,6 +64,7 @@ export interface PropertySearchParams {
   // Property filters
   property_type?: string[]
   purpose?: string
+  status?: string
   price_min?: number
   price_max?: number
   bedrooms_min?: number

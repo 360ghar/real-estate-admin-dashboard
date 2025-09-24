@@ -52,7 +52,7 @@ const PropertyList = () => {
       priceMax: '',
       bedroomsMin: '',
       bedroomsMax: '',
-      amenities: [],
+      amenities: [] as number[],
       radius: '',
       sortBy: 'newest',
       showFilters: false
@@ -104,7 +104,7 @@ const PropertyList = () => {
     if (filters.priceMax) base.price_max = Number(filters.priceMax)
     if (filters.bedroomsMin) base.bedrooms_min = Number(filters.bedroomsMin)
     if (filters.bedroomsMax) base.bedrooms_max = Number(filters.bedroomsMax)
-    if (selectedAmenities.length > 0) base.amenities = selectedAmenities
+    if (selectedAmenities.length > 0) base.amenities = selectedAmenities.map(String)
     if (filters.radius) base.radius = Number(filters.radius)
 
     if (role === 'agent' && user?.agent_id) base.exclude_swiped = false
