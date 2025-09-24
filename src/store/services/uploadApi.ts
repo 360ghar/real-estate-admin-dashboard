@@ -3,18 +3,13 @@ import type { UploadResponse } from '@/types/api'
 
 export const uploadApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Upload file
-    uploadFile: builder.mutation<UploadResponse, File>({
-      query: (file) => {
-        const formData = new FormData()
-        formData.append('file', file)
-        return {
-          url: '/upload/',
-          method: 'POST',
-          body: formData,
-          formData: true
-        }
-      }
+    // Upload file via multipart/form-data (supports additional fields like folder/bucket)
+    uploadFile: builder.mutation<UploadResponse, FormData>({
+      query: (formData) => ({
+        url: '/upload/',
+        method: 'POST',
+        body: formData,
+      }),
     }),
   }),
 })

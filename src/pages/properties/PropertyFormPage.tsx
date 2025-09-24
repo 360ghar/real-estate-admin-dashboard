@@ -143,7 +143,11 @@ const PropertyFormPage: React.FC = () => {
 
   const handleImageUpload = async (files: File[]) => {
     try {
-      const uploadPromises = files.map(file => uploadFile(file).unwrap())
+      const uploadPromises = files.map(file => {
+        const fd = new FormData()
+        fd.append('file', file)
+        return uploadFile(fd).unwrap()
+      })
       const results = await Promise.all(uploadPromises)
       const newImages = results.map(result => result.public_url)
       setUploadedImages(prev => [...prev, ...newImages])
