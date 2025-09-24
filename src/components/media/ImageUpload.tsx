@@ -1,7 +1,8 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { GripVertical } from 'lucide-react'
-import { useUploadFileMutation } from '@/store/services/propertiesApi'
+import { useUploadFileMutation } from '@/store/services/uploadApi'
+import { useToast } from '@/hooks/use-toast'
 
 type Props = {
   bucket?: string
@@ -17,6 +18,7 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadFile] = useUploadFileMutation()
+  const { toast } = useToast()
 
   const allowedImageTypes = [
     'image/jpeg',
@@ -25,6 +27,8 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
     'image/webp',
     'image/gif',
   ] as const
+
+  const maxSizeBytes = 5 * 1024 * 1024 // 5MB
 
   const pick = () => inputRef.current?.click()
   const remove = (url: string) => onChange?.(value.filter((u) => u !== url))
@@ -36,22 +40,42 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
       const urls: string[] = []
       for (const file of Array.from(files)) {
         if (!allowedImageTypes.includes(file.type as any)) {
-          // eslint-disable-next-line no-alert
-          alert(`Unsupported file type: ${file.type}. Allowed: ${allowedImageTypes.join(', ')}`)
+          toast({
+            title: 'Unsupported file type',
+            description: `Allowed: ${allowedImageTypes.join(', ')}`,
+            variant: 'destructive',
+          })
+          continue
+        }
+        if (file.size > maxSizeBytes) {
+          toast({
+            title: 'File too large',
+            description: 'Max size is 5MB per image.',
+            variant: 'destructive',
+          })
           continue
         }
         const fd = new FormData()
-        // folder hint (optional, backend may ignore)
         fd.append('file', file)
+        // optional hints (backend may ignore)
         if (folder) fd.append('folder', folder)
         if (bucket) fd.append('bucket', bucket)
         const res = await uploadFile(fd).unwrap()
         urls.push(res.public_url)
       }
-      onChange?.([...(value || []), ...urls])
-    } catch (e) {
-      // eslint-disable-next-line no-alert
-      alert('Upload failed. Please try again or check your connection.')
+      if (urls.length) {
+        onChange?.([...(value || []), ...urls])
+        toast({
+          title: 'Upload successful',
+          description: `${urls.length} image(s) uploaded.`,
+        })
+      }
+    } catch (e: any) {
+      toast({
+        title: 'Upload failed',
+        description: e?.data?.detail || 'Please try again or check your connection.',
+        variant: 'destructive',
+      })
     } finally {
       setUploading(false)
       if (inputRef.current) inputRef.current.value = ''

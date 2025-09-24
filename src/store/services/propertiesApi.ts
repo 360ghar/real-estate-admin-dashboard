@@ -129,17 +129,6 @@ export interface PropertyUpdate extends Partial<PropertyCreate> {}
 
 export const propertiesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Upload a single file via backend (Supabase handled server-side)
-    uploadFile: builder.mutation<
-      { public_url: string; file_path: string; file_type?: string; file_size?: number; content_type?: string; original_filename?: string },
-      FormData
-    >({
-      query: (form) => ({
-        url: '/upload/',
-        method: 'POST',
-        body: form,
-      }),
-    }),
     // Search properties with comprehensive filtering
     searchProperties: builder.query<PaginatedPropertyResponse, PropertySearchParams>({
       query: (params) => ({
@@ -219,7 +208,6 @@ export const propertiesApi = api.injectEndpoints({
 })
 
 export const {
-  useUploadFileMutation,
   useListPropertiesQuery,
   useSearchPropertiesQuery,
   useGetPropertyQuery,

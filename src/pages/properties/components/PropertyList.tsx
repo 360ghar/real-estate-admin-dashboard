@@ -74,7 +74,7 @@ const PropertyList = () => {
     if (dlocality) base.locality = dlocality
     if (filters.propertyType) base.property_type = [filters.propertyType]
     if (filters.purpose) base.purpose = filters.purpose
-    if (filters.status) base.q = filters.status // Using q for status filter as per API
+    // status is not a documented server-side filter; apply client-side filtering below
     if (filters.priceMin) base.price_min = Number(filters.priceMin)
     if (filters.priceMax) base.price_max = Number(filters.priceMax)
     if (filters.bedroomsMin) base.bedrooms_min = Number(filters.bedroomsMin)
@@ -92,7 +92,6 @@ const PropertyList = () => {
     dlocality,
     filters.propertyType,
     filters.purpose,
-    filters.status,
     filters.priceMin,
     filters.priceMax,
     filters.bedroomsMin,
@@ -252,10 +251,12 @@ const PropertyList = () => {
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="relevance">Most Relevant</SelectItem>
                   <SelectItem value="newest">Newest First</SelectItem>
-                  <SelectItem value="oldest">Oldest First</SelectItem>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                  <SelectItem value="price_low">Price: Low to High</SelectItem>
+                  <SelectItem value="price_high">Price: High to Low</SelectItem>
+                  <SelectItem value="distance">Distance</SelectItem>
+                  <SelectItem value="popular">Most Popular</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -384,7 +385,7 @@ const PropertyList = () => {
             </div>
             <DataTable
               columns={columns}
-              data={data.results}
+              data={(filters.status ? (data.results || []).filter(p => p.status === filters.status) : (data.results || []))}
             />
             {data.count && data.count > pageSize && (
               <Pagination

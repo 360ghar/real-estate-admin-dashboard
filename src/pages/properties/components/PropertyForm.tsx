@@ -150,7 +150,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         longitude: data.location.longitude,
       })
       setImages(data.images || [])
-      setPrimaryImage((data as any)?.thumbnail_url || null)
+      setPrimaryImage(data.main_image_url || null)
     }
   }, [data, reset])
 
@@ -179,7 +179,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         minimum_stay_days: values.minimum_stay_days,
         amenity_ids: values.amenities || [],
         features: values.features || [],
-        main_image_url: primaryImage || '',
+        main_image_url: primaryImage || undefined,
         owner_name: values.owner_name,
         owner_contact: values.owner_contact
       }
@@ -382,15 +382,13 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
               <FormLabel>Location</FormLabel>
               <LocationPicker
                 value={(() => {
-                  const lat = (data as any)?.latitude
-                  const lng = (data as any)?.longitude
-                  return lat && lng ? { lat, lng } : null
+                  const lat = data?.location?.latitude
+                  const lng = data?.location?.longitude
+                  return lat !== undefined && lng !== undefined ? { lat, lng } : null
                 })()}
                 onChange={(p) => {
                   setValue('latitude', p.lat)
-                  setValue('longitude', p.lng)
-                }}
-              />
+                  setValue('longitude',           />
             </div>
             <div className="md:col-span-2">
               <FormLabel>Media</FormLabel>
