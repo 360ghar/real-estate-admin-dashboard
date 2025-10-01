@@ -41,6 +41,9 @@ export const api = createApi({
     'BugReport',
     'Page',
     'AppUpdate',
+    'BlogPost',
+    'BlogCategory',
+    'BlogTag',
   ],
   endpoints: (builder) => ({
     login: builder.mutation<

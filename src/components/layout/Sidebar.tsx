@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAppSelector } from '@/hooks/redux'
 import { selectCurrentUser } from '@/store/slices/authSlice'
 import { Button } from '@/components/ui/button'
-import { Menu, Home, Building, Users, Calendar, BookOpen, User, BarChart3, FileText, AlertCircle, Settings, Smartphone } from 'lucide-react'
+import { Menu, Home, Building, Users, Calendar, BookOpen, User, BarChart3, FileText, AlertCircle, Settings, Smartphone, Folder, Tag } from 'lucide-react'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -90,6 +90,16 @@ const Sidebar = () => {
       icon: Settings,
       children: [
         { name: 'Bug Reports', href: '/bug-reports', icon: AlertCircle },
+        {
+          name: 'Blogs',
+          href: '/blogs',
+          icon: FileText,
+          children: [
+            { name: 'All Posts', href: '/blogs', icon: FileText },
+            { name: 'Categories', href: '/blogs/categories', icon: Folder },
+            { name: 'Tags', href: '/blogs/tags', icon: Tag },
+          ]
+        },
         { name: 'Pages', href: '/pages', icon: FileText },
         { name: 'App Updates', href: '/app-updates', icon: Smartphone },
       ]

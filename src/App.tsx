@@ -26,6 +26,9 @@ import BookingManagementPage from './pages/bookings/BookingManagementPage'
 import BugReportsPage from './pages/bug-reports/BugReportsPage'
 import PagesManagementPage from './pages/pages/PagesManagementPage'
 import AppUpdatesPage from './pages/app-updates/AppUpdatesPage'
+import BlogsPage from './pages/blogs/BlogsPage'
+import CategoriesPage from './pages/blogs/categories/CategoriesPage'
+import TagsPage from './pages/blogs/tags/TagsPage'
 
 function App() {
   return (
@@ -72,6 +75,12 @@ function App() {
                 <Route path="/agents/:id/stats" element={<AgentsPage mode="stats" />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
                 <Route path="/bug-reports" element={<BugReportsPage />} />
+                <Route path="/blogs" element={<BlogsPage />} />
+                <Route path="/blogs/new" element={<BlogsPage mode="create" />} />
+                <Route path="/blogs/:identifier" element={<BlogsPage mode="detail" />} />
+                <Route path="/blogs/:identifier/edit" element={<BlogsPage mode="edit" />} />
+                <Route path="/blogs/categories" element={<CategoriesPage />} />
+                <Route path="/blogs/tags" element={<TagsPage />} />
                 <Route path="/pages" element={<PagesManagementPage />} />
                 <Route path="/app-updates" element={<AppUpdatesPage />} />
                 {/* Reviews module removed */}
