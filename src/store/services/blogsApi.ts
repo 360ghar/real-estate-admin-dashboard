@@ -15,6 +15,7 @@ import type {
   BlogTagUpdate,
   BlogTagFilters,
   BlogTagListResponse,
+  BlogGenerationResult,
 } from '@/types/blog'
 
 export const blogsApi = api.injectEndpoints({
@@ -71,6 +72,24 @@ export const blogsApi = api.injectEndpoints({
         method: 'DELETE',
       }),
       invalidatesTags: (_res, _e, id) => [{ type: 'BlogPost', id }, { type: 'BlogPost', id: 'LIST' }],
+    }),
+
+    generateBlogFromTopic: builder.mutation<BlogGenerationResult, { topic: string }>({
+      query: (data) => ({
+        url: '/blog/generate-from-topic',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: [{ type: 'BlogPost', id: 'LIST' }],
+    }),
+
+    generateBulkBlogs: builder.mutation<BlogGenerationResult[], { count: number }>({
+      query: (data) => ({
+        url: '/blog/generate-bulk',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: [{ type: 'BlogPost', id: 'LIST' }],
     }),
 
     // Blog Categories
@@ -180,6 +199,8 @@ export const {
   useGetBlogPostQuery,
   useUpdateBlogPostMutation,
   useDeleteBlogPostMutation,
+  useGenerateBlogFromTopicMutation,
+  useGenerateBulkBlogsMutation,
   // Blog Categories
   useCreateBlogCategoryMutation,
   useGetBlogCategoriesQuery,

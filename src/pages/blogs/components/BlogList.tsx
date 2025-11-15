@@ -8,10 +8,10 @@ import Pagination from '@/components/ui/pagination'
 import { LoadingState } from '@/components/ui/loading-state'
 import { Link } from 'react-router-dom'
 import { useDebounce } from '@/hooks/useDebounce'
-import { useGetBlogPostsQuery, useDeleteBlogPostMutation } from '@/store/services/blogsApi'
+import { useGetBlogPostsQuery, useDeleteBlogPostMutation, useUpdateBlogPostMutation } from '@/store/services/blogsApi'
 import { toast } from '@/hooks/use-toast'
 import type { BlogPost } from '@/types/blog'
-import { Search, RotateCcw, Edit2, Trash2, Eye } from 'lucide-react'
+import { Search, RotateCcw, Edit2, Trash2, Eye, CheckCircle, EyeOff } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 
 const BlogList = () => {
@@ -34,6 +34,7 @@ const BlogList = () => {
 
   const { data, isFetching, error, refetch } = useGetBlogPostsQuery(params)
   const [deleteBlogPost, { isLoading: isDeleting }] = useDeleteBlogPostMutation()
+  const [updateBlogPost, { isLoading: isTogglingStatus }] = useUpdateBlogPostMutation()
 
   const handleDeletePost = async (post: BlogPost) => {
     if (!confirm(`Are you sure you want to delete "${post.title}"? This action cannot be undone.`)) {
@@ -50,6 +51,25 @@ const BlogList = () => {
       toast({
         title: 'Error',
         description: error.data?.detail || 'Failed to delete blog post',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleToggleStatus = async (post: BlogPost) => {
+    const nextActive = !post.active
+    try {
+      await updateBlogPost({ identifier: post.id, data: { active: nextActive } }).unwrap()
+      toast({
+        title: nextActive ? 'Post published' : 'Post unpublished',
+        description: nextActive
+          ? 'The blog post is now visible to users.'
+          : 'The blog post has been moved back to drafts.',
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Update failed',
+        description: error.data?.detail || 'Failed to update publish status',
         variant: 'destructive',
       })
     }
@@ -96,6 +116,15 @@ const BlogList = () => {
       ),
     },
     {
+      accessorKey: 'active',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant={row.original.active ? 'default' : 'outline'}>
+          {row.original.active ? 'Published' : 'Draft'}
+        </Badge>
+      ),
+    },
+    {
       accessorKey: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
@@ -117,6 +146,24 @@ const BlogList = () => {
             <Link to={`/blogs/${row.original.slug}/edit`}>
               <Edit2 className="h-4 w-4" />
             </Link>
+          </Button>
+          <Button
+            variant={row.original.active ? 'outline' : 'default'}
+            size="sm"
+            onClick={() => handleToggleStatus(row.original)}
+            disabled={isTogglingStatus}
+          >
+            {row.original.active ? (
+              <>
+                <EyeOff className="h-4 w-4 mr-1" />
+                Unpublish
+              </>
+            ) : (
+              <>
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Publish
+              </>
+            )}
           </Button>
           <Button
             variant="outline"

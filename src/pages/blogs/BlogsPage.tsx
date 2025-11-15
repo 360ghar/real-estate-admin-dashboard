@@ -1,19 +1,22 @@
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { FileText, Plus, Folder, Tag } from 'lucide-react'
+import { FileText, Plus, Folder, Tag, Sparkles } from 'lucide-react'
 import ErrorBoundary from '@/components/ErrorBoundary'
 import BlogList from './components/BlogList'
 import BlogEditor from './components/BlogEditor'
 import BlogEdit from './components/BlogEdit'
 import BlogDetail from './components/BlogDetail'
+import BlogGenerateDialog from './components/BlogGenerateDialog'
 
 type Props = { mode?: 'create' | 'detail' | 'edit' }
 
 const BlogsPage = ({ mode }: Props) => {
   const params = useParams()
   const navigate = useNavigate()
+  const [isGenerateOpen, setIsGenerateOpen] = useState(false)
 
   if (mode === 'create') {
     return <BlogEditor onSuccess={(slug) => navigate(`/blogs/${slug}`)} />
@@ -29,6 +32,7 @@ const BlogsPage = ({ mode }: Props) => {
 
   return (
     <ErrorBoundary>
+      <BlogGenerateDialog open={isGenerateOpen} onOpenChange={setIsGenerateOpen} />
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
@@ -44,6 +48,15 @@ const BlogsPage = ({ mode }: Props) => {
           </div>
           <div className="flex items-center gap-3">
             <Badge variant="secondary" className="px-3 py-1">Admin View</Badge>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setIsGenerateOpen(true)}
+            >
+              <Sparkles className="h-4 w-4" />
+              Generate with AI
+            </Button>
             <Button asChild className="gap-2">
               <Link to="/blogs/new">
                 <Plus className="h-4 w-4" />

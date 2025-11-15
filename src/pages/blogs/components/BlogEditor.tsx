@@ -6,6 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import MultiSelect from '@/components/ui/multi-select'
 import ImageUpload from '@/components/media/ImageUpload'
 import { useCreateBlogPostMutation, useGetBlogCategoriesQuery, useGetBlogTagsQuery } from '@/store/services/blogsApi'
@@ -29,10 +30,11 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
       cover_image_url: '',
       categories: [],
       tags: [],
+      active: false,
     },
   })
 
-  const { setValue, watch } = form
+  const { setValue } = form
   const [images, setImages] = useState<string[]>([])
 
   useEffect(() => {
@@ -48,6 +50,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
         cover_image_url: values.cover_image_url || undefined,
         categories: values.categories?.length ? values.categories : undefined,
         tags: values.tags?.length ? values.tags : undefined,
+        active: values.active ?? false,
       }
 
       const res = await createBlogPost(payload).unwrap()
@@ -160,6 +163,28 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <FormField
+                  control={form.control}
+                  name="active"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-md border p-4">
+                      <div className="space-y-1">
+                        <FormLabel>Publish immediately</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Turn this on to publish the post as soon as it is created. Leave it off to keep it as a draft.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value ?? false}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />

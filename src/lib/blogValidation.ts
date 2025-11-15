@@ -19,6 +19,9 @@ export const blogPostSchema = z.object({
     .url('Invalid URL format')
     .optional()
     .or(z.literal('')),
+  active: z
+    .boolean()
+    .optional(),
   categories: z
     .array(z.string())
     .optional(),

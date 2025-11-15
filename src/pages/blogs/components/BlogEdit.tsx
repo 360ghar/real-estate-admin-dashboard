@@ -6,6 +6,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
 import MultiSelect from '@/components/ui/multi-select'
 import ImageUpload from '@/components/media/ImageUpload'
 import { useGetBlogPostQuery, useUpdateBlogPostMutation, useGetBlogCategoriesQuery, useGetBlogTagsQuery } from '@/store/services/blogsApi'
@@ -38,10 +39,11 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
       cover_image_url: '',
       categories: [],
       tags: [],
+      active: false,
     },
   })
 
-  const { setValue, watch } = form
+  const { setValue } = form
   const [images, setImages] = useState<string[]>([])
 
   // Initialize form with post data
@@ -53,6 +55,7 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
       setValue('cover_image_url', post.cover_image_url || '')
       setValue('categories', post.categories?.map((cat: any) => cat.slug) || [])
       setValue('tags', post.tags?.map((tag: any) => tag.slug) || [])
+      setValue('active', !!post.active)
       if (post.cover_image_url) {
         setImages([post.cover_image_url])
       }
@@ -74,6 +77,7 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
         cover_image_url: values.cover_image_url || undefined,
         categories: values.categories?.length ? values.categories : undefined,
         tags: values.tags?.length ? values.tags : undefined,
+        active: values.active ?? post.active,
       }
 
       const res = await updateBlogPost({ identifier: post.id, data: payload }).unwrap()
@@ -236,6 +240,28 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
                         />
                       </FormControl>
                       <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="md:col-span-2">
+                <FormField
+                  control={form.control}
+                  name="active"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-md border p-4">
+                      <div className="space-y-1">
+                        <FormLabel>Publish status</FormLabel>
+                        <p className="text-sm text-muted-foreground">
+                          Turn this on to make the post visible on the site. Turn it off to keep it as a draft.
+                        </p>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value ?? false}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
                     </FormItem>
                   )}
                 />

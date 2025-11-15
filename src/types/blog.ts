@@ -22,6 +22,7 @@ export interface BlogPost {
   content: string
   excerpt?: string | null
   cover_image_url?: string | null
+  active: boolean
   categories?: BlogCategory[]
   tags?: BlogTag[]
   author_id?: number
@@ -88,6 +89,7 @@ export interface BlogPostCreate {
   cover_image_url?: string
   categories?: string[]
   tags?: string[]
+  active?: boolean
 }
 
 export interface BlogPostUpdate {
@@ -97,6 +99,7 @@ export interface BlogPostUpdate {
   cover_image_url?: string
   categories?: string[]
   tags?: string[]
+  active?: boolean
 }
 
 export interface BlogCategoryCreate {
@@ -115,4 +118,9 @@ export interface BlogTagCreate {
 
 export interface BlogTagUpdate {
   name: string
+}
+
+export interface BlogGenerationResult {
+  blog: BlogPost
+  images: string[]
 }
