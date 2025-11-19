@@ -8,7 +8,6 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
-    files: ['**/*.{ts,tsx}'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -33,4 +32,3 @@ export default tseslint.config(
     },
   }
 )
-

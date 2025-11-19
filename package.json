@@ -7,8 +7,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty",
-    "lint": "eslint . --ext .ts,.tsx --max-warnings=0",
-    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "lint": "eslint src --max-warnings=0",
+    "lint:fix": "eslint src --fix",
     "prepare": "husky install"
   },
   "dependencies": {

@@ -5,7 +5,7 @@ import { Toaster } from '@/components/ui/toaster'
 
 const DashboardLayout = () => {
   return (
-    <div className="flex h-screen w-full overflow-hidden">
+    <div className="flex h-dvh w-full overflow-hidden">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar />

@@ -1,14 +1,8 @@
 #!/usr/bin/env sh
 set -e
 
-# shellcheck disable=SC1091
-if [ -f "$(dirname -- "$0")/_/husky.sh" ]; then
-  . "$(dirname -- "$0")/_/husky.sh"
-fi
-
 echo "Running TypeScript typecheck..."
 npm run -s typecheck
 
 echo "Running ESLint..."
 npm run -s lint
-

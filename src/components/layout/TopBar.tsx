@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/hooks/redux'
-import { clearCredentials, selectCurrentUser } from '@/store/slices/authSlice'
+import { selectCurrentUser, clearCredentials } from '@/features/auth/slices/authSlice'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Link } from 'react-router-dom'
 import { User, Settings, LogOut } from 'lucide-react'
-import { ModeToggle } from '@/components/mode-toggle'
+import { ModeToggle } from '@/components/common/mode-toggle'
 
 const TopBar = () => {
   const user = useAppSelector(selectCurrentUser)
@@ -31,18 +31,13 @@ const TopBar = () => {
 
       <div className="flex items-center gap-4">
         <ModeToggle />
-        {/* Current Time */}
-        <div className="hidden md:block text-sm text-muted-foreground">
-          {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-        </div>
-
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="flex items-center gap-3 rounded-full px-3 py-2 h-auto hover:bg-accent">
               <Avatar className="h-9 w-9 ring-2 ring-primary/10">
                 <AvatarFallback className="text-sm font-semibold bg-primary/10 text-primary">
-                  {user?.full_name ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}
+                  {user?.full_name ? user.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : 'U'}
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:block text-left">

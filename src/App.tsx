@@ -1,34 +1,36 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
-import LoginPage from './pages/LoginPage'
-import SignupPage from './pages/SignupPage'
-import ForgotPasswordPage from './pages/ForgotPasswordPage'
-import ResetPasswordPage from './pages/ResetPasswordPage'
-import DashboardPage from './pages/DashboardPage'
-import PropertiesPage from './pages/properties/PropertiesPage'
-import UsersPage from './pages/users/UsersPage'
-import AgentsPage from './pages/agents/AgentsPage'
-import VisitsPage from './pages/visits/VisitsPage'
-import BookingsPage from './pages/bookings/BookingsPage'
-import AnalyticsPage from './pages/analytics/AnalyticsPage'
-import PrivateRoute from './components/auth/PrivateRoute'
-import RoleBasedRoute from './components/auth/RoleBasedRoute'
-import DashboardLayout from './components/layout/DashboardLayout'
-import AccessDeniedPage from './pages/AccessDeniedPage'
-import ProfilePage from './pages/ProfilePage'
-import AgentProfilePage from './pages/AgentProfilePage'
-import UserPreferencesPage from './pages/UserPreferencesPage'
-import ErrorBoundary from './components/ErrorBoundary'
-import AgentDashboardPage from './pages/agents/AgentDashboardPage'
-import UserProfilePage from './pages/users/UserProfilePage'
-import PropertyFormPage from './pages/properties/PropertyFormPage'
-import VisitManagementPage from './pages/visits/VisitManagementPage'
-import BookingManagementPage from './pages/bookings/BookingManagementPage'
-import BugReportsPage from './pages/bug-reports/BugReportsPage'
-import PagesManagementPage from './pages/pages/PagesManagementPage'
-import AppUpdatesPage from './pages/app-updates/AppUpdatesPage'
-import BlogsPage from './pages/blogs/BlogsPage'
-import CategoriesPage from './pages/blogs/categories/CategoriesPage'
-import TagsPage from './pages/blogs/tags/TagsPage'
+import LoginPage from '@/features/auth/pages/LoginPage'
+import SignupPage from '@/features/auth/pages/SignupPage'
+import ForgotPasswordPage from '@/features/auth/pages/ForgotPasswordPage'
+import ResetPasswordPage from '@/features/auth/pages/ResetPasswordPage'
+import DashboardPage from '@/features/core/pages/DashboardPage'
+import PropertiesPage from '@/features/properties/pages/PropertiesPage'
+import UsersPage from '@/features/users/pages/UsersPage'
+import AgentsPage from '@/features/agents/pages/AgentsPage'
+import VisitsPage from '@/features/visits/pages/VisitsPage'
+import BookingsPage from '@/features/bookings/pages/BookingsPage'
+import AnalyticsPage from '@/features/core/pages/AnalyticsPage'
+import PrivateRoute from '@/features/auth/components/PrivateRoute'
+import RoleBasedRoute from '@/features/auth/components/RoleBasedRoute'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import AccessDeniedPage from '@/features/core/pages/AccessDeniedPage'
+import ProfilePage from '@/features/core/pages/ProfilePage'
+import AgentProfilePage from '@/features/agents/pages/AgentProfilePage'
+import UserPreferencesPage from '@/features/core/pages/UserPreferencesPage'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
+import AgentDashboardPage from '@/features/agents/pages/AgentDashboardPage'
+import UserProfilePage from '@/features/users/pages/UserProfilePage'
+import PropertyFormPage from '@/features/properties/pages/PropertyFormPage'
+import VisitManagementPage from '@/features/visits/pages/VisitManagementPage'
+import BookingManagementPage from '@/features/bookings/pages/BookingManagementPage'
+import BugReportsPage from '@/features/core/pages/BugReportsPage'
+import PagesManagementPage from '@/features/core/pages/PagesManagementPage'
+import AppUpdatesPage from '@/features/core/pages/AppUpdatesPage'
+import BlogsPage from '@/features/blog/pages/BlogsPage'
+import CategoriesPage from '@/features/blog/pages/categories/CategoriesPage'
+import TagsPage from '@/features/blog/pages/tags/TagsPage'
+import NotificationsPage from '@/features/core/pages/NotificationsPage'
+import SwipePage from '@/features/swipes/pages/SwipePage'
 
 function App() {
   return (
@@ -66,6 +68,7 @@ function App() {
               <Route path="/bookings" element={<BookingsPage />} />
               <Route path="/bookings/:id" element={<BookingsPage mode="detail" />} />
               <Route path="/bookings/manage" element={<BookingManagementPage />} />
+              <Route path="/swipes" element={<SwipePage />} />
 
               {/* Admin-only nested */}
               <Route element={<RoleBasedRoute allowedRoles={["admin"]} />}>
@@ -83,6 +86,7 @@ function App() {
                 <Route path="/blogs/tags" element={<TagsPage />} />
                 <Route path="/pages" element={<PagesManagementPage />} />
                 <Route path="/app-updates" element={<AppUpdatesPage />} />
+                <Route path="/notifications" element={<NotificationsPage />} />
                 {/* Reviews module removed */}
               </Route>
             </Route>

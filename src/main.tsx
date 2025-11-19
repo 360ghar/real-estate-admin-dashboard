@@ -6,7 +6,7 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import App from './App'
 import './index.css'
 import { store } from './store'
-import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeProvider } from '@/components/common/theme-provider'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
