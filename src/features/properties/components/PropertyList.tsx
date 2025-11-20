@@ -1,7 +1,8 @@
 import { useMemo, useState, useEffect } from 'react'
 import { useAppSelector } from '@/hooks/redux'
 import { selectCurrentUser } from '@/features/auth/slices/authSlice'
-import { useDeletePropertyMutation, useListPropertiesQuery, PropertyResponse, PropertySearchParams } from '@/features/properties/api/propertiesApi'
+import { useDeletePropertyMutation, useListPropertiesQuery } from '@/features/properties/api/propertiesApi'
+import type { Property, PropertySearchParams } from '@/types'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
@@ -47,7 +48,6 @@ const PropertyList = () => {
       locality: '',
       propertyType: '',
       purpose: '',
-      status: '',
       priceMin: '',
       priceMax: '',
       bedroomsMin: '',
@@ -99,7 +99,6 @@ const PropertyList = () => {
     if (dlocality) base.locality = dlocality
     if (filters.propertyType) base.property_type = [filters.propertyType]
     if (filters.purpose) base.purpose = filters.purpose
-    if (filters.status) base.status = filters.status
     if (filters.priceMin) base.price_min = Number(filters.priceMin)
     if (filters.priceMax) base.price_max = Number(filters.priceMax)
     if (filters.bedroomsMin) base.bedrooms_min = Number(filters.bedroomsMin)
@@ -143,7 +142,7 @@ const PropertyList = () => {
     }
   }
 
-  const columns: ColumnDef<PropertyResponse>[] = [
+  const columns: ColumnDef<Property>[] = [
     {
       accessorKey: 'id',
       header: 'ID',
@@ -199,7 +198,10 @@ const PropertyList = () => {
       header: 'Distance',
       cell: ({ row }) => (
         <div className="text-sm">
-          {row.original.distance ? `${row.original.distance.toFixed(1)} km` : 'N/A'}
+          {(() => {
+            const value = row.original.distance_km ?? (row.original as any).distance
+            return value ? `${Number(value).toFixed(1)} km` : 'N/A'
+          })()}
         </div>
       ),
     },
@@ -306,10 +308,12 @@ const PropertyList = () => {
                     <SelectValue placeholder="Sort by" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="newest">Newest First</SelectItem>
-                    <SelectItem value="oldest">Oldest First</SelectItem>
-                    <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                    <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="price_low">Price: Low to High</SelectItem>
+                    <SelectItem value="price_high">Price: High to Low</SelectItem>
+                    <SelectItem value="popular">Popular</SelectItem>
+                    <SelectItem value="relevance">Relevance</SelectItem>
+                    <SelectItem value="distance">Distance</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -384,7 +388,7 @@ const PropertyList = () => {
                               htmlFor={`amenity-${amenity.id}`}
                               className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
                             >
-                              {amenity.name}
+                              {amenity.title || amenity.name}
                             </label>
                           </div>
                         ))}

@@ -33,6 +33,7 @@ interface AppUpdateFormData {
 
 const AppUpdatesPage: React.FC = () => {
   const { toast } = useToast()
+  const defaultAppId = 'web'
   const [searchTerm, setSearchTerm] = useState('')
   const [filterPlatform, setFilterPlatform] = useState<string>('all')
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -76,6 +77,7 @@ const AppUpdatesPage: React.FC = () => {
     try {
       if (editingUpdate) {
         await updateUpdate({ id: editingUpdate.id, data: {
+          app: editingUpdate.app || defaultAppId,
           version: formData.version,
           build_number: Number(formData.build_number),
           release_notes: formData.release_notes,
@@ -87,6 +89,7 @@ const AppUpdatesPage: React.FC = () => {
         toast({ title: 'Success', description: 'App update updated successfully' })
       } else {
         await createUpdate({
+          app: defaultAppId,
           platform: formData.platform,
           version: formData.version,
           build_number: Number(formData.build_number),

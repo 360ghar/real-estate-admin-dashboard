@@ -30,7 +30,7 @@ const searchSchema = z.object({
   city: z.string().optional(),
   locality: z.string().optional(),
   pincode: z.string().optional(),
-  amenities: z.array(z.number()).optional(),
+  amenities: z.array(z.string()).optional(),
   features: z.array(z.string()).optional(),
   parking_spaces_min: z.number().optional(),
   floor_number_min: z.number().optional(),
@@ -50,7 +50,7 @@ type SearchFormData = z.infer<typeof searchSchema>
 interface AdvancedPropertySearchProps {
   onSearch: (filters: SearchFormData) => void
   initialFilters?: Partial<SearchFormData>
-  availableAmenities?: Array<{ id: number; name: string; category: string }>
+  availableAmenities?: Array<{ id: number; name?: string; title?: string; category?: string }>
 }
 
 const AdvancedPropertySearch: React.FC<AdvancedPropertySearchProps> = ({
@@ -153,9 +153,10 @@ const AdvancedPropertySearch: React.FC<AdvancedPropertySearchProps> = ({
 
   const toggleAmenity = (amenityId: number) => {
     const currentAmenities = form.getValues('amenities') || []
-    const newAmenities = currentAmenities.includes(amenityId)
-      ? currentAmenities.filter(id => id !== amenityId)
-      : [...currentAmenities, amenityId]
+    const stringId = String(amenityId)
+    const newAmenities = currentAmenities.includes(stringId)
+      ? currentAmenities.filter((id) => id !== stringId)
+      : [...currentAmenities, stringId]
     form.setValue('amenities', newAmenities)
   }
 
@@ -537,11 +538,11 @@ const AdvancedPropertySearch: React.FC<AdvancedPropertySearchProps> = ({
                         <div key={amenity.id} className="flex items-center space-x-2">
                           <Checkbox
                             id={`amenity-${amenity.id}`}
-                            checked={form.getValues('amenities')?.includes(amenity.id) || false}
+                            checked={form.getValues('amenities')?.includes(String(amenity.id)) || false}
                             onCheckedChange={() => toggleAmenity(amenity.id)}
                           />
                           <Label htmlFor={`amenity-${amenity.id}`} className="text-sm">
-                            {amenity.name}
+                            {amenity.title || amenity.name}
                           </Label>
                         </div>
                       ))}

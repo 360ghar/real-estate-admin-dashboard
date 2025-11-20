@@ -523,7 +523,7 @@ const PropertyFormPage: React.FC = () => {
                           onCheckedChange={() => toggleAmenity(amenity.id)}
                         />
                         <Label htmlFor={`amenity-${amenity.id}`} className="text-sm">
-                          {amenity.name}
+                          {amenity.title || amenity.name}
                         </Label>
                       </div>
                     ))}

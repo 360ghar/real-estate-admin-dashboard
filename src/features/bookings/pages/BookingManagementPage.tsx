@@ -14,7 +14,6 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Calendar } from '@/components/ui/calendar'
 import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
-import { skipToken } from '@reduxjs/toolkit/query'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import {
@@ -26,8 +25,8 @@ import {
   useCancelBookingMutation,
   useProcessPaymentMutation,
   useAddReviewMutation,
-  useCheckAvailabilityQuery,
-  useCalculatePricingQuery,
+  useCheckAvailabilityMutation,
+  useCalculatePricingMutation,
   useGetAllBookingsQuery
 } from '@/features/bookings/api/bookingsApi'
 import { useGetPropertyQuery } from '@/features/properties/api/propertiesApi'
@@ -72,7 +71,7 @@ interface BookingCardProps {
 const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, onReview, showActions = true }) => {
   const [showDetails, setShowDetails] = useState(false)
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status?: string) => {
     switch (status) {
       case 'confirmed':
         return 'default'
@@ -82,30 +81,33 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
         return 'destructive'
       case 'completed':
         return 'default'
-      case 'refunded':
-        return 'outline'
+      case 'checked_in':
+      case 'checked_out':
+        return 'default'
       default:
         return 'outline'
     }
   }
 
-  const getPaymentStatusColor = (status: string) => {
+  const getPaymentStatusColor = (status?: string) => {
     switch (status) {
       case 'paid':
         return 'default'
       case 'partial':
         return 'secondary'
-      case 'unpaid':
+      case 'pending':
         return 'destructive'
       case 'refunded':
         return 'outline'
+      case 'failed':
+        return 'destructive'
       default:
         return 'outline'
     }
   }
 
   return (
-    <Card className={`transition-all ${booking.status === 'cancelled' ? 'opacity-60' : ''}`}>
+    <Card className={`transition-all ${(booking.booking_status || booking.status) === 'cancelled' ? 'opacity-60' : ''}`}>
       <CardContent className="pt-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
@@ -117,9 +119,9 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                   {booking.property?.city}, {booking.property?.locality}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Badge variant={getStatusColor(booking.status)}>
-                  {booking.status}
+                <div className="flex gap-2">
+                <Badge variant={getStatusColor(booking.booking_status || booking.status)}>
+                  {booking.booking_status || booking.status}
                 </Badge>
                 <Badge variant={getPaymentStatusColor(booking.payment_status)}>
                   {booking.payment_status}
@@ -227,7 +229,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               {showDetails ? 'Hide Details' : 'View Details'}
             </Button>
 
-            {showActions && booking.status === 'confirmed' && booking.payment_status !== 'paid' && (
+            {showActions && (booking.booking_status || booking.status) === 'confirmed' && booking.payment_status !== 'paid' && (
               <Button
                 size="sm"
                 onClick={() => onUpdate?.(booking)}
@@ -237,7 +239,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               </Button>
             )}
 
-            {showActions && booking.status === 'confirmed' && !booking.review && (
+            {showActions && (booking.booking_status || booking.status) === 'confirmed' && !booking.review && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline">
@@ -259,7 +261,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               </Dialog>
             )}
 
-            {showActions && ['confirmed', 'pending'].includes(booking.status) && (
+            {showActions && ['confirmed', 'pending'].includes((booking.booking_status || booking.status) || '') && (
               <Button
                 size="sm"
                 variant="destructive"
@@ -386,25 +388,8 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
     skip: !propertyId || !isOpen,
   })
 
-  const checkAvailability = useCheckAvailabilityQuery(
-    propertyId && selectedDates.from && selectedDates.to
-      ? {
-          property_id: propertyId,
-          check_in_date: selectedDates.from.toISOString(),
-          check_out_date: selectedDates.to.toISOString(),
-        }
-      : skipToken
-  )
-
-  const calculatePricing = useCalculatePricingQuery(
-    propertyId && selectedDates.from && selectedDates.to
-      ? {
-          property_id: propertyId,
-          check_in_date: selectedDates.from.toISOString(),
-          check_out_date: selectedDates.to.toISOString(),
-        }
-      : skipToken
-  )
+  const [checkAvailability, { data: availabilityData }] = useCheckAvailabilityMutation()
+  const [calculatePricing, { data: pricingData }] = useCalculatePricingMutation()
 
   const [createBooking] = useCreateBookingMutation()
 
@@ -416,16 +401,23 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
   })
 
   useEffect(() => {
-    if (checkAvailability.data) {
-      setAvailabilityInfo(checkAvailability.data)
-    }
-  }, [checkAvailability.data])
+    setAvailabilityInfo(availabilityData || null)
+  }, [availabilityData])
 
   useEffect(() => {
-    if (calculatePricing.data) {
-      setPricingInfo(calculatePricing.data)
+    setPricingInfo(pricingData || null)
+  }, [pricingData])
+
+  useEffect(() => {
+    if (!propertyId || !selectedDates.from || !selectedDates.to || !isOpen) return
+    const payload = {
+      property_id: propertyId,
+      check_in_date: selectedDates.from.toISOString(),
+      check_out_date: selectedDates.to.toISOString(),
     }
-  }, [calculatePricing.data])
+    checkAvailability(payload)
+    calculatePricing(payload)
+  }, [propertyId, selectedDates.from, selectedDates.to, isOpen, checkAvailability, calculatePricing])
 
   const onSubmit = async (data: CreateBookingFormData) => {
     try {

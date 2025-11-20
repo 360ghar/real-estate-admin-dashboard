@@ -26,8 +26,9 @@ const agentColumns: ColumnDef<Agent>[] = [
     header: 'Email',
   },
   {
-    accessorKey: 'phone',
+    accessorKey: 'contact_number',
     header: 'Phone',
+    cell: ({ row }) => row.original.contact_number || row.original.phone || '-',
   },
   {
     accessorKey: 'is_active',

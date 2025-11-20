@@ -17,6 +17,10 @@ import type {
   AppUpdateCheckResponse,
   HealthResponse,
   AppConfig,
+  FAQResponse,
+  FAQCreate,
+  FAQUpdate,
+  FAQQuery,
 } from '@/types/api'
 
 export const coreApi = api.injectEndpoints({
@@ -122,16 +126,16 @@ export const coreApi = api.injectEndpoints({
     // App Updates
     createAppUpdate: builder.mutation<AppUpdate, AppUpdateCreate>({
       query: (data) => ({
-        url: '/updates/',
+        url: '/versions/',
         method: 'POST',
         body: data
       }),
-      invalidatesTags: ['AppUpdate']
+      invalidatesTags: ['Version']
     }),
 
     checkForUpdates: builder.query<AppUpdateCheckResponse, AppUpdateCheckRequest>({
       query: (data) => ({
-        url: '/updates/check',
+        url: '/versions/check',
         method: 'POST',
         body: data
       })
@@ -139,25 +143,78 @@ export const coreApi = api.injectEndpoints({
 
     getAppUpdates: builder.query<AppUpdate[], AppUpdatesQuery | void>({
       query: (params) => ({
-        url: '/updates/',
+        url: '/versions/',
         params: { limit: 10, offset: 0, ...(params || {}) }
       }),
       providesTags: (res) =>
         res && Array.isArray(res)
           ? [
-              ...res.map((u) => ({ type: 'AppUpdate' as const, id: u.id })),
-              { type: 'AppUpdate' as const, id: 'LIST' },
+              ...res.map((u) => ({ type: 'Version' as const, id: u.id })),
+              { type: 'Version' as const, id: 'LIST' },
             ]
-          : [{ type: 'AppUpdate' as const, id: 'LIST' }],
+          : [{ type: 'Version' as const, id: 'LIST' }],
     }),
 
     updateAppUpdate: builder.mutation<AppUpdate, { id: number; data: AppUpdateUpdate }>({
       query: ({ id, data }) => ({
-        url: `/updates/${id}`,
+        url: `/versions/${id}`,
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'AppUpdate', id }]
+      invalidatesTags: (res, _e, { id }) => [{ type: 'Version', id }]
+    }),
+
+    // FAQs
+    createFaq: builder.mutation<FAQResponse, FAQCreate>({
+      query: (data) => ({
+        url: '/faqs/',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['FAQ'],
+    }),
+
+    getFaqs: builder.query<FAQResponse[], FAQQuery | void>({
+      query: (params) => ({
+        url: '/faqs/',
+        params: { limit: 50, offset: 0, ...(params || {}) },
+      }),
+      providesTags: (res) =>
+        res && Array.isArray(res)
+          ? [
+              ...res.map((f) => ({ type: 'FAQ' as const, id: f.id })),
+              { type: 'FAQ' as const, id: 'LIST' },
+            ]
+          : [{ type: 'FAQ' as const, id: 'LIST' }],
+    }),
+
+    getFaq: builder.query<FAQResponse, number>({
+      query: (faqId) => `/faqs/${faqId}`,
+      providesTags: (res, _e, faqId) => [{ type: 'FAQ', id: faqId }],
+    }),
+
+    updateFaq: builder.mutation<FAQResponse, { faqId: number; data: FAQUpdate }>({
+      query: ({ faqId, data }) => ({
+        url: `/faqs/${faqId}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (res, _e, { faqId }) => [{ type: 'FAQ', id: faqId }],
+    }),
+
+    deleteFaq: builder.mutation<void, number>({
+      query: (faqId) => ({
+        url: `/faqs/${faqId}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (res, _e, faqId) => [{ type: 'FAQ', id: faqId }, { type: 'FAQ', id: 'LIST' }],
+    }),
+
+    getFaqsPublic: builder.query<FAQResponse[], FAQQuery | void>({
+      query: (params) => ({
+        url: '/faqs/public',
+        params: { limit: 50, offset: 0, ...(params || {}) },
+      }),
     }),
 
     // Health Check
@@ -188,6 +245,12 @@ export const {
   useCheckForUpdatesQuery,
   useGetAppUpdatesQuery,
   useUpdateAppUpdateMutation,
+  useCreateFaqMutation,
+  useGetFaqsQuery,
+  useGetFaqQuery,
+  useUpdateFaqMutation,
+  useDeleteFaqMutation,
+  useGetFaqsPublicQuery,
   useHealthCheckQuery,
   useGetConfigQuery,
 } = coreApi

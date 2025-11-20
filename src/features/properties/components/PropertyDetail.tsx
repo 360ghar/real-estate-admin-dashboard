@@ -85,14 +85,19 @@ const PropertyDetail = ({ id }: { id: number }) => {
               <Item label="Locality" value={data?.locality} />
               <Item label="Pincode" value={data?.pincode} />
             </div>
-            {data?.location?.latitude !== undefined && data?.location?.longitude !== undefined && (
-              <div className="mt-3">
-                <MapPreview lat={data.location.latitude} lng={data.location.longitude} height={220} />
-                <div className="mt-2 text-xs text-muted-foreground">
-                  Lat: {data.location.latitude}, Lng: {data.location.longitude}
+            {(() => {
+              const lat = data?.latitude ?? data?.location?.latitude
+              const lng = data?.longitude ?? data?.location?.longitude
+              if (lat === undefined || lng === undefined || lat === null || lng === null) return null
+              return (
+                <div className="mt-3">
+                  <MapPreview lat={lat} lng={lng} height={220} />
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    Lat: {lat}, Lng: {lng}
+                  </div>
                 </div>
-              </div>
-            )}
+              )
+            })()}
           </div>
 
           {/* Specifications */}

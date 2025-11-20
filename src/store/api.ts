@@ -40,7 +40,10 @@ export const api = createApi({
     'Amenity',
     'BugReport',
     'Page',
-    'AppUpdate',
+    'Version',
+    'FAQ',
+    'Notification',
+    'Swipe',
     'BlogPost',
     'BlogCategory',
     'BlogTag',
@@ -56,7 +59,17 @@ export const api = createApi({
         body: credentials,
       }),
     }),
+    register: builder.mutation<
+      { access_token: string; token_type?: string; user: User },
+      { phone: string; password: string; full_name?: string; email?: string }
+    >({
+      query: (payload) => ({
+        url: '/auth/register/',
+        method: 'POST',
+        body: payload,
+      }),
+    }),
   }),
 })
 
-export const { useLoginMutation } = api
+export const { useLoginMutation, useRegisterMutation } = api

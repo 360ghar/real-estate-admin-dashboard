@@ -20,10 +20,10 @@ type Booking = {
   id: number
   property?: { title: string }
   user?: { full_name: string }
-  check_in?: string
-  check_out?: string
-  amount?: number
-  status?: string
+  check_in_date?: string
+  check_out_date?: string
+  total_amount?: number
+  booking_status?: string
   payment_status?: string
 } & Record<string, any>
 
@@ -43,29 +43,29 @@ const bookingColumns: ColumnDef<Booking>[] = [
     cell: ({ row }) => row.original.user?.full_name || '-',
   },
   {
-    accessorKey: 'check_in',
+    accessorKey: 'check_in_date',
     header: 'Check-in/out',
     cell: ({ row }) => {
-      const checkIn = row.getValue('check_in') as string
-      const checkOut = row.getValue('check_out') as string
+      const checkIn = row.getValue('check_in_date') as string
+      const checkOut = row.getValue('check_out_date') as string
       if (!checkIn || !checkOut) return '-'
       return `${new Date(checkIn).toLocaleDateString()} – ${new Date(checkOut).toLocaleDateString()}`
     },
   },
   {
-    accessorKey: 'amount',
+    accessorKey: 'total_amount',
     header: 'Amount',
     cell: ({ row }) => {
-      const amount = row.getValue('amount') as number
+      const amount = row.getValue('total_amount') as number
       return amount ? `₹${amount.toLocaleString()}` : '-'
     },
   },
   {
-    accessorKey: 'status',
+    accessorKey: 'booking_status',
     header: 'Status',
     cell: ({ row }) => {
-      const status = row.getValue('status') as string
-      return <Badge variant={status === 'confirmed' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}>{status}</Badge>
+      const status = (row.getValue('booking_status') as string) || row.original.status
+      return <Badge variant={status === 'confirmed' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}>{status || '-'}</Badge>
     },
   },
   {
@@ -87,7 +87,7 @@ const bookingColumns: ColumnDef<Booking>[] = [
 
 const BookingList = () => {
   // Filter persistence
-  const { filters, setFilters } = useFilterPersistence({
+  const { filters, setFilters, clearFilters } = useFilterPersistence({
     key: 'bookings',
     defaultValue: {
       status: '',
@@ -108,10 +108,9 @@ const BookingList = () => {
   const params = useMemo(() => {
     const base: any = {}
     if (status) base.status = status
-    if (paymentStatus) base.payment_status = paymentStatus
-    if (dq) base.q = dq
+    // Backend spec doesn’t support free-text booking search yet; omit q to avoid 422s
     return base
-  }, [status, paymentStatus, dq])
+  }, [status])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const { data, isFetching, refetch } = useListBookingsQuery({ ...params, page, limit: pageSize })
@@ -125,6 +124,8 @@ const BookingList = () => {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="confirmed">Confirmed</SelectItem>
+            <SelectItem value="checked_in">Checked In</SelectItem>
+            <SelectItem value="checked_out">Checked Out</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
@@ -133,13 +134,23 @@ const BookingList = () => {
           <SelectTrigger><SelectValue placeholder="Payment" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Payment</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="partial">Partial</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
           </SelectContent>
         </Select>
         <Input placeholder="Search property/user" value={q} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQ(e.target.value)} />
-        <Button onClick={() => { /* refetch on state change */ }} disabled={isFetching}>Filter</Button>
+        <Button
+          onClick={() => {
+            setPage(1)
+            refetch()
+          }}
+          disabled={isFetching}
+        >
+          Filter
+        </Button>
         <div>
           <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
             <SelectTrigger><SelectValue placeholder="Rows" /></SelectTrigger>
@@ -153,7 +164,18 @@ const BookingList = () => {
         <EmptyState
           title="No bookings found"
           description={q || status || paymentStatus ? 'Try adjusting search or filters.' : 'Bookings will appear here once created.'}
-          action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
+          action={{
+            label: 'Clear filters',
+            onClick: () => {
+              clearFilters()
+              setStatus('')
+              setPaymentStatus('')
+              setQ('')
+              setPage(1)
+            },
+            variant: 'outline',
+          }}
+          secondaryAction={{ label: 'Refresh', onClick: () => refetch(), variant: 'ghost' }}
         />
       ) : (
         <DataTable

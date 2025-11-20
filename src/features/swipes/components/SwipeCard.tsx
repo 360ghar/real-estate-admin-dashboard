@@ -4,11 +4,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MapPin, Bed, Bath, Square, X, Heart, Info } from 'lucide-react'
-import { PropertyResponse } from '@/features/properties/api/propertiesApi'
+import type { Property } from '@/types'
 import { Link } from 'react-router-dom'
 
 interface SwipeCardProps {
-    property: PropertyResponse
+    property: Property
     onSwipe: (direction: 'left' | 'right') => void
 }
 
@@ -53,7 +53,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         <h2 className="text-2xl font-bold truncate">{property.title}</h2>
                         <p className="flex items-center text-sm opacity-90">
                             <MapPin className="h-4 w-4 mr-1" />
-                            {property.locality}, {property.city}
+                            {[property.locality, property.city].filter(Boolean).join(', ')}
                         </p>
                     </div>
                 </div>
@@ -71,15 +71,19 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         <div className="grid grid-cols-3 gap-2 text-center">
                             <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
                                 <Bed className="h-5 w-5 mb-1 text-muted-foreground" />
-                                <span className="text-sm font-medium">{property.bedrooms} Beds</span>
+                                <span className="text-sm font-medium">
+                                    {property.bedrooms ?? '-'} Beds
+                                </span>
                             </div>
                             <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
                                 <Bath className="h-5 w-5 mb-1 text-muted-foreground" />
-                                <span className="text-sm font-medium">{property.bathrooms} Baths</span>
+                                <span className="text-sm font-medium">
+                                    {property.bathrooms ?? '-'} Baths
+                                </span>
                             </div>
                             <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
                                 <Square className="h-5 w-5 mb-1 text-muted-foreground" />
-                                <span className="text-sm font-medium">{property.area_sqft} sqft</span>
+                                <span className="text-sm font-medium">{property.area_sqft ?? '-'} sqft</span>
                             </div>
                         </div>
 
