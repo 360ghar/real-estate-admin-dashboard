@@ -164,8 +164,8 @@ const VisitManagementPage: React.FC = () => {
       const query = searchQuery.toLowerCase()
       return (
         visit.property?.title.toLowerCase().includes(query) ||
-        visit.user?.full_name.toLowerCase().includes(query) ||
-        visit.agent?.user?.full_name.toLowerCase().includes(query)
+        (visit.user?.full_name || '').toLowerCase().includes(query) ||
+        (visit.agent?.name || '').toLowerCase().includes(query)
       )
     }
     return true
@@ -475,7 +475,7 @@ const VisitManagementPage: React.FC = () => {
                             )}
                             {visit.agent && (
                               <p className="text-sm text-muted-foreground">
-                                Agent: {visit.agent.user?.full_name}
+                                Agent: {visit.agent.name}
                               </p>
                             )}
                             {visit.special_requirements && (

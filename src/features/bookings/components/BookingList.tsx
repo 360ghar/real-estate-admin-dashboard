@@ -15,17 +15,7 @@ import {
   ColumnDef,
 } from '@tanstack/react-table'
 import { useFilterPersistence } from '@/hooks/useFilterPersistence'
-
-type Booking = {
-  id: number
-  property?: { title: string }
-  user?: { full_name: string }
-  check_in_date?: string
-  check_out_date?: string
-  total_amount?: number
-  booking_status?: string
-  payment_status?: string
-} & Record<string, any>
+import { Booking } from '@/types'
 
 const bookingColumns: ColumnDef<Booking>[] = [
   {

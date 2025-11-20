@@ -10,11 +10,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { useGetProfileQuery, useUpdateProfileMutation, useUpdatePreferencesMutation, useUpdateLocationMutation } from '@/features/users/api/usersApi'
 import { useGetAssignedAgentQuery } from '@/features/agents/api/agentsApi'
-import { MapPin, Phone, Mail, Calendar, Building, DollarSign, Home, Users } from 'lucide-react'
+import { Phone, Mail, MapPin } from 'lucide-react'
+import { PropertyPurpose } from '@/types'
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -25,16 +25,16 @@ const profileSchema = z.object({
 })
 
 const preferencesSchema = z.object({
-  property_type: z.array(z.string()).min(1, 'Select at least one property type'),
-  purpose: z.enum(['buy', 'rent', 'short_stay']),
-  budget_min: z.number().min(0),
-  budget_max: z.number().min(0),
-  bedrooms_min: z.number().min(0),
-  bedrooms_max: z.number().min(0),
-  area_min: z.number().min(0),
-  area_max: z.number().min(0),
+  property_type: z.array(z.string()),
+  purpose: z.enum(['buy', 'rent', 'short_stay']).optional(),
+  budget_min: z.coerce.number().optional(),
+  budget_max: z.coerce.number().optional(),
+  bedrooms_min: z.coerce.number().optional(),
+  bedrooms_max: z.coerce.number().optional(),
+  area_min: z.coerce.number().optional(),
+  area_max: z.coerce.number().optional(),
   location_preference: z.array(z.string()),
-  max_distance_km: z.number().min(0),
+  max_distance_km: z.coerce.number().optional(),
 })
 
 type ProfileFormData = z.infer<typeof profileSchema>
@@ -59,26 +59,27 @@ const UserProfilePage: React.FC = () => {
   const profileForm = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      full_name: profile?.full_name || '',
-      email: profile?.email || '',
-      phone: profile?.phone || '',
-      date_of_birth: profile?.date_of_birth || '',
+      full_name: '',
+      email: '',
+      phone: '',
+      date_of_birth: '',
+      bio: '',
     },
   })
 
   const preferencesForm = useForm<PreferencesFormData>({
     resolver: zodResolver(preferencesSchema),
     defaultValues: {
-      property_type: profile?.preferences?.property_type || [],
-      purpose: profile?.preferences?.purpose || 'rent',
-      budget_min: profile?.preferences?.budget_min || 0,
-      budget_max: profile?.preferences?.budget_max || 0,
-      bedrooms_min: profile?.preferences?.bedrooms_min || 0,
-      bedrooms_max: profile?.preferences?.bedrooms_max || 0,
-      area_min: profile?.preferences?.area_min || 0,
-      area_max: profile?.preferences?.area_max || 0,
-      location_preference: profile?.preferences?.location_preference || [],
-      max_distance_km: profile?.preferences?.max_distance_km || 10,
+      property_type: [],
+      purpose: 'rent',
+      budget_min: 0,
+      budget_max: 0,
+      bedrooms_min: 0,
+      bedrooms_max: 0,
+      area_min: 0,
+      area_max: 0,
+      location_preference: [],
+      max_distance_km: 10,
     },
   })
 
@@ -89,13 +90,26 @@ const UserProfilePage: React.FC = () => {
         email: profile.email || '',
         phone: profile.phone || '',
         date_of_birth: profile.date_of_birth || '',
+        bio: '', // bio is not in User type, assuming it might be added or just ignored
       })
 
       if (profile.preferences) {
         setSelectedLocations(profile.preferences.location_preference || [])
         setSelectedPropertyTypes(profile.preferences.property_type || [])
+
+        // Type-safe reset for preferences
+        const prefs = profile.preferences
         preferencesForm.reset({
-          ...profile.preferences,
+          property_type: prefs.property_type || [],
+          purpose: (prefs.purpose as 'buy' | 'rent' | 'short_stay') || 'rent',
+          budget_min: prefs.budget_min || 0,
+          budget_max: prefs.budget_max || 0,
+          bedrooms_min: prefs.bedrooms_min || 0,
+          bedrooms_max: prefs.bedrooms_max || 0,
+          area_min: prefs.area_min || 0,
+          area_max: prefs.area_max || 0,
+          location_preference: prefs.location_preference || [],
+          max_distance_km: prefs.max_distance_km || 10,
         })
       }
     }
@@ -121,6 +135,7 @@ const UserProfilePage: React.FC = () => {
     try {
       await updatePreferences({
         ...data,
+        purpose: data.purpose as PropertyPurpose,
         property_type: selectedPropertyTypes,
         location_preference: selectedLocations,
       }).unwrap()
@@ -234,7 +249,7 @@ const UserProfilePage: React.FC = () => {
               {assignedAgent && (
                 <div className="mt-2">
                   <Badge variant="secondary">
-                    Assigned Agent: {assignedAgent.user?.full_name}
+                    Assigned Agent: {assignedAgent.name}
                   </Badge>
                 </div>
               )}
