@@ -18,7 +18,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
     const rotate = useTransform(x, [-200, 200], [-25, 25])
     const opacity = useTransform(x, [-200, -100, 0, 100, 200], [0, 1, 1, 1, 0])
 
-    const handleDragEnd = (event: any, info: PanInfo) => {
+    const handleDragEnd = (_event: any, info: PanInfo) => {
         if (info.offset.x > 100) {
             setExitX(200)
             onSwipe('right')
@@ -27,6 +27,8 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
             onSwipe('left')
         }
     }
+
+    const amenitiesList = property.amenities || []
 
     return (
         <motion.div
@@ -64,7 +66,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                                 ₹{property.base_price.toLocaleString()}
                             </span>
                             <span className="text-sm text-muted-foreground capitalize">
-                                {property.property_type} • {property.purpose}
+                                {property.property_type.replace('_', ' ')} • {property.purpose.replace('_', ' ')}
                             </span>
                         </div>
 
@@ -88,14 +90,14 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {property.amenities?.slice(0, 3).map((amenity, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                    {amenity}
+                            {amenitiesList.slice(0, 3).map((amenity) => (
+                                <Badge key={amenity.id} variant="secondary" className="text-xs">
+                                    {amenity.title}
                                 </Badge>
                             ))}
-                            {property.amenities?.length > 3 && (
+                            {amenitiesList.length > 3 && (
                                 <Badge variant="secondary" className="text-xs">
-                                    +{property.amenities.length - 3} more
+                                    +{amenitiesList.length - 3} more
                                 </Badge>
                             )}
                         </div>

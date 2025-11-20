@@ -60,7 +60,7 @@ const BookingDetail = ({ id }: { id: number }) => {
             <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
             <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
             <div><span className="text-muted-foreground">Stay:</span> {data ? `${new Date(data.check_in_date).toLocaleDateString()} – ${new Date(data.check_out_date).toLocaleDateString()}` : '-'}</div>
-            <div><span className="text-muted-foreground">Nights:</span> {data?.total_nights}</div>
+            <div><span className="text-muted-foreground">Nights:</span> {data?.nights}</div>
             <div><span className="text-muted-foreground">Amount:</span> ₹{data?.total_amount}</div>
             <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
             <div><span className="text-muted-foreground">Payment:</span> {data?.payment_status || '-'}</div>
