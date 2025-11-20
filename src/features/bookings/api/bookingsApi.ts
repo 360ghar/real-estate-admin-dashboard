@@ -17,6 +17,7 @@ export interface BookingsQuery {
   page?: number
   limit?: number
   status?: string
+  payment_status?: string
   agent_id?: number
   property_id?: number
   user_id?: number

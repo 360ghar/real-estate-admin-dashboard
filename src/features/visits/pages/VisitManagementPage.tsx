@@ -36,9 +36,18 @@ const scheduleVisitSchema = z.object({
 })
 
 const completeVisitSchema = z.object({
-  notes: z.string().min(1, 'Notes are required'),
-  feedback: z.string().optional(),
-})
+  visit_notes: z.string().min(1, 'Notes are required'),
+  visitor_feedback: z.string().optional(),
+  interest_level: z.string().optional(),
+  follow_up_required: z.boolean().default(false),
+  follow_up_date: z.string().optional(),
+}).refine(
+  (data) => !data.follow_up_required || !!data.follow_up_date,
+  {
+    message: 'Follow-up date is required when follow-up is needed',
+    path: ['follow_up_date'],
+  }
+)
 
 type ScheduleVisitFormData = z.infer<typeof scheduleVisitSchema>
 type CompleteVisitFormData = z.infer<typeof completeVisitSchema>
@@ -101,7 +110,7 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits, onDateSelect, sel
                         {format(parseISO(visit.scheduled_date), 'HH:mm')}
                       </p>
                     </div>
-                    <Badge variant={visit.status === 'scheduled' ? 'default' : 'secondary'}>
+                    <Badge variant={(visit.status === 'scheduled' || visit.status === 'confirmed') ? 'default' : 'secondary'}>
                       {visit.status}
                     </Badge>
                   </div>
@@ -135,6 +144,9 @@ const VisitManagementPage: React.FC = () => {
 
   const completeForm = useForm<CompleteVisitFormData>({
     resolver: zodResolver(completeVisitSchema),
+    defaultValues: {
+      follow_up_required: false,
+    },
   })
 
   // API calls
@@ -197,7 +209,11 @@ const VisitManagementPage: React.FC = () => {
     try {
       await completeVisit({
         visitId: selectedVisit.id,
-        ...data,
+        visit_notes: data.visit_notes,
+        visitor_feedback: data.visitor_feedback,
+        interest_level: data.interest_level || null,
+        follow_up_required: data.follow_up_required,
+        follow_up_date: data.follow_up_required ? data.follow_up_date || null : null,
       }).unwrap()
       toast({
         title: 'Visit Completed',
@@ -265,13 +281,14 @@ const VisitManagementPage: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'scheduled':
+      case 'confirmed':
         return 'default'
+      case 'rescheduled':
+        return 'secondary'
       case 'completed':
         return 'default'
       case 'cancelled':
         return 'destructive'
-      case 'no_show':
-        return 'secondary'
       default:
         return 'outline'
     }
@@ -420,9 +437,10 @@ const VisitManagementPage: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
                       <SelectItem value="scheduled">Scheduled</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="rescheduled">Rescheduled</SelectItem>
                       <SelectItem value="completed">Completed</SelectItem>
                       <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="no_show">No Show</SelectItem>
                     </SelectContent>
                   </Select>
                 )}
@@ -451,101 +469,105 @@ const VisitManagementPage: React.FC = () => {
                 </CardContent>
               </Card>
             ) : (
-              filteredVisits.map((visit) => (
-                <Card key={visit.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg">{visit.property?.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              <MapPin className="h-4 w-4 inline mr-1" />
-                              {visit.property?.city}, {visit.property?.locality}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              <Clock className="h-4 w-4 inline mr-1" />
-                              {format(parseISO(visit.scheduled_date), 'MMM dd, yyyy - HH:mm')}
-                            </p>
-                            {user?.role !== 'user' && visit.user && (
+              filteredVisits.map((visit) => {
+                const canManageVisit = ['scheduled', 'confirmed', 'rescheduled'].includes(visit.status)
+
+                return (
+                  <Card key={visit.id}>
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h3 className="font-semibold text-lg">{visit.property?.title}</h3>
+                              <p className="text-sm text-muted-foreground mt-1">
+                                <MapPin className="h-4 w-4 inline mr-1" />
+                                {visit.property?.city}, {visit.property?.locality}
+                              </p>
                               <p className="text-sm text-muted-foreground">
-                                <User className="h-4 w-4 inline mr-1" />
-                                {visit.user.full_name}
+                                <Clock className="h-4 w-4 inline mr-1" />
+                                {format(parseISO(visit.scheduled_date), 'MMM dd, yyyy - HH:mm')}
                               </p>
-                            )}
-                            {visit.agent && (
-                              <p className="text-sm text-muted-foreground">
-                                Agent: {visit.agent.name}
-                              </p>
-                            )}
-                            {visit.special_requirements && (
-                              <p className="text-sm mt-2 p-2 bg-muted rounded">
-                                <strong>Special Requirements:</strong> {visit.special_requirements}
-                              </p>
-                            )}
+                              {user?.role !== 'user' && visit.user && (
+                                <p className="text-sm text-muted-foreground">
+                                  <User className="h-4 w-4 inline mr-1" />
+                                  {visit.user.full_name}
+                                </p>
+                              )}
+                              {visit.agent && (
+                                <p className="text-sm text-muted-foreground">
+                                  Agent: {visit.agent.name}
+                                </p>
+                              )}
+                              {visit.special_requirements && (
+                                <p className="text-sm mt-2 p-2 bg-muted rounded">
+                                  <strong>Special Requirements:</strong> {visit.special_requirements}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant={getStatusColor(visit.status)} className="capitalize">
+                              {visit.status}
+                            </Badge>
                           </div>
-                          <Badge variant={getStatusColor(visit.status)} className="capitalize">
-                            {visit.status}
-                          </Badge>
+                        </div>
+                        <div className="flex gap-2">
+                          {canManageVisit && (
+                            <>
+                              {user?.role !== 'user' && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedVisit(visit)
+                                    setShowCompleteDialog(true)
+                                  }}
+                                >
+                                  <Check className="h-4 w-4" />
+                                </Button>
+                              )}
+                              <Sheet>
+                                <SheetTrigger asChild>
+                                  <Button size="sm" variant="outline">
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                </SheetTrigger>
+                                <SheetContent>
+                                  <SheetHeader>
+                                    <SheetTitle>Reschedule Visit</SheetTitle>
+                                    <SheetDescription>
+                                      Select a new date and time for the visit
+                                    </SheetDescription>
+                                  </SheetHeader>
+                                  <div className="space-y-4 mt-6">
+                                    <div className="space-y-2">
+                                      <Label>New Date & Time</Label>
+                                      <Input
+                                        type="datetime-local"
+                                        defaultValue={format(parseISO(visit.scheduled_date), "yyyy-MM-dd'T'HH:mm")}
+                                        onChange={(e) => {
+                                          if (e.target.value) {
+                                            handleRescheduleVisit(visit.id, e.target.value)
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                    <Button
+                                      onClick={() => handleCancelVisit(visit.id)}
+                                      variant="destructive"
+                                      className="w-full"
+                                    >
+                                      Cancel Visit
+                                    </Button>
+                                  </div>
+                                </SheetContent>
+                              </Sheet>
+                            </>
+                          )}
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        {visit.status === 'scheduled' && (
-                          <>
-                            {user?.role !== 'user' && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedVisit(visit)
-                                  setShowCompleteDialog(true)
-                                }}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </SheetTrigger>
-                              <SheetContent>
-                                <SheetHeader>
-                                  <SheetTitle>Reschedule Visit</SheetTitle>
-                                  <SheetDescription>
-                                    Select a new date and time for the visit
-                                  </SheetDescription>
-                                </SheetHeader>
-                                <div className="space-y-4 mt-6">
-                                  <div className="space-y-2">
-                                    <Label>New Date & Time</Label>
-                                    <Input
-                                      type="datetime-local"
-                                      defaultValue={format(parseISO(visit.scheduled_date), "yyyy-MM-dd'T'HH:mm")}
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          handleRescheduleVisit(visit.id, e.target.value)
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                  <Button
-                                    onClick={() => handleCancelVisit(visit.id)}
-                                    variant="destructive"
-                                    className="w-full"
-                                  >
-                                    Cancel Visit
-                                  </Button>
-                                </div>
-                              </SheetContent>
-                            </Sheet>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                )
+              })
             )}
           </div>
         </div>
@@ -562,22 +584,67 @@ const VisitManagementPage: React.FC = () => {
           </DialogHeader>
           <form onSubmit={completeForm.handleSubmit(handleCompleteVisit)} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="notes">Visit Notes</Label>
+              <Label htmlFor="visit_notes">Visit Notes</Label>
               <Textarea
-                id="notes"
-                {...completeForm.register('notes')}
+                id="visit_notes"
+                {...completeForm.register('visit_notes')}
                 placeholder="Describe how the visit went..."
                 rows={4}
               />
+              {completeForm.formState.errors.visit_notes && (
+                <p className="text-sm text-red-500">{completeForm.formState.errors.visit_notes.message}</p>
+              )}
             </div>
             <div className="space-y-2">
-              <Label htmlFor="feedback">Feedback (Optional)</Label>
+              <Label htmlFor="visitor_feedback">Feedback (Optional)</Label>
               <Textarea
-                id="feedback"
-                {...completeForm.register('feedback')}
+                id="visitor_feedback"
+                {...completeForm.register('visitor_feedback')}
                 placeholder="Any additional feedback..."
                 rows={3}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="interest_level">Interest Level</Label>
+              <Select
+                value={completeForm.watch('interest_level') || undefined}
+                onValueChange={(value) => completeForm.setValue('interest_level', value)}
+              >
+                <SelectTrigger id="interest_level">
+                  <SelectValue placeholder="Select interest level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">High interest</SelectItem>
+                  <SelectItem value="medium">Medium interest</SelectItem>
+                  <SelectItem value="low">Low interest</SelectItem>
+                  <SelectItem value="not_interested">Not interested</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  id="follow_up_required"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  {...completeForm.register('follow_up_required')}
+                />
+                <Label htmlFor="follow_up_required" className="text-sm">
+                  Follow-up required
+                </Label>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="follow_up_date">Follow-up Date</Label>
+                <Input
+                  id="follow_up_date"
+                  type="datetime-local"
+                  disabled={!completeForm.watch('follow_up_required')}
+                  {...completeForm.register('follow_up_date')}
+                />
+                {completeForm.formState.errors.follow_up_date && (
+                  <p className="text-sm text-red-500">{completeForm.formState.errors.follow_up_date.message}</p>
+                )}
+              </div>
             </div>
             <div className="flex gap-2">
               <Button type="submit" disabled={completing} className="flex-1">

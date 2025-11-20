@@ -23,7 +23,7 @@ interface PageFormData {
   unique_name: string
   title: string
   content: string
-  format: 'html' | 'markdown'
+  format: 'html' | 'markdown' | 'json'
   custom_config_text?: string
   is_active: boolean
   is_draft: boolean
@@ -250,6 +250,7 @@ const PagesManagementPage: React.FC = () => {
                     <SelectContent>
                       <SelectItem value="html">HTML</SelectItem>
                       <SelectItem value="markdown">Markdown</SelectItem>
+                      <SelectItem value="json">JSON</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

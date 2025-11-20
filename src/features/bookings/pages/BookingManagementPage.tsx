@@ -70,6 +70,17 @@ interface BookingCardProps {
 
 const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, onReview, showActions = true }) => {
   const [showDetails, setShowDetails] = useState(false)
+  const baseAmount = booking.base_amount ?? booking.base_price ?? 0
+  const nights = booking.nights ?? booking.total_nights ??
+    (booking.check_in_date && booking.check_out_date
+      ? differenceInDays(parseISO(booking.check_out_date), parseISO(booking.check_in_date))
+      : 0)
+  const taxesAmount = booking.taxes_amount ?? booking.taxes ?? 0
+  const serviceCharges = booking.service_charges ?? booking.service_fee ?? 0
+  const paymentDate = booking.payment_date ?? booking.paid_at
+  const guestRating = booking.guest_rating ?? booking.review?.rating
+  const guestReview = booking.guest_review ?? booking.review?.review_text
+  const hasReview = guestRating != null || !!guestReview
 
   const getStatusColor = (status?: string) => {
     switch (status) {
@@ -173,9 +184,9 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                     <span className="text-muted-foreground">Payment Details:</span>
                     <p className="text-sm">Method: {booking.payment_method || 'N/A'}</p>
                     <p className="text-sm">Transaction ID: {booking.transaction_id || 'N/A'}</p>
-                    {booking.paid_at && (
+                    {paymentDate && (
                       <p className="text-sm">
-                        Paid on: {format(parseISO(booking.paid_at), 'MMM dd, yyyy')}
+                        Paid on: {format(parseISO(paymentDate), 'MMM dd, yyyy')}
                       </p>
                     )}
                   </div>
@@ -184,11 +195,11 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                 <div className="grid gap-3 md:grid-cols-3 text-sm">
                   <div>
                     <span className="text-muted-foreground">Base Price:</span>
-                    <p>₹{booking.base_price.toLocaleString()} × {booking.total_nights} nights</p>
+                    <p>₹{baseAmount.toLocaleString()} × {nights} nights</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Taxes & Fees:</span>
-                    <p>₹{(booking.taxes + booking.service_fee).toLocaleString()}</p>
+                    <p>₹{(taxesAmount + serviceCharges).toLocaleString()}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Total Amount:</span>
@@ -196,23 +207,25 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                   </div>
                 </div>
 
-                {booking.review && (
+                {hasReview && (
                   <div className="mt-3 p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < booking.review.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
-                            }`}
-                          />
-                        ))}
+                    {guestRating != null && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex">
+                          {[...Array(5)].map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < guestRating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm font-medium">{guestRating}/5</span>
                       </div>
-                      <span className="text-sm font-medium">{booking.review.rating}/5</span>
-                    </div>
-                    {booking.review.review_text && (
-                      <p className="text-sm">{booking.review.review_text}</p>
+                    )}
+                    {guestReview && (
+                      <p className="text-sm">{guestReview}</p>
                     )}
                   </div>
                 )}
@@ -239,7 +252,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               </Button>
             )}
 
-            {showActions && (booking.booking_status || booking.status) === 'confirmed' && !booking.review && (
+            {showActions && (booking.booking_status || booking.status) === 'confirmed' && !hasReview && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline">

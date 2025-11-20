@@ -108,6 +108,7 @@ export interface Agent {
   is_available: boolean
   total_users_assigned?: number
   user_satisfaction_rating?: number
+  performance_metrics?: AgentPerformanceMetrics
   created_at: string
   updated_at?: string | null
 }
@@ -156,8 +157,11 @@ export interface AgentWorkload {
 export interface AgentSystemStats {
   total_agents: number
   active_agents: number
+  active_users?: number
   total_users_served: number
   system_satisfaction_score: number
+  properties_listed?: number
+  occupancy_rate?: number
   agents_by_type: Record<string, number>
   load_distribution: AgentWorkload[]
 }

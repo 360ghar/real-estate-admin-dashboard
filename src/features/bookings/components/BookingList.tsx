@@ -98,9 +98,10 @@ const BookingList = () => {
   const params = useMemo(() => {
     const base: any = {}
     if (status) base.status = status
+    if (paymentStatus) base.payment_status = paymentStatus
     // Backend spec doesn’t support free-text booking search yet; omit q to avoid 422s
     return base
-  }, [status])
+  }, [status, paymentStatus])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const { data, isFetching, refetch } = useListBookingsQuery({ ...params, page, limit: pageSize })

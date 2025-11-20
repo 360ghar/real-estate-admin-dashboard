@@ -25,7 +25,7 @@ const AnalyticsPage = () => {
   const [view, setView] = useState('workload')
   const stats = useGetSystemStatsQuery()
   const workload = useGetWorkloadQuery()
-  const s = stats.data || {}
+  const s = stats.data
   const workloadData = (() => {
     const w = workload.data || []
     if (Array.isArray(w)) {
@@ -48,10 +48,10 @@ const AnalyticsPage = () => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
-            <KPI label="Total Agents" value={s.total_agents} isLoading={stats.isLoading} />
-            <KPI label="Active Agents" value={s.active_agents} isLoading={stats.isLoading} />
-            <KPI label="Users Served" value={s.total_users_served} isLoading={stats.isLoading} />
-            <KPI label="Satisfaction Score" value={s.system_satisfaction_score} isLoading={stats.isLoading} />
+            <KPI label="Total Agents" value={s?.total_agents} isLoading={stats.isLoading} />
+            <KPI label="Active Agents" value={s?.active_agents} isLoading={stats.isLoading} />
+            <KPI label="Users Served" value={s?.total_users_served} isLoading={stats.isLoading} />
+            <KPI label="Satisfaction Score" value={s?.system_satisfaction_score} isLoading={stats.isLoading} />
           </div>
         </CardContent>
       </Card>
