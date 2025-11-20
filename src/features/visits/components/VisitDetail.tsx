@@ -15,6 +15,7 @@ const VisitDetail = ({ id }: { id: number }) => {
   const [cancel, cancelState] = useCancelVisitMutation()
   const [complete, compState] = useCompleteVisitMutation()
   const { toast } = useToast()
+  const canManageVisit = data?.status ? ['scheduled', 'confirmed', 'rescheduled'].includes(data.status) : false
 
   const doReschedule = async () => {
     try {
@@ -36,7 +37,7 @@ const VisitDetail = ({ id }: { id: number }) => {
   }
   const doComplete = async () => {
     try {
-      await complete({ visitId: id, notes: text || undefined }).unwrap()
+      await complete({ visitId: id, visit_notes: text || undefined }).unwrap()
       toast({ title: 'Completed', description: 'Visit marked as completed' })
       setOpen(null)
     } catch (e: unknown) {
@@ -59,7 +60,7 @@ const VisitDetail = ({ id }: { id: number }) => {
             <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
           </div>
           <div className="mt-4 flex gap-2">
-            {(data?.status === 'scheduled' || data?.status === 'rescheduled') && (
+            {canManageVisit && (
               <>
                 <Button onClick={() => setOpen('reschedule')}>Reschedule</Button>
                 <Button variant="outline" onClick={() => setOpen('cancel')}>Cancel</Button>

@@ -10,8 +10,11 @@ import type {
 export interface AgentSummary {
   id: number
   name: string
+  contact_number?: string | null
   email?: string
   phone?: string
+  agent_type?: 'general' | 'specialist' | 'senior'
+  experience_level?: 'beginner' | 'intermediate' | 'expert'
   is_active?: boolean
   is_available?: boolean
   users_assigned?: number
@@ -96,7 +99,7 @@ export const agentsApi = api.injectEndpoints({
       query: ({ agentId, isAvailable }) => ({
         url: `/agents/${agentId}/availability/`,
         method: 'PATCH',
-        body: { is_available: isAvailable }
+        params: { is_available: isAvailable }
       }),
       invalidatesTags: (_res, _e, { agentId }) => [{ type: 'Agent', id: agentId }],
     }),
@@ -124,12 +127,18 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get available agents
-    getAvailableAgents: builder.query<PaginatedResponse<Agent>, { specialization?: string; agentType?: string; page?: number; limit?: number }>({
-      query: (params) => ({
-        url: '/agents/available/',
-        params: { page: 1, limit: 20, ...(params || {}) }
-      }),
-      providesTags: ['Agent']
+    getAvailableAgents: builder.query<
+      PaginatedResponse<Agent>,
+      { specialization?: string; agentType?: string; page?: number; limit?: number }
+    >({
+      query: (params) => {
+        const { agentType, specialization, ...rest } = params || {}
+        return {
+          url: '/agents/available/',
+          params: { page: 1, limit: 20, ...(specialization ? { specialization } : {}), ...(agentType ? { agent_type: agentType } : {}), ...rest },
+        }
+      },
+      providesTags: ['Agent'],
     }),
 
     // Get agent details (public)

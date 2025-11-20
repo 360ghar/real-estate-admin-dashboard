@@ -8,6 +8,12 @@ export interface ApiResponse<T> {
   }
 }
 
+// Simple message/ack response from backend
+export interface MessageResponse {
+  message: string
+  success?: boolean
+}
+
 export interface PaginatedResponse<T> {
   items: T[]
   total: number
@@ -21,9 +27,9 @@ export interface PaginatedResponse<T> {
 // User Types
 export interface User {
   id: number
-  email: string
-  full_name: string
-  phone?: string
+  email: string | null
+  full_name: string | null
+  phone?: string | null
   role: 'user' | 'agent' | 'admin'
   is_active: boolean
   is_verified: boolean
@@ -43,16 +49,16 @@ export interface User {
 }
 
 export interface UserPreferences {
-  property_type: string[]
-  purpose: 'buy' | 'rent' | 'short_stay'
-  budget_min: number
-  budget_max: number
-  bedrooms_min: number
-  bedrooms_max: number
-  area_min: number
-  area_max: number
-  location_preference: string[]
-  max_distance_km: number
+  property_type?: string[]
+  purpose?: PropertyPurpose | null
+  budget_min?: number | null
+  budget_max?: number | null
+  bedrooms_min?: number | null
+  bedrooms_max?: number | null
+  area_min?: number | null
+  area_max?: number | null
+  location_preference?: string[] | null
+  max_distance_km?: number
 }
 
 export interface UserNotificationSettings {
@@ -90,23 +96,21 @@ export interface UserUpdate {
 // Agent Types
 export interface Agent {
   id: number
-  user_id: number
-  employee_id: string
-  specialization: string
+  name: string
+  contact_number?: string | null
+  description?: string | null
+  avatar_url?: string | null
+  languages?: string[] | null
   agent_type: 'general' | 'specialist' | 'senior'
-  experience_level: 'junior' | 'intermediate' | 'expert'
-  years_of_experience: number
-  bio?: string
-  languages: string[]
-  working_hours: WorkingHours
-  commission_rate: number
-  service_areas: string[]
-  max_clients: number
+  experience_level: 'beginner' | 'intermediate' | 'expert'
+  working_hours?: Record<string, any> | null
+  is_active?: boolean
   is_available: boolean
-  performance_metrics: AgentPerformanceMetrics
+  total_users_assigned?: number
+  user_satisfaction_rating?: number
+  performance_metrics?: AgentPerformanceMetrics
   created_at: string
-  updated_at: string
-  user?: User
+  updated_at?: string | null
 }
 
 export interface WorkingHours {
@@ -131,130 +135,176 @@ export interface AgentPerformanceMetrics {
 }
 
 export interface AgentCreate {
-  user_id: number
-  employee_id: string
-  specialization: string
-  agent_type: 'general' | 'specialist' | 'senior'
-  experience_level?: 'junior' | 'intermediate' | 'expert'
-  years_of_experience?: number
-  bio?: string
+  name: string
+  contact_number?: string | null
+  description?: string | null
+  avatar_url?: string | null
   languages?: string[]
-  working_hours?: WorkingHours
-  commission_rate?: number
-  service_areas?: string[]
-  max_clients?: number
-  is_available?: boolean
-  performance_metrics?: Partial<AgentPerformanceMetrics>
+  agent_type?: 'general' | 'specialist' | 'senior'
+  experience_level?: 'beginner' | 'intermediate' | 'expert'
+  working_hours?: Record<string, any> | null
 }
 
 export interface AgentWorkload {
   agent_id: number
   agent_name: string
-  active_clients: number
-  pending_visits: number
-  active_bookings: number
-  utilization_rate: number
-  max_capacity: number
+  current_users: number
+  utilization_percentage: number
+  is_available: boolean
+  queue_length: number
 }
 
 export interface AgentSystemStats {
   total_agents: number
   active_agents: number
-  average_clients_per_agent: number
-  total_clients_assigned: number
-  workload_distribution: Record<string, number>
-  performance_metrics: Record<string, number>
+  active_users?: number
+  total_users_served: number
+  system_satisfaction_score: number
+  properties_listed?: number
+  occupancy_rate?: number
+  agents_by_type: Record<string, number>
+  load_distribution: AgentWorkload[]
 }
 
 // Property Types
+export type PropertyType = 'house' | 'apartment' | 'builder_floor' | 'room'
+export type PropertyPurpose = 'buy' | 'rent' | 'short_stay'
+export type PropertyStatus = 'available' | 'sold' | 'rented' | 'under_offer' | 'maintenance'
+
 export interface Property {
   id: number
   title: string
-  description: string
-  property_type: 'house' | 'apartment' | 'builder_floor' | 'room'
-  purpose: 'buy' | 'rent' | 'short_stay'
+  description?: string | null
+  property_type: PropertyType
+  purpose: PropertyPurpose
   base_price: number
-  location: {
-    latitude: number
-    longitude: number
-  }
-  city: string
-  locality: string
-  pincode: string
-  area_sqft: number
-  bedrooms: number
-  bathrooms: number
-  balconies?: number
-  parking_spaces?: number
-  floor_number?: number
-  total_floors?: number
-  age_of_property?: number
-  max_occupancy?: number
-  minimum_stay_days?: number
-  amenities: Amenity[]
-  features: string[]
-  images: PropertyImage[]
-  main_image_url?: string
+  latitude?: number | null
+  longitude?: number | null
+  city?: string | null
+  state?: string | null
+  country: string
+  pincode?: string | null
+  locality?: string | null
+  sub_locality?: string | null
+  landmark?: string | null
+  full_address?: string | null
+  area_type?: string | null
+  area_sqft?: number | null
+  bedrooms?: number | null
+  bathrooms?: number | null
+  balconies?: number | null
+  parking_spaces?: number | null
+  floor_number?: number | null
+  total_floors?: number | null
+  age_of_property?: number | null
+  max_occupancy?: number | null
+  minimum_stay_days?: number | null
+  price_per_sqft?: number | null
+  monthly_rent?: number | null
+  daily_rate?: number | null
+  security_deposit?: number | null
+  maintenance_charges?: number | null
+  features?: string[] | null
+  amenities?: PropertyAmenityResponse[] | null
+  images?: PropertyImage[] | null
+  main_image_url?: string | null
+  virtual_tour_url?: string | null
   owner_id: number
-  owner_name?: string
-  owner_contact?: string
-  status: 'available' | 'rented' | 'sold' | 'maintenance'
-  liked?: boolean
-  user_has_scheduled_visit?: boolean
-  user_scheduled_visit_count?: number
-  user_next_visit_date?: string
-  distance?: number
+  owner_name?: string | null
+  owner_contact?: string | null
+  builder_name?: string | null
+  status: PropertyStatus
+  is_available: boolean
+  available_from?: string | null
+  calendar_data?: Record<string, any> | null
+  tags?: string[] | null
+  liked?: boolean | null
+  user_has_scheduled_visit?: boolean | null
+  user_scheduled_visit_count?: number | null
+  user_next_visit_date?: string | null
+  distance_km?: number | null
+  view_count: number
+  like_count: number
+  interest_count: number
   created_at: string
-  updated_at: string
+  updated_at?: string | null
+  // Legacy shape retained for backward compatibility
+  location?: {
+    latitude?: number
+    longitude?: number
+  }
 }
 
 export interface PropertyImage {
+  image_url: string
+  caption?: string | null
+  display_order?: number
+  is_main_image?: boolean
   id: number
-  url: string
-  is_main: boolean
-  caption?: string
-  order: number
+  property_id: number
+  // Legacy aliases
+  url?: string
+  is_main?: boolean
+  order?: number
 }
 
 export interface Amenity {
   id: number
-  name: string
-  category: string
-  description?: string
-  icon?: string
+  title: string
+  icon?: string | null
+  category?: string | null
   is_active: boolean
+  created_at?: string
+  updated_at?: string | null
+  // Legacy alias
+  name?: string
+}
+
+export interface PropertyAmenityResponse {
+  id: number
+  title: string
+  icon?: string | null
+  category?: string | null
 }
 
 export interface PropertyCreate {
   title: string
-  description: string
-  property_type: 'house' | 'apartment' | 'builder_floor' | 'room'
-  purpose: 'buy' | 'rent' | 'short_stay'
+  description?: string | null
+  property_type: PropertyType
+  purpose: PropertyPurpose
   base_price: number
-  latitude: number
-  longitude: number
-  city: string
-  locality: string
-  pincode: string
-  area_sqft: number
-  bedrooms: number
-  bathrooms: number
-  balconies?: number
-  parking_spaces?: number
-  floor_number?: number
-  total_floors?: number
-  age_of_property?: number
-  max_occupancy?: number
-  minimum_stay_days?: number
-  amenity_ids?: number[]
-  features?: string[]
-  main_image_url?: string
-  owner_name?: string
-  owner_contact?: string
+  latitude?: number | null
+  longitude?: number | null
+  city?: string | null
+  state?: string | null
+  country?: string
+  locality?: string | null
+  pincode?: string | null
+  area_sqft?: number | null
+  bedrooms?: number | null
+  bathrooms?: number | null
+  balconies?: number | null
+  parking_spaces?: number | null
+  floor_number?: number | null
+  total_floors?: number | null
+  age_of_property?: number | null
+  max_occupancy?: number | null
+  minimum_stay_days?: number | null
+  amenity_ids?: number[] | null
+  features?: string[] | null
+  main_image_url?: string | null
+  virtual_tour_url?: string | null
+  available_from?: string | null
+  calendar_data?: Record<string, any> | null
+  tags?: string[] | null
+  owner_name?: string | null
+  owner_contact?: string | null
+  builder_name?: string | null
 }
 
 export interface PropertyUpdate extends Partial<PropertyCreate> {
-  status?: 'available' | 'rented' | 'sold' | 'maintenance'
+  status?: PropertyStatus
+  is_available?: boolean
 }
 
 export interface PropertySearchParams {
@@ -262,8 +312,9 @@ export interface PropertySearchParams {
   lng?: number
   radius?: number
   q?: string
-  property_type?: string[]
-  purpose?: string
+  property_type?: PropertyType[]
+  purpose?: PropertyPurpose | null
+  status?: PropertyStatus | string
   price_min?: number
   price_max?: number
   bedrooms_min?: number
@@ -275,7 +326,7 @@ export interface PropertySearchParams {
   city?: string
   locality?: string
   pincode?: string
-  amenities?: number[]
+  amenities?: string[]
   features?: string[]
   parking_spaces_min?: number
   floor_number_min?: number
@@ -303,20 +354,38 @@ export interface UnifiedPropertyResponse {
   }
 }
 
+export interface SwipeHistoryResponse {
+  properties: Property[]
+  total: number
+  page: number
+  limit: number
+  total_pages: number
+  filters_applied: Record<string, any>
+  search_center?: {
+    latitude: number
+    longitude: number
+  }
+}
+
 // Visit Types
 export interface Visit {
   id: number
   property_id: number
   user_id: number
-  agent_id?: number
+  agent_id?: number | null
   scheduled_date: string
-  status: 'scheduled' | 'rescheduled' | 'cancelled' | 'completed' | 'no_show'
-  special_requirements?: string
-  notes?: string
-  feedback?: string
-  completed_at?: string
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'rescheduled'
+  special_requirements?: string | null
+  visit_notes?: string | null
+  visitor_feedback?: string | null
+  interest_level?: string | null
+  follow_up_required?: boolean
+  follow_up_date?: string | null
+  actual_date?: string | null
+  cancellation_reason?: string | null
+  rescheduled_from?: string | null
   created_at: string
-  updated_at: string
+  updated_at?: string | null
   property?: Property
   user?: User
   agent?: Agent
@@ -329,10 +398,14 @@ export interface VisitCreate {
 }
 
 export interface VisitUpdate {
-  scheduled_date?: string
-  special_requirements?: string
-  notes?: string
-  feedback?: string
+  scheduled_date?: string | null
+  special_requirements?: string | null
+  visit_notes?: string | null
+  visitor_feedback?: string | null
+  interest_level?: string | null
+  follow_up_required?: boolean | null
+  follow_up_date?: string | null
+  cancellation_reason?: string | null
 }
 
 export interface VisitList {
@@ -365,23 +438,34 @@ export interface Booking {
   primary_guest_email: string
   special_requests?: string
   guest_details?: Record<string, any>
-  base_price: number
-  total_nights: number
-  subtotal: number
-  taxes: number
-  service_fee: number
+  base_amount: number
+  taxes_amount: number
+  service_charges: number
+  discount_amount: number
   total_amount: number
-  currency: string
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded'
-  payment_status: 'unpaid' | 'partial' | 'paid' | 'refunded'
-  payment_method?: string
-  transaction_id?: string
-  paid_at?: string
-  cancelled_at?: string
-  cancellation_reason?: string
-  review?: BookingReview
+  booking_reference: string
+  nights: number
+  booking_status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'completed'
+  payment_status: 'pending' | 'partial' | 'paid' | 'refunded' | 'failed'
+  // Legacy alias for UI components
+  status?: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'completed'
+  internal_notes?: string | null
+  actual_check_in?: string | null
+  actual_check_out?: string | null
+  early_check_in?: boolean
+  late_check_out?: boolean
+  cancellation_date?: string | null
+  cancellation_reason?: string | null
+  refund_amount?: number | null
+  payment_method?: string | null
+  transaction_id?: string | null
+  payment_date?: string | null
+  guest_rating?: number | null
+  guest_review?: string | null
+  host_rating?: number | null
+  host_review?: string | null
   created_at: string
-  updated_at: string
+  updated_at?: string | null
   property?: Property
   user?: User
 }
@@ -399,11 +483,13 @@ export interface BookingCreate {
 }
 
 export interface BookingUpdate {
+  check_in_date?: string | null
+  check_out_date?: string | null
   guests?: number
-  primary_guest_name?: string
-  primary_guest_phone?: string
-  primary_guest_email?: string
-  special_requests?: string
+  primary_guest_name?: string | null
+  primary_guest_phone?: string | null
+  primary_guest_email?: string | null
+  special_requests?: string | null
   guest_details?: Record<string, any>
 }
 
@@ -411,6 +497,7 @@ export interface BookingAvailability {
   property_id: number
   check_in_date: string
   check_out_date: string
+  guests?: number
 }
 
 export interface AvailabilityInfo {
@@ -422,13 +509,13 @@ export interface AvailabilityInfo {
 
 export interface BookingPricing {
   base_price: number
-  total_nights: number
-  subtotal: number
-  taxes: number
-  service_fee: number
+  total_nights?: number
+  subtotal?: number
+  taxes?: number
+  service_fee?: number
   total_amount: number
-  currency: string
-  breakdown: PricingBreakdown[]
+  currency?: string
+  breakdown?: PricingBreakdown[]
 }
 
 export interface PricingBreakdown {
@@ -444,16 +531,12 @@ export interface BookingPayment {
 }
 
 export interface BookingReview {
-  rating: number
-  review_text?: string
-  aspects?: {
-    cleanliness?: number
-    location?: number
-    value?: number
-    communication?: number
-    accuracy?: number
-    checkin?: number
-  }
+  booking_id?: number
+  guest_rating: number
+  guest_review?: string | null
+  // Legacy alias used by UI forms
+  rating?: number
+  review_text?: string | null
 }
 
 export interface BookingList {
@@ -468,16 +551,18 @@ export interface BookingsQuery {
   page?: number
   limit?: number
   status?: string
+  payment_status?: string
   agent_id?: number
   property_id?: number
   user_id?: number
+  q?: string
 }
 
 // Core System Types
 export interface BugReport {
   id: number
   source: 'web' | 'mobile' | 'api'
-  bug_type: 'ui_bug' | 'functional_bug' | 'performance_issue' | 'security_issue' | 'other'
+  bug_type: 'ui_bug' | 'functionality_bug' | 'performance_issue' | 'crash' | 'feature_request' | 'other'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -518,7 +603,7 @@ export interface BugReportAttachment {
 
 export interface BugReportCreate {
   source: 'web' | 'mobile' | 'api'
-  bug_type: 'ui_bug' | 'functional_bug' | 'performance_issue' | 'security_issue' | 'other'
+  bug_type: 'ui_bug' | 'functionality_bug' | 'performance_issue' | 'crash' | 'feature_request' | 'other'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -549,7 +634,7 @@ export interface Page {
   unique_name: string
   title: string
   content: string
-  format: 'html' | 'markdown'
+  format: 'html' | 'markdown' | 'json'
   custom_config?: Record<string, any>
   is_active: boolean
   is_draft: boolean
@@ -561,7 +646,7 @@ export interface PageCreate {
   unique_name: string
   title: string
   content: string
-  format?: 'html' | 'markdown'
+  format?: 'html' | 'markdown' | 'json'
   custom_config?: Record<string, any>
   is_active?: boolean
   is_draft?: boolean
@@ -570,7 +655,7 @@ export interface PageCreate {
 export interface PageUpdate {
   title?: string
   content?: string
-  format?: 'html' | 'markdown'
+  format?: 'html' | 'markdown' | 'json'
   custom_config?: Record<string, any>
   is_active?: boolean
   is_draft?: boolean
@@ -594,6 +679,7 @@ export interface PagesQuery {
 // App Updates Types
 export interface AppUpdate {
   id: number
+  app?: string
   platform: 'ios' | 'android' | 'web'
   version: string
   build_number: number
@@ -607,6 +693,7 @@ export interface AppUpdate {
 }
 
 export interface AppUpdateCreate {
+  app?: string
   platform: 'ios' | 'android' | 'web'
   version: string
   build_number: number
@@ -618,6 +705,7 @@ export interface AppUpdateCreate {
 }
 
 export interface AppUpdateUpdate {
+  app?: string
   version?: string
   build_number?: number
   release_notes?: string
@@ -628,6 +716,7 @@ export interface AppUpdateUpdate {
 }
 
 export interface AppUpdateCheckRequest {
+  app?: string
   platform: 'ios' | 'android' | 'web'
   current_version: string
   build_number: number
@@ -693,6 +782,44 @@ export interface NotificationPreferences {
   push: boolean
   sms: boolean
   types: Record<string, boolean>
+}
+
+// FAQ Types
+export interface FAQResponse {
+  id: number
+  question: string
+  answer: string
+  category?: string | null
+  tags?: string[] | null
+  display_order: number
+  is_active: boolean
+  created_at: string
+  updated_at?: string | null
+}
+
+export interface FAQCreate {
+  question: string
+  answer: string
+  category?: string | null
+  tags?: string[] | null
+  display_order?: number
+  is_active?: boolean
+}
+
+export interface FAQUpdate {
+  question?: string | null
+  answer?: string | null
+  category?: string | null
+  tags?: string[] | null
+  display_order?: number | null
+  is_active?: boolean | null
+}
+
+export interface FAQQuery {
+  category?: string | null
+  is_active?: boolean | null
+  limit?: number
+  offset?: number
 }
 
 // API Query Types

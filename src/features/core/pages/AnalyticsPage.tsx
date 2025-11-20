@@ -25,12 +25,19 @@ const AnalyticsPage = () => {
   const [view, setView] = useState('workload')
   const stats = useGetSystemStatsQuery()
   const workload = useGetWorkloadQuery()
-  const s = stats.data || {}
+  const s = stats.data
   const workloadData = (() => {
-    const w = workload.data || {}
-    // Support object map or array shape
-    if (Array.isArray(w)) return w
-    return Object.entries(w).map(([name, value]) => ({ name, value: Number(value) }))
+    const w = workload.data || []
+    if (Array.isArray(w)) {
+      return w.map((item) => ({
+        name: item.agent_name,
+        value: item.utilization_percentage,
+        current: item.current_users,
+        queue: item.queue_length,
+      }))
+    }
+    // Fallback if backend returns a map
+    return Object.entries(w as Record<string, number>).map(([name, value]) => ({ name, value }))
   })()
   return (
     <div className="space-y-4">
@@ -41,10 +48,10 @@ const AnalyticsPage = () => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
-            <KPI label="Active Agents" value={s.active_agents} isLoading={stats.isLoading} />
-            <KPI label="Active Users" value={s.active_users} isLoading={stats.isLoading} />
-            <KPI label="Properties Listed" value={s.properties_listed} isLoading={stats.isLoading} />
-            <KPI label="Occupancy Rate" value={s.occupancy_rate} isLoading={stats.isLoading} />
+            <KPI label="Total Agents" value={s?.total_agents} isLoading={stats.isLoading} />
+            <KPI label="Active Agents" value={s?.active_agents} isLoading={stats.isLoading} />
+            <KPI label="Users Served" value={s?.total_users_served} isLoading={stats.isLoading} />
+            <KPI label="Satisfaction Score" value={s?.system_satisfaction_score} isLoading={stats.isLoading} />
           </div>
         </CardContent>
       </Card>
@@ -54,13 +61,13 @@ const AnalyticsPage = () => {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm">
-                View: {view}
+                Metric: {view === 'utilization' ? 'Utilization %' : view === 'users' ? 'Current Users' : 'Queue Length'}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setView('properties')}>Properties</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setView('bookings')}>Bookings</DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setView('workload')}>Agent Workload</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView('utilization')}>Utilization %</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView('users')}>Current Users</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setView('queue')}>Queue Length</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </CardHeader>
@@ -79,7 +86,11 @@ const AnalyticsPage = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Bar dataKey="value" fill="#0ea5e9" name="Workload" />
+                <Bar
+                  dataKey={view === 'users' ? 'current' : view === 'queue' ? 'queue' : 'value'}
+                  fill="#0ea5e9"
+                  name={view === 'users' ? 'Current Users' : view === 'queue' ? 'Queue Length' : 'Utilization %'}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

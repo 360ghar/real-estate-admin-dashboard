@@ -1,27 +1,17 @@
 import { api } from '@/store/api'
-import type { User } from '@/types'
-
-export interface PaginatedResponse<T> {
-  items: T[]
-  total: number
-  page: number
-  limit: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
-}
+import type { PaginatedResponse, User } from '@/types'
 
 export interface UserPreferences {
-  property_type: string[]
-  purpose: string
+  property_type?: string[]
+  purpose?: string
   budget_min?: number
   budget_max?: number
   bedrooms_min?: number
   bedrooms_max?: number
   area_min?: number
   area_max?: number
-  location_preference: string[]
-  max_distance_km: number
+  location_preference?: string[]
+  max_distance_km?: number
 }
 
 export interface UserUpdate {

@@ -98,7 +98,14 @@ export const visitsApi = api.injectEndpoints({
     }),
 
     // Complete visit (admin/agent)
-    completeVisit: builder.mutation<Visit, { visitId: number; notes?: string; feedback?: string }>({
+    completeVisit: builder.mutation<Visit, {
+      visitId: number
+      visit_notes?: string
+      visitor_feedback?: string
+      interest_level?: string | null
+      follow_up_required?: boolean
+      follow_up_date?: string | null
+    }>({
       query: ({ visitId, ...data }) => ({
         url: `/visits/${visitId}/complete/`,
         method: 'POST',

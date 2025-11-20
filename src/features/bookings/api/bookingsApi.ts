@@ -9,13 +9,15 @@ import type {
   BookingPricing,
   BookingPayment,
   BookingReview,
-  PaginatedResponse
+  PaginatedResponse,
+  MessageResponse
 } from '@/types/api'
 
 export interface BookingsQuery {
   page?: number
   limit?: number
   status?: string
+  payment_status?: string
   agent_id?: number
   property_id?: number
   user_id?: number
@@ -52,7 +54,7 @@ export const bookingsApi = api.injectEndpoints({
     }),
 
     // Check booking availability
-    checkAvailability: builder.query<AvailabilityInfo, BookingAvailability>({
+    checkAvailability: builder.mutation<AvailabilityInfo, BookingAvailability>({
       query: (data) => ({
         url: '/bookings/check-availability/',
         method: 'POST',
@@ -61,7 +63,7 @@ export const bookingsApi = api.injectEndpoints({
     }),
 
     // Calculate booking pricing
-    calculatePricing: builder.query<BookingPricing, BookingAvailability>({
+    calculatePricing: builder.mutation<BookingPricing, BookingAvailability>({
       query: (data) => ({
         url: '/bookings/calculate-pricing/',
         method: 'POST',
@@ -86,31 +88,43 @@ export const bookingsApi = api.injectEndpoints({
     }),
 
     // Cancel a booking
-    cancelBooking: builder.mutation<void, { bookingId: number; reason: string }>({
-      query: ({ bookingId, ...data }) => ({
+    cancelBooking: builder.mutation<MessageResponse, { bookingId: number; reason: string }>({
+      query: ({ bookingId, reason }) => ({
         url: `/bookings/cancel/`,
         method: 'POST',
-        body: data
+        body: {
+          booking_id: bookingId,
+          reason,
+        },
       }),
       invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }]
     }),
 
     // Process payment for booking
-    processPayment: builder.mutation<void, { bookingId: number; paymentData: BookingPayment }>({
-      query: ({ bookingId, ...data }) => ({
+    processPayment: builder.mutation<MessageResponse, { bookingId: number; paymentData: BookingPayment }>({
+      query: ({ bookingId, paymentData }) => ({
         url: '/bookings/payment/',
         method: 'POST',
-        body: data
+        body: {
+          booking_id: bookingId,
+          payment_method: paymentData.payment_method,
+          transaction_id: paymentData.transaction_id,
+          amount: paymentData.amount,
+        },
       }),
       invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }]
     }),
 
     // Add review to booking
-    addReview: builder.mutation<void, { bookingId: number; reviewData: BookingReview }>({
-      query: ({ bookingId, ...data }) => ({
+    addReview: builder.mutation<MessageResponse, { bookingId: number; reviewData: BookingReview }>({
+      query: ({ bookingId, reviewData }) => ({
         url: '/bookings/review/',
         method: 'POST',
-        body: data
+        body: {
+          booking_id: bookingId,
+          guest_rating: reviewData.guest_rating ?? (reviewData as any).rating ?? 5,
+          guest_review: reviewData.guest_review ?? (reviewData as any).review_text,
+        },
       }),
       invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, 'Property']
     }),
@@ -137,7 +151,7 @@ export const bookingsApi = api.injectEndpoints({
         params: { page: 1, limit: 20, ...params }
       }),
       transformResponse: (response: PaginatedResponse<Booking>) => ({
-        results: response.items,
+        results: response.items.map((b) => ({ ...b, status: (b as any).booking_status ?? b.status })),
         count: response.total
       }),
       providesTags: (res) =>
@@ -191,8 +205,8 @@ export const {
   useGetUserBookingsQuery,
   useGetUpcomingBookingsQuery,
   useGetPastBookingsQuery,
-  useCheckAvailabilityQuery,
-  useCalculatePricingQuery,
+  useCheckAvailabilityMutation,
+  useCalculatePricingMutation,
   useGetBookingQuery,
   useUpdateBookingMutation,
   useCancelBookingMutation,

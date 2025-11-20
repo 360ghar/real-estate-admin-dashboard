@@ -26,7 +26,7 @@ import { Bug, Plus, Edit, Paperclip, Image, Video, FileText, AlertTriangle, Chec
 
 const bugReportSchema = z.object({
   source: z.enum(['web', 'mobile', 'api']),
-  bug_type: z.enum(['ui_bug', 'functional_bug', 'performance_issue', 'security_issue', 'other']),
+  bug_type: z.enum(['ui_bug', 'functionality_bug', 'performance_issue', 'crash', 'feature_request', 'other']),
   severity: z.enum(['low', 'medium', 'high', 'critical']),
   title: z.string().min(1, 'Title is required'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
@@ -422,27 +422,28 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="web">Web</SelectItem>
-                  <SelectItem value="mobile">Mobile</SelectItem>
-                  <SelectItem value="api">API</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Bug Type</Label>
-              <Select {...form.register('bug_type')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ui_bug">UI Bug</SelectItem>
-                  <SelectItem value="functional_bug">Functional Bug</SelectItem>
-                  <SelectItem value="performance_issue">Performance Issue</SelectItem>
-                  <SelectItem value="security_issue">Security Issue</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+                <SelectItem value="web">Web</SelectItem>
+                <SelectItem value="mobile">Mobile</SelectItem>
+                <SelectItem value="api">API</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Bug Type</Label>
+            <Select {...form.register('bug_type')}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ui_bug">UI Bug</SelectItem>
+                <SelectItem value="functionality_bug">Functionality Bug</SelectItem>
+                <SelectItem value="performance_issue">Performance Issue</SelectItem>
+                <SelectItem value="crash">Crash</SelectItem>
+                <SelectItem value="feature_request">Feature Request</SelectItem>
+                <SelectItem value="other">Other</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
             <div className="space-y-2">
               <Label>Severity</Label>
               <Select {...form.register('severity')}>
@@ -627,10 +628,11 @@ const BugReportsPage: React.FC = () => {
   const filteredReports = (bugReports || []).filter(report => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
+      const userName = report.user?.full_name?.toLowerCase() || ''
       return (
         report.title.toLowerCase().includes(query) ||
         report.description.toLowerCase().includes(query) ||
-        report.user?.full_name.toLowerCase().includes(query)
+        userName.includes(query)
       )
     }
     return true
@@ -754,9 +756,10 @@ const BugReportsPage: React.FC = () => {
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
                 <SelectItem value="ui_bug">UI Bug</SelectItem>
-                <SelectItem value="functional_bug">Functional Bug</SelectItem>
+                <SelectItem value="functionality_bug">Functionality Bug</SelectItem>
                 <SelectItem value="performance_issue">Performance Issue</SelectItem>
-                <SelectItem value="security_issue">Security Issue</SelectItem>
+                <SelectItem value="crash">Crash</SelectItem>
+                <SelectItem value="feature_request">Feature Request</SelectItem>
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
