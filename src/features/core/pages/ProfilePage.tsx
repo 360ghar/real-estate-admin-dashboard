@@ -1,6 +1,7 @@
 import React from 'react'
-import { useAppDispatch, useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser, setCredentials } from '@/features/auth/slices/authSlice'
+import { useAppDispatch } from '@/hooks/redux'
+import { setCredentials } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ import { useUpdateUserMutation } from '@/features/users/api/usersApi'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { User, Mail, Phone, Calendar, MapPin, Shield, CheckCircle, Loader2, Camera } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/errors'
 
 const schema = z.object({
   full_name: z.string().optional(),
@@ -23,7 +25,7 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 const ProfilePage = () => {
-  const me = useAppSelector(selectCurrentUser)
+  const { user: me, role } = useUserRole()
   const dispatch = useAppDispatch()
   const { toast } = useToast()
   const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { full_name: '', phone: '', email: '' } })
@@ -42,7 +44,11 @@ const ProfilePage = () => {
 
   const onSubmit = async (values: FormValues) => {
     try {
-      const user = await updateUser({ id: me!.id, data: values }).unwrap()
+      if (!me?.id) {
+        toast({ title: 'Update Failed', description: 'User information is unavailable.', variant: 'destructive' })
+        return
+      }
+      const user = await updateUser({ id: me.id, data: values }).unwrap()
       const token = localStorage.getItem('token') || ''
       dispatch(setCredentials({ token, user }))
 
@@ -50,16 +56,15 @@ const ProfilePage = () => {
         title: "Profile Updated",
         description: "Your profile information has been successfully updated.",
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: "Update Failed",
-        description: error?.data?.detail || "Failed to update profile. Please try again.",
+        description: getErrorMessage(error, "Failed to update profile. Please try again."),
         variant: "destructive",
       })
     }
   }
 
-  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
   const isFormDirty = form.formState.isDirty
 
   return (
@@ -177,7 +182,7 @@ const ProfilePage = () => {
           </CardHeader>
           <CardContent>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
                 <div className="grid gap-6 md:grid-cols-2">
                   <FormField
                     control={form.control}

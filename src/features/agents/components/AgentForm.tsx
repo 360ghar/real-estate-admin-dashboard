@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useCreateAgentMutation, useGetAgentQuery, useUpdateAgentMutation } from '@/features/agents/api/agentsApi'
+import type { AgentSummary } from '@/features/agents/api/agentsApi'
+import type { Agent } from '@/types/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -9,6 +11,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useToast } from '@/hooks/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { getErrorMessage } from '@/lib/errors'
 
 const toBool = (v: unknown) => (v === 'true' ? true : v === 'false' ? false : v)
 const schema = z.object({
@@ -34,16 +37,17 @@ const AgentForm = ({ id }: { id?: number }) => {
 
   useEffect(() => {
     if (data) {
+      const agent = data as AgentSummary & Partial<Agent> & { is_active?: boolean }
       form.reset({
-        name: (data as any).name || data.user?.full_name || '',
-        email: data.user?.email || '',
-        phone: data.user?.phone || '',
-        user_id: data.user_id,
-        employee_id: data.employee_id,
-        specialization: data.specialization,
-        agent_type: data.agent_type,
-        is_active: (data as any).is_active ?? true,
-        is_available: data.is_available,
+        name: agent.name || agent.user?.full_name || '',
+        email: agent.user?.email || '',
+        phone: agent.user?.phone || '',
+        user_id: agent.user_id,
+        employee_id: agent.employee_id,
+        specialization: agent.specialization,
+        agent_type: agent.agent_type,
+        is_active: agent.is_active ?? true,
+        is_available: agent.is_available,
       })
     }
   }, [data, form])
@@ -51,7 +55,7 @@ const AgentForm = ({ id }: { id?: number }) => {
   const onSubmit = async (values: FormValues) => {
     try {
       if (isEdit && id) {
-        await update({ id, data: values as any }).unwrap()
+        await update({ id, data: values as Partial<Agent> }).unwrap()
         toast({ title: 'Saved', description: 'Agent updated' })
       } else {
         await create({
@@ -60,12 +64,11 @@ const AgentForm = ({ id }: { id?: number }) => {
           specialization: values.specialization,
           agent_type: values.agent_type,
           is_available: values.is_available,
-        } as any).unwrap()
+        }).unwrap()
         toast({ title: 'Created', description: 'Agent created' })
       }
     } catch (e: unknown) {
-      const error = e as { data?: { detail?: string } }
-      toast({ title: 'Failed', description: error?.data?.detail || 'Try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
   }
 
@@ -78,7 +81,7 @@ const AgentForm = ({ id }: { id?: number }) => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
                 name="name"

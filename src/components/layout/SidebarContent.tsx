@@ -1,13 +1,26 @@
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import { Home, Building, Users, Calendar, BookOpen, User, BarChart3, FileText, AlertCircle, Settings, Smartphone, Folder, Tag, Bell, Heart } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { NavItem } from './NavItem'
 
-export const SidebarContent = () => {
-    const user = useAppSelector(selectCurrentUser)
-    const role = (user?.role as 'admin' | 'agent' | 'user') || (user?.agent_id ? 'agent' : 'admin')
+interface NavChild {
+    name: string
+    href: string
+    icon: LucideIcon
+    children?: NavChild[]
+}
 
-    const baseNav = [
+interface NavItemConfig {
+    name: string
+    href: string
+    icon: LucideIcon
+    children?: NavChild[]
+}
+
+export const SidebarContent = () => {
+    const { role } = useUserRole()
+
+    const baseNav: NavItemConfig[] = [
         { name: 'Dashboard', href: '/dashboard', icon: Home },
         { name: 'Properties', href: '/properties', icon: Building },
         { name: 'Visits', href: '/visits', icon: Calendar },
@@ -15,7 +28,7 @@ export const SidebarContent = () => {
         { name: 'Discover', href: '/swipes', icon: Heart },
     ]
 
-    const adminExtras = [
+    const adminExtras: NavItemConfig[] = [
         { name: 'Users', href: '/users', icon: Users },
         { name: 'Agents', href: '/agents', icon: User },
         { name: 'Analytics', href: '/analytics', icon: BarChart3 },
@@ -42,7 +55,7 @@ export const SidebarContent = () => {
         }
     ]
 
-    const profileItem = { name: 'My Profile', href: role === 'agent' ? '/agents/me' : '/profile', icon: User }
+    const profileItem: NavItemConfig = { name: 'My Profile', href: role === 'agent' ? '/agents/me' : '/profile', icon: User }
 
     const navigation = role === 'admin'
         ? [...baseNav, ...adminExtras, profileItem]
@@ -60,7 +73,7 @@ export const SidebarContent = () => {
                         to={item.href}
                         label={item.name}
                         icon={item.icon}
-                        children={(item as any).children}
+                    children={item.children}
                     />
                 ))}
             </nav>

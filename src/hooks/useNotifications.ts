@@ -7,7 +7,7 @@ export interface Notification {
   type: 'visit_reminder' | 'booking_update' | 'payment_received' | 'property_available' | 'system_message'
   title: string
   message: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   is_read: boolean
   created_at: string
   expires_at?: string
@@ -31,8 +31,10 @@ export const useNotifications = (): UseNotificationsReturn => {
     const savedNotifications = localStorage.getItem('notifications')
     if (savedNotifications) {
       try {
-        const parsed = JSON.parse(savedNotifications)
-        setNotifications(parsed)
+        const parsed = JSON.parse(savedNotifications) as unknown
+        if (Array.isArray(parsed)) {
+          setNotifications(parsed as Notification[])
+        }
       } catch (error) {
         console.error('Failed to parse notifications:', error)
       }

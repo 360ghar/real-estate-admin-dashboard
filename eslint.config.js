@@ -1,4 +1,3 @@
-// ESLint flat config for React + TypeScript (ESLint v8.x)
 import js from '@eslint/js'
 import tseslint from 'typescript-eslint'
 import reactPlugin from 'eslint-plugin-react'
@@ -7,6 +6,9 @@ import reactHooks from 'eslint-plugin-react-hooks'
 export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
+  {
+    ignores: ['src/hooks/__tests__/**'],
+  },
   {
     languageOptions: {
       parser: tseslint.parser,
@@ -29,6 +31,10 @@ export default tseslint.config(
       'react/jsx-uses-react': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { 
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_',
+      }],
     },
-  }
+  },
 )

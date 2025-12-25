@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/errors'
 
 const VisitDetail = ({ id }: { id: number }) => {
   const { data } = useGetVisitQuery(id)
@@ -21,26 +22,28 @@ const VisitDetail = ({ id }: { id: number }) => {
       await reschedule({ visitId: id, newDate: new Date(date).toISOString(), reason: text || 'Rescheduled' }).unwrap()
       toast({ title: 'Rescheduled', description: 'Visit rescheduled' })
       setOpen(null)
-    } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+    } catch (err: unknown) {
+      toast({ title: 'Failed', description: getErrorMessage(err, 'Try again'), variant: 'destructive' })
     }
   }
+
   const doCancel = async () => {
     try {
       await cancel({ visitId: id, reason: text || 'Cancelled' }).unwrap()
       toast({ title: 'Cancelled', description: 'Visit cancelled' })
       setOpen(null)
-    } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+    } catch (err: unknown) {
+      toast({ title: 'Failed', description: getErrorMessage(err, 'Try again'), variant: 'destructive' })
     }
   }
+
   const doComplete = async () => {
     try {
       await complete({ visitId: id, notes: text || undefined }).unwrap()
       toast({ title: 'Completed', description: 'Visit marked as completed' })
       setOpen(null)
-    } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+    } catch (err: unknown) {
+      toast({ title: 'Failed', description: getErrorMessage(err, 'Try again'), variant: 'destructive' })
     }
   }
 
@@ -61,9 +64,9 @@ const VisitDetail = ({ id }: { id: number }) => {
           <div className="mt-4 flex gap-2">
             {(data?.status === 'scheduled' || data?.status === 'rescheduled') && (
               <>
-                <Button onClick={() => setOpen('reschedule')}>Reschedule</Button>
-                <Button variant="outline" onClick={() => setOpen('cancel')}>Cancel</Button>
-                <Button variant="outline" onClick={() => setOpen('complete')}>Mark Completed</Button>
+                <Button onClick={() => { setOpen('reschedule') }}>Reschedule</Button>
+                <Button variant="outline" onClick={() => { setOpen('cancel') }}>Cancel</Button>
+                <Button variant="outline" onClick={() => { setOpen('complete') }}>Mark Completed</Button>
               </>
             )}
           </div>
@@ -82,10 +85,10 @@ const VisitDetail = ({ id }: { id: number }) => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(null)}>Close</Button>
             {open === 'reschedule' && (
-              <Button onClick={doReschedule} disabled={!date || resState.isLoading}>{resState.isLoading ? 'Saving…' : 'Reschedule'}</Button>
+              <Button onClick={() => { void doReschedule() }} disabled={!date || resState.isLoading}>{resState.isLoading ? 'Saving…' : 'Reschedule'}</Button>
             )}
-            {open === 'cancel' && <Button onClick={doCancel} disabled={cancelState.isLoading}>{cancelState.isLoading ? 'Cancelling…' : 'Cancel Visit'}</Button>}
-            {open === 'complete' && <Button onClick={doComplete} disabled={compState.isLoading}>{compState.isLoading ? 'Saving…' : 'Complete'}</Button>}
+            {open === 'cancel' && <Button onClick={() => { void doCancel() }} disabled={cancelState.isLoading}>{cancelState.isLoading ? 'Cancelling…' : 'Cancel Visit'}</Button>}
+            {open === 'complete' && <Button onClick={() => { void doComplete() }} disabled={compState.isLoading}>{compState.isLoading ? 'Saving…' : 'Complete'}</Button>}
           </DialogFooter>
         </DialogContent>
       </Dialog>

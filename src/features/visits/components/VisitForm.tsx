@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useScheduleVisitMutation } from '@/features/visits/api/visitsApi'
 import { useListUsersQuery } from '@/features/users/api/usersApi'
 import { useListPropertiesQuery } from '@/features/properties/api/propertiesApi'
@@ -12,7 +11,7 @@ import * as z from 'zod'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Skeleton } from '@/components/ui/skeleton'
+import { getErrorMessage } from '@/lib/errors'
 
 const schema = z.object({
   // user_id kept for UI selection but not sent to API
@@ -35,7 +34,7 @@ const VisitForm = () => {
   const [scheduleVisit, createState] = useScheduleVisitMutation()
   const users = useListUsersQuery({})
   const properties = useListPropertiesQuery({})
-  const { control, handleSubmit, formState: { errors } } = form
+  const { control, handleSubmit } = form
 
   const onSubmit = async (values: FormValues) => {
     try {
@@ -45,12 +44,12 @@ const VisitForm = () => {
       }).unwrap()
       toast({ title: 'Scheduled', description: 'Visit scheduled' })
       form.reset()
-    } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Please try again', variant: 'destructive' })
+    } catch (err: unknown) {
+      toast({ title: 'Failed', description: getErrorMessage(err, 'Please try again'), variant: 'destructive' })
     }
   }
 
-  const error = createState.error as any
+  const errorMessage = createState.error ? getErrorMessage(createState.error, 'Something went wrong') : null
 
   return (
     <div className="space-y-4">
@@ -60,14 +59,14 @@ const VisitForm = () => {
           <CardTitle>Details</CardTitle>
         </CardHeader>
         <CardContent>
-          {error && (
+          {errorMessage && (
             <Alert variant="destructive" className="mb-4">
               <AlertTitle>Failed to schedule visit</AlertTitle>
-              <AlertDescription>{error?.data?.detail || 'Something went wrong'}</AlertDescription>
+              <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
           <Form {...form}>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4">
               <FormField
                 control={control}
                 name="user_id"

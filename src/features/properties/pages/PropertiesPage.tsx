@@ -5,8 +5,7 @@ import PropertyDetail from '../components/PropertyDetail'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Plus, Home, TrendingUp, Users, MapPin } from 'lucide-react'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 type Props = { mode?: 'create' | 'edit' | 'view' }
@@ -14,8 +13,7 @@ type Props = { mode?: 'create' | 'edit' | 'view' }
 const PropertiesPage = ({ mode }: Props) => {
   const params = useParams()
   const navigate = useNavigate()
-  const user = useAppSelector(selectCurrentUser)
-  const role = (user?.role as 'admin' | 'agent' | 'user') || (user?.agent_id ? 'agent' : 'admin')
+  const { role } = useUserRole()
 
   if (mode === 'create') {
     return <PropertyForm onSuccess={(id) => navigate(`/properties/${id}`)} />

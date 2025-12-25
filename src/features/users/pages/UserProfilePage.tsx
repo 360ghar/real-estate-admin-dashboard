@@ -10,11 +10,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { useGetProfileQuery, useUpdateProfileMutation, useUpdatePreferencesMutation, useUpdateLocationMutation } from '@/features/users/api/usersApi'
 import { useGetAssignedAgentQuery } from '@/features/agents/api/agentsApi'
-import { MapPin, Phone, Mail, Calendar, Building, DollarSign, Home, Users } from 'lucide-react'
+import { MapPin, Phone, Mail } from 'lucide-react'
 
 const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -45,6 +44,9 @@ const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'location'>('profile')
   const [selectedLocations, setSelectedLocations] = useState<string[]>([])
   const [selectedPropertyTypes, setSelectedPropertyTypes] = useState<string[]>([])
+  const allowedPurposes = ['buy', 'rent', 'short_stay'] as const
+  const isPurpose = (value: string): value is PreferencesFormData['purpose'] =>
+    allowedPurposes.includes(value as PreferencesFormData['purpose'])
 
   // Fetch user profile
   const { data: profile, isLoading: profileLoading } = useGetProfileQuery()
@@ -137,28 +139,29 @@ const UserProfilePage: React.FC = () => {
     }
   }
 
-  const handleLocationUpdate = async () => {
+  const handleLocationUpdate = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
-          try {
-            await updateLocation({
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            }).unwrap()
-            toast({
-              title: 'Location Updated',
-              description: 'Your location has been updated successfully.',
+        (position) => {
+          void updateLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          }).unwrap()
+            .then(() => {
+              toast({
+                title: 'Location Updated',
+                description: 'Your location has been updated successfully.',
+              })
             })
-          } catch (error) {
-            toast({
-              title: 'Update Failed',
-              description: 'Failed to update location. Please try again.',
-              variant: 'destructive',
+            .catch(() => {
+              toast({
+                title: 'Update Failed',
+                description: 'Failed to update location. Please try again.',
+                variant: 'destructive',
+              })
             })
-          }
         },
-        (error) => {
+        (_error) => {
           toast({
             title: 'Location Error',
             description: 'Unable to get your location. Please enable location services.',
@@ -285,7 +288,7 @@ const UserProfilePage: React.FC = () => {
             <CardDescription>Update your personal information</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={profileForm.handleSubmit(handleProfileSubmit)} className="space-y-4">
+            <form onSubmit={(e) => void profileForm.handleSubmit(handleProfileSubmit)(e)} className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="full_name">Full Name</Label>
@@ -357,7 +360,7 @@ const UserProfilePage: React.FC = () => {
             <CardDescription>Tell us what kind of properties you're interested in</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={preferencesForm.handleSubmit(handlePreferencesSubmit)} className="space-y-6">
+            <form onSubmit={(e) => void preferencesForm.handleSubmit(handlePreferencesSubmit)(e)} className="space-y-6">
               <div className="space-y-4">
                 <div>
                   <Label className="text-base font-medium">Property Types</Label>
@@ -381,7 +384,9 @@ const UserProfilePage: React.FC = () => {
                     <Label>Purpose</Label>
                     <Select
                       value={preferencesForm.watch('purpose')}
-                      onValueChange={(value) => preferencesForm.setValue('purpose', value as any)}
+                      onValueChange={(value) => {
+                        if (isPurpose(value)) preferencesForm.setValue('purpose', value)
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue placeholder="Select purpose" />

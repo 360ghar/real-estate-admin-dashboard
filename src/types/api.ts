@@ -4,7 +4,7 @@ export interface ApiResponse<T> {
   error?: {
     code: string
     message: string
-    details?: any
+    details?: Record<string, unknown>
   }
 }
 
@@ -56,13 +56,27 @@ export interface UserPreferences {
 }
 
 export interface UserNotificationSettings {
-  email_notifications: boolean
-  push_notifications: boolean
-  sms_notifications: boolean
-  visit_reminders: boolean
-  booking_updates: boolean
-  price_alerts: boolean
-  new_properties: boolean
+  email_notifications?: boolean
+  push_notifications?: boolean
+  sms_notifications?: boolean
+  visit_reminders?: boolean
+  booking_updates?: boolean
+  price_alerts?: boolean
+  new_properties?: boolean
+  property_updates?: boolean
+  promotional_emails?: boolean
+  onboarding?: boolean
+  digest?: boolean
+  frequency?: string
+  quietHours?: {
+    start: string
+    end: string
+  }
+  quiet_hours?: {
+    start: string
+    end: string
+  }
+  categories?: Record<string, boolean>
 }
 
 export interface UserPrivacySettings {
@@ -71,6 +85,9 @@ export interface UserPrivacySettings {
   show_email: boolean
   allow_location_tracking: boolean
   data_sharing_consent: boolean
+  location_sharing?: boolean
+  contact_sharing?: boolean
+  search_history_tracking?: boolean
 }
 
 export interface UserUpdate {
@@ -288,6 +305,7 @@ export interface PropertySearchParams {
   page?: number
   limit?: number
   exclude_swiped?: boolean
+  semantic_search?: boolean
 }
 
 export interface UnifiedPropertyResponse {
@@ -296,7 +314,7 @@ export interface UnifiedPropertyResponse {
   page: number
   limit: number
   total_pages: number
-  filters_applied: Record<string, any>
+  filters_applied: Record<string, unknown>
   search_center?: {
     latitude: number
     longitude: number
@@ -310,7 +328,7 @@ export interface Visit {
   user_id: number
   agent_id?: number
   scheduled_date: string
-  status: 'scheduled' | 'rescheduled' | 'cancelled' | 'completed' | 'no_show'
+  status: 'scheduled' | 'confirmed' | 'rescheduled' | 'cancelled' | 'completed' | 'no_show'
   special_requirements?: string
   notes?: string
   feedback?: string
@@ -350,6 +368,7 @@ export interface VisitsQuery {
   agent_id?: number
   property_id?: number
   user_id?: number
+  q?: string
 }
 
 // Booking Types
@@ -364,7 +383,7 @@ export interface Booking {
   primary_guest_phone: string
   primary_guest_email: string
   special_requests?: string
-  guest_details?: Record<string, any>
+  guest_details?: Record<string, unknown>
   base_price: number
   total_nights: number
   subtotal: number
@@ -372,7 +391,7 @@ export interface Booking {
   service_fee: number
   total_amount: number
   currency: string
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'refunded'
+  status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'completed' | 'refunded'
   payment_status: 'unpaid' | 'partial' | 'paid' | 'refunded'
   payment_method?: string
   transaction_id?: string
@@ -395,7 +414,7 @@ export interface BookingCreate {
   primary_guest_phone: string
   primary_guest_email: string
   special_requests?: string
-  guest_details?: Record<string, any>
+  guest_details?: Record<string, unknown>
 }
 
 export interface BookingUpdate {
@@ -404,7 +423,7 @@ export interface BookingUpdate {
   primary_guest_phone?: string
   primary_guest_email?: string
   special_requests?: string
-  guest_details?: Record<string, any>
+  guest_details?: Record<string, unknown>
 }
 
 export interface BookingAvailability {
@@ -446,6 +465,8 @@ export interface BookingPayment {
 export interface BookingReview {
   rating: number
   review_text?: string
+  guest_rating?: number
+  guest_review?: string
   aspects?: {
     cleanliness?: number
     location?: number
@@ -471,6 +492,8 @@ export interface BookingsQuery {
   agent_id?: number
   property_id?: number
   user_id?: number
+  q?: string
+  payment_status?: string
 }
 
 // Core System Types
@@ -550,7 +573,7 @@ export interface Page {
   title: string
   content: string
   format: 'html' | 'markdown'
-  custom_config?: Record<string, any>
+  custom_config?: Record<string, unknown>
   is_active: boolean
   is_draft: boolean
   created_at: string
@@ -562,7 +585,7 @@ export interface PageCreate {
   title: string
   content: string
   format?: 'html' | 'markdown'
-  custom_config?: Record<string, any>
+  custom_config?: Record<string, unknown>
   is_active?: boolean
   is_draft?: boolean
 }
@@ -571,7 +594,7 @@ export interface PageUpdate {
   title?: string
   content?: string
   format?: 'html' | 'markdown'
-  custom_config?: Record<string, any>
+  custom_config?: Record<string, unknown>
   is_active?: boolean
   is_draft?: boolean
 }
@@ -594,6 +617,7 @@ export interface PagesQuery {
 // App Updates Types
 export interface AppUpdate {
   id: number
+  app?: string
   platform: 'ios' | 'android' | 'web'
   version: string
   build_number: number
@@ -607,6 +631,7 @@ export interface AppUpdate {
 }
 
 export interface AppUpdateCreate {
+  app?: string
   platform: 'ios' | 'android' | 'web'
   version: string
   build_number: number
@@ -618,6 +643,7 @@ export interface AppUpdateCreate {
 }
 
 export interface AppUpdateUpdate {
+  app?: string
   version?: string
   build_number?: number
   release_notes?: string
@@ -628,6 +654,7 @@ export interface AppUpdateUpdate {
 }
 
 export interface AppUpdateCheckRequest {
+  app?: string
   platform: 'ios' | 'android' | 'web'
   current_version: string
   build_number: number
@@ -643,6 +670,7 @@ export interface AppUpdateCheckResponse {
 }
 
 export interface AppUpdatesQuery {
+  app?: string
   platform?: string
   is_active?: boolean
   limit?: number
@@ -654,7 +682,7 @@ export interface HealthResponse {
   status: 'healthy' | 'unhealthy'
   timestamp: string
   service: string
-  details?: Record<string, any>
+  details?: Record<string, unknown>
 }
 
 // App Configuration (non-sensitive)
@@ -662,8 +690,8 @@ export interface AppConfig {
   app_name?: string
   environment?: string
   features?: Record<string, boolean>
-  ui?: Record<string, any>
-  [key: string]: any
+  ui?: Record<string, unknown>
+  [key: string]: string | boolean | Record<string, unknown> | undefined
 }
 
 // Upload Types
@@ -682,7 +710,7 @@ export interface Notification {
   type: 'visit_reminder' | 'booking_update' | 'payment_received' | 'property_available' | 'system_message'
   title: string
   message: string
-  data?: Record<string, any>
+  data?: Record<string, unknown>
   is_read: boolean
   created_at: string
   expires_at?: string

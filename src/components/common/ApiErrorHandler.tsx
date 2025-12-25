@@ -8,7 +8,7 @@ interface ApiErrorHandlerProps {
     data?: {
       detail?: string
       message?: string
-      [key: string]: any
+      [key: string]: unknown
     }
     message?: string
   }

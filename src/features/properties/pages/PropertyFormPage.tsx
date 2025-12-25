@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -15,11 +15,10 @@ import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/hooks/use-toast'
 import { useGetPropertyQuery, useCreatePropertyMutation, useUpdatePropertyMutation } from '@/features/properties/api/propertiesApi'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
-import { useUploadFileMutation } from '@/features/core/api/uploadApi'
 import ImageUpload from '@/components/common/media/ImageUpload'
 import LocationPicker from '@/components/common/map/LocationPicker'
 import { useAuth } from '@/hooks/useAuth'
-import { Loader2, Plus, X, MapPin, Camera } from 'lucide-react'
+import { Loader2, X, MapPin } from 'lucide-react'
 
 const propertySchema = z.object({
   title: z.string().min(1, 'Title is required'),
@@ -53,6 +52,13 @@ interface Location {
   longitude: number
 }
 
+const propertyTypes = ['house', 'apartment', 'builder_floor', 'room'] as const
+const purposes = ['buy', 'rent', 'short_stay'] as const
+const isPropertyType = (value: string): value is (typeof propertyTypes)[number] =>
+  propertyTypes.includes(value as (typeof propertyTypes)[number])
+const isPurpose = (value: string): value is (typeof purposes)[number] =>
+  purposes.includes(value as (typeof purposes)[number])
+
 const PropertyFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -63,7 +69,7 @@ const PropertyFormPage: React.FC = () => {
   const [location, setLocation] = useState<Location | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
-  const [ownerId, setOwnerId] = useState<number | undefined>()
+  const [ownerId] = useState<number | undefined>()
 
   // Fetch property data if editing
   const { data: property, isLoading: propertyLoading } = useGetPropertyQuery(Number(id), {
@@ -76,7 +82,6 @@ const PropertyFormPage: React.FC = () => {
   // Mutations
   const [createProperty, { isLoading: creating }] = useCreatePropertyMutation()
   const [updateProperty, { isLoading: updating }] = useUpdatePropertyMutation()
-  const [uploadFile, { isLoading: uploading }] = useUploadFileMutation()
 
   const form = useForm<PropertyFormData>({
     resolver: zodResolver(propertySchema),
@@ -140,25 +145,6 @@ const PropertyFormPage: React.FC = () => {
       setSelectedFeatures(property.features || [])
     }
   }, [property, isEditing, form])
-
-  const handleImageUpload = async (files: File[]) => {
-    try {
-      const uploadPromises = files.map(file => uploadFile(file).unwrap())
-      const results = await Promise.all(uploadPromises)
-      const newImages = results.map(result => result.public_url)
-      setUploadedImages(prev => [...prev, ...newImages])
-      toast({
-        title: 'Images Uploaded',
-        description: `${files.length} image(s) uploaded successfully.`,
-      })
-    } catch (error) {
-      toast({
-        title: 'Upload Failed',
-        description: 'Failed to upload images. Please try again.',
-        variant: 'destructive',
-      })
-    }
-  }
 
   const removeImage = (index: number) => {
     setUploadedImages(prev => prev.filter((_, i) => i !== index))
@@ -257,7 +243,7 @@ const PropertyFormPage: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Basic Info */}
           <div className="lg:col-span-2 space-y-6">
@@ -286,7 +272,9 @@ const PropertyFormPage: React.FC = () => {
                     <Label htmlFor="property_type">Property Type</Label>
                     <Select
                       value={form.watch('property_type')}
-                      onValueChange={(value) => form.setValue('property_type', value as any)}
+                      onValueChange={(value) => {
+                        if (isPropertyType(value)) form.setValue('property_type', value)
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -303,7 +291,9 @@ const PropertyFormPage: React.FC = () => {
                     <Label htmlFor="purpose">Purpose</Label>
                     <Select
                       value={form.watch('purpose')}
-                      onValueChange={(value) => form.setValue('purpose', value as any)}
+                      onValueChange={(value) => {
+                        if (isPurpose(value)) form.setValue('purpose', value)
+                      }}
                     >
                       <SelectTrigger>
                         <SelectValue />
@@ -631,9 +621,9 @@ const PropertyFormPage: React.FC = () => {
                 <Button
                   type="submit"
                   className="w-full"
-                  disabled={creating || updating || uploading}
+                  disabled={creating || updating}
                 >
-                  {(creating || updating || uploading) && (
+                  {(creating || updating) && (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   )}
                   {isEditing ? 'Update Property' : 'Create Property'}

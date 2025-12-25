@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -15,12 +15,13 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { blogCategorySchema, type BlogCategoryForm } from '@/lib/blogValidation'
 import { Plus, Edit2, Trash2, RotateCcw, Folder, FileText } from 'lucide-react'
+import { getErrorMessage } from '@/lib/errors'
+import type { BlogCategory } from '@/types/blog'
 
 const CategoriesPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingCategory, setEditingCategory] = useState<any>(null)
+  const [editingCategory, setEditingCategory] = useState<BlogCategory | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const navigate = useNavigate()
 
   const { data: categoriesData, isFetching, error, refetch } = useGetBlogCategoriesQuery({ limit: 100 })
   const [createCategory, { isLoading: isCreating }] = useCreateBlogCategoryMutation()
@@ -48,10 +49,10 @@ const CategoriesPage = () => {
       })
       createForm.reset()
       setIsCreateDialogOpen(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to create category',
+        description: getErrorMessage(error, 'Failed to create category'),
         variant: 'destructive',
       })
     }
@@ -69,16 +70,16 @@ const CategoriesPage = () => {
       editForm.reset()
       setEditingCategory(null)
       setIsEditDialogOpen(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to update category',
+        description: getErrorMessage(error, 'Failed to update category'),
         variant: 'destructive',
       })
     }
   }
 
-  const handleDeleteCategory = async (category: any) => {
+  const handleDeleteCategory = async (category: BlogCategory) => {
     if (!confirm(`Are you sure you want to delete "${category.name}"? This will remove the category from all posts.`)) {
       return
     }
@@ -89,16 +90,16 @@ const CategoriesPage = () => {
         title: 'Success',
         description: 'Category deleted successfully',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to delete category',
+        description: getErrorMessage(error, 'Failed to delete category'),
         variant: 'destructive',
       })
     }
   }
 
-  const openEditDialog = (category: any) => {
+  const openEditDialog = (category: BlogCategory) => {
     setEditingCategory(category)
     editForm.reset({
       name: category.name,
@@ -141,7 +142,7 @@ const CategoriesPage = () => {
                 <DialogTitle>Create New Category</DialogTitle>
               </DialogHeader>
               <Form {...createForm}>
-                <form onSubmit={createForm.handleSubmit(handleCreateCategory)} className="space-y-4">
+                <form onSubmit={(e) => void createForm.handleSubmit(handleCreateCategory)(e)} className="space-y-4">
                   <FormField
                     control={createForm.control}
                     name="name"
@@ -194,7 +195,7 @@ const CategoriesPage = () => {
           <div className="text-center py-8">
             <div className="text-lg font-medium mb-2">Failed to load categories</div>
             <div className="text-muted-foreground mb-4">Please check your connection and try again</div>
-            <Button onClick={() => refetch()}>
+            <Button onClick={() => { void refetch() }}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Retry
             </Button>
@@ -224,7 +225,7 @@ const CategoriesPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categoriesData.items.map((category: any) => (
+                {categoriesData.items.map((category: BlogCategory) => (
                   <TableRow key={category.id}>
                     <TableCell className="font-medium">{category.name}</TableCell>
                     <TableCell>
@@ -248,7 +249,7 @@ const CategoriesPage = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteCategory(category)}
+                          onClick={() => { void handleDeleteCategory(category) }}
                           disabled={isDeleting}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -270,7 +271,7 @@ const CategoriesPage = () => {
             <DialogTitle>Edit Category</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleEditCategory)} className="space-y-4">
+            <form onSubmit={(e) => void editForm.handleSubmit(handleEditCategory)(e)} className="space-y-4">
               <FormField
                 control={editForm.control}
                 name="name"

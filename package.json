@@ -1,5 +1,6 @@
 {
   "name": "360ghar-admin-portal",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
   "scripts": {

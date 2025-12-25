@@ -14,10 +14,12 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { blogTagSchema, type BlogTagForm } from '@/lib/blogValidation'
 import { Plus, Edit2, Trash2, RotateCcw, Tag, FileText } from 'lucide-react'
+import { getErrorMessage } from '@/lib/errors'
+import type { BlogTag } from '@/types/blog'
 
 const TagsPage = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
-  const [editingTag, setEditingTag] = useState<any>(null)
+  const [editingTag, setEditingTag] = useState<BlogTag | null>(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const { data: tagsData, isFetching, error, refetch } = useGetBlogTagsQuery({ limit: 100 })
@@ -45,10 +47,10 @@ const TagsPage = () => {
       })
       createForm.reset()
       setIsCreateDialogOpen(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to create tag',
+        description: getErrorMessage(error, 'Failed to create tag'),
         variant: 'destructive',
       })
     }
@@ -66,16 +68,16 @@ const TagsPage = () => {
       editForm.reset()
       setEditingTag(null)
       setIsEditDialogOpen(false)
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to update tag',
+        description: getErrorMessage(error, 'Failed to update tag'),
         variant: 'destructive',
       })
     }
   }
 
-  const handleDeleteTag = async (tag: any) => {
+  const handleDeleteTag = async (tag: BlogTag) => {
     if (!confirm(`Are you sure you want to delete "${tag.name}"? This will remove the tag from all posts.`)) {
       return
     }
@@ -86,16 +88,16 @@ const TagsPage = () => {
         title: 'Success',
         description: 'Tag deleted successfully',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to delete tag',
+        description: getErrorMessage(error, 'Failed to delete tag'),
         variant: 'destructive',
       })
     }
   }
 
-  const openEditDialog = (tag: any) => {
+  const openEditDialog = (tag: BlogTag) => {
     setEditingTag(tag)
     editForm.reset({
       name: tag.name,
@@ -137,7 +139,7 @@ const TagsPage = () => {
                 <DialogTitle>Create New Tag</DialogTitle>
               </DialogHeader>
               <Form {...createForm}>
-                <form onSubmit={createForm.handleSubmit(handleCreateTag)} className="space-y-4">
+                <form onSubmit={(e) => void createForm.handleSubmit(handleCreateTag)(e)} className="space-y-4">
                   <FormField
                     control={createForm.control}
                     name="name"
@@ -177,7 +179,7 @@ const TagsPage = () => {
           <div className="text-center py-8">
             <div className="text-lg font-medium mb-2">Failed to load tags</div>
             <div className="text-muted-foreground mb-4">Please check your connection and try again</div>
-            <Button onClick={() => refetch()}>
+            <Button onClick={() => { void refetch() }}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Retry
             </Button>
@@ -206,7 +208,7 @@ const TagsPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {tagsData.items.map((tag: any) => (
+                {tagsData.items.map((tag: BlogTag) => (
                   <TableRow key={tag.id}>
                     <TableCell className="font-medium">{tag.name}</TableCell>
                     <TableCell>
@@ -227,7 +229,7 @@ const TagsPage = () => {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleDeleteTag(tag)}
+                          onClick={() => { void handleDeleteTag(tag) }}
                           disabled={isDeleting}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -249,7 +251,7 @@ const TagsPage = () => {
             <DialogTitle>Edit Tag</DialogTitle>
           </DialogHeader>
           <Form {...editForm}>
-            <form onSubmit={editForm.handleSubmit(handleEditTag)} className="space-y-4">
+            <form onSubmit={(e) => void editForm.handleSubmit(handleEditTag)(e)} className="space-y-4">
               <FormField
                 control={editForm.control}
                 name="name"

@@ -1,14 +1,17 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import { retry } from '@reduxjs/toolkit/query'
-import type { RootState } from './index'
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query'
 import { clearCredentials } from '@/features/auth/slices/authSlice'
 import type { User } from '@/types'
 
+interface AuthState {
+  token: string | null
+}
+
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
+  baseUrl: (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api/v1',
   prepareHeaders: (headers, { getState }) => {
-    const token = (getState() as RootState).auth.token
+    const token = (getState() as { auth: AuthState }).auth.token
     if (token) headers.set('Authorization', `Bearer ${token}`)
     return headers
   },
@@ -44,6 +47,7 @@ export const api = createApi({
     'BlogPost',
     'BlogCategory',
     'BlogTag',
+    'Swipe',
   ],
   endpoints: (builder) => ({
     login: builder.mutation<

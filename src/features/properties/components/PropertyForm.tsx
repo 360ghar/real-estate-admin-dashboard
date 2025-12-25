@@ -6,14 +6,14 @@ import { Input } from '@/components/ui/input'
 // using native select controls for simplicity
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
-import { useCreatePropertyMutation, useGetPropertyQuery, useUpdatePropertyMutation, PropertyCreate } from '@/features/properties/api/propertiesApi'
+import { useCreatePropertyMutation, useGetPropertyQuery, useUpdatePropertyMutation, PropertyCreate, type PropertyResponse } from '@/features/properties/api/propertiesApi'
 import { useToast } from '@/hooks/use-toast'
 import ImageUpload from '@/components/common/media/ImageUpload'
 import LocationPicker from '@/components/common/map/LocationPicker'
 import { useGetUsersQuery } from '@/features/users/api/usersApi'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
+import { getErrorMessage } from '@/lib/errors'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Combobox from '@/components/ui/combobox'
 import AddressAutocomplete from './parts/AddressAutocomplete'
@@ -60,8 +60,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
   const { toast } = useToast()
   const [images, setImages] = useState<string[]>([])
   const [primaryImage, setPrimaryImage] = useState<string | null>(null)
-  const me = useAppSelector(selectCurrentUser)
-  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
+  const { user: me, role } = useUserRole()
   // Owner selection mode: search or direct ID
   const [ownerMode, setOwnerMode] = useState<'search' | 'id'>('search')
   const [ownerSearch, setOwnerSearch] = useState('')
@@ -119,6 +118,15 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
 
   useEffect(() => {
     if (data) {
+      const extras = data as PropertyResponse & {
+        is_available?: boolean
+        available_from?: string
+        amenities?: Array<number | string>
+        thumbnail_url?: string
+      }
+      const amenityIds = Array.isArray(extras.amenities)
+        ? extras.amenities.map((amenity) => Number(amenity)).filter((value) => !Number.isNaN(value))
+        : []
       reset({
         title: data.title,
         description: data.description,
@@ -139,10 +147,10 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         max_occupancy: data.max_occupancy,
         minimum_stay_days: data.minimum_stay_days,
         status: data.status,
-        owner_id: (data as any).owner_id,
-        is_available: (data as any).is_available,
-        available_from: (data as any).available_from,
-        amenities: (data as any).amenities || [],
+        owner_id: data.owner_id,
+        is_available: extras.is_available,
+        available_from: extras.available_from,
+        amenities: amenityIds,
         features: data.features || [],
         owner_name: data.owner_name,
         owner_contact: data.owner_contact,
@@ -150,7 +158,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         longitude: data.location.longitude,
       })
       setImages(data.images || [])
-      setPrimaryImage((data as any)?.thumbnail_url || null)
+      setPrimaryImage(extras.thumbnail_url ?? data.main_image_url ?? null)
     }
   }, [data, reset])
 
@@ -200,9 +208,8 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         toast({ title: 'Created', description: 'Property created successfully' })
         onSuccess?.(res.id)
       }
-    } catch (e: unknown) {
-      const error = e as { data?: { detail?: string } }
-      toast({ title: 'Save failed', description: error?.data?.detail || 'Please check inputs', variant: 'destructive' })
+    } catch (err: unknown) {
+      toast({ title: 'Save failed', description: getErrorMessage(err, 'Please check inputs'), variant: 'destructive' })
     }
   }
 
@@ -215,7 +222,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <FormField
                   control={form.control}
@@ -379,8 +386,8 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
                   }}
                 />
                 {(() => {
-                  const lat = watch('latitude') as number | undefined
-                  const lng = watch('longitude') as number | undefined
+                  const lat = watch('latitude')
+                  const lng = watch('longitude')
                   if (!lat || !lng) return null
                   return <div className="mt-2"><MapPreview lat={Number(lat)} lng={Number(lng)} /></div>
                 })()}
@@ -389,9 +396,9 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
                 <FormLabel>Location</FormLabel>
                 <LocationPicker
                   value={(() => {
-                    const lat = (data as any)?.latitude
-                    const lng = (data as any)?.longitude
-                    return lat && lng ? { lat, lng } : null
+                    const lat = data?.location?.latitude
+                    const lng = data?.location?.longitude
+                    return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null
                   })()}
                   onChange={(p) => {
                     setValue('latitude', p.lat)

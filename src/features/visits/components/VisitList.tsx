@@ -1,28 +1,24 @@
-import { useMemo, useState, useEffect } from 'react'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useEffect, useMemo, useState } from 'react'
+import { useUserRole } from '@/hooks/useUserRole'
 import { useListVisitsQuery } from '@/features/visits/api/visitsApi'
+import type { VisitsQuery } from '@/features/visits/api/visitsApi'
+import type { Visit } from '@/types/api'
 import { Input } from '@/components/ui/input'
-// using native select for simplicity here
 import { Card } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Link } from 'react-router-dom'
 import Pagination from '@/components/ui/pagination'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useDebounce } from '@/hooks/useDebounce'
-import { Skeleton } from '@/components/ui/skeleton'
 import { 
   ColumnDef 
 } from '@tanstack/react-table'
 import { useFilterPersistence } from '@/hooks/useFilterPersistence'
 import { DataTable } from '@/components/ui/data-table'
-import { LoadingState } from '@/components/ui/loading-state'
 import { Badge } from '@/components/ui/badge'
 
 const VisitList = () => {
-  const me = useAppSelector(selectCurrentUser)
-  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
+  const { user: me, role } = useUserRole()
 
   // Filter persistence
   const { filters, setFilters } = useFilterPersistence({
@@ -38,11 +34,11 @@ const VisitList = () => {
 
   useEffect(() => {
     setFilters({ status, q })
-  }, [status, q])
+  }, [status, q, setFilters])
 
   const dq = useDebounce(q)
   const params = useMemo(() => {
-    const base: any = {}
+    const base: VisitsQuery & { q?: string } = {}
     if (status) base.status = status
     if (dq) base.q = dq
     if (role === 'agent' && me?.agent_id) base.agent_id = me.agent_id
@@ -53,7 +49,7 @@ const VisitList = () => {
   const [pageSize, setPageSize] = useState(10)
   const { data, isFetching, refetch } = useListVisitsQuery({ ...params, page, limit: pageSize })
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ColumnDef<Visit>[] = [
     {
       accessorKey: 'property_id',
       header: 'Property',
@@ -67,12 +63,12 @@ const VisitList = () => {
     {
       accessorKey: 'scheduled_date',
       header: 'Date',
-      cell: ({ row }) => new Date(row.original.scheduled_date).toLocaleString(),
+      cell: ({ row }) => row.original.scheduled_date ? new Date(row.original.scheduled_date).toLocaleString() : '-',
     },
     {
       accessorKey: 'status',
       header: 'Status',
-      cell: ({ row }) => <Badge>{row.original.status}</Badge>,
+      cell: ({ row }) => <Badge>{row.original.status ?? 'unknown'}</Badge>,
     },
     {
       id: 'actions',
@@ -112,7 +108,7 @@ const VisitList = () => {
         <EmptyState
           title="No visits found"
           description={q || status ? 'Try adjusting search or filters.' : 'Visits will appear here once scheduled.'}
-          action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
+          action={{ label: 'Refresh', onClick: () => { void refetch() }, variant: 'outline' }}
         />
       ) : (
         <>

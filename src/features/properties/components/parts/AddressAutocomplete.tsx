@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -20,7 +20,16 @@ const fetchPlaces = async (q: string, signal?: AbortSignal): Promise<NominatimPl
   url.searchParams.set('q', q)
   const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' }, signal })
   if (!res.ok) return []
-  return res.json()
+  const data: unknown = await res.json()
+  if (!Array.isArray(data)) return []
+  return data.filter((item): item is NominatimPlace => {
+    if (!item || typeof item !== 'object') return false
+    const record = item as Record<string, unknown>
+    return typeof record.place_id === 'number'
+      && typeof record.lat === 'string'
+      && typeof record.lon === 'string'
+      && typeof record.display_name === 'string'
+  })
 }
 
 const AddressAutocomplete = ({ value = '', onSelect }: { value?: string; onSelect: (place: NominatimPlace) => void }) => {
@@ -45,7 +54,7 @@ const AddressAutocomplete = ({ value = '', onSelect }: { value?: string; onSelec
         setLoading(false)
       }
     }
-    const t = setTimeout(run, 300)
+    const t = setTimeout(() => { void run() }, 300)
     return () => { clearTimeout(t); controller.abort() }
   }, [q])
 

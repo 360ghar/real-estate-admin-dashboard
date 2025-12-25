@@ -74,7 +74,7 @@ export default function SignupPage() {
 
     try {
       const redirectTo = `${window.location.origin}/reset-password`
-      const { data, error } = await supabase.auth.signUp({
+      const result = await supabase.auth.signUp({
         email: values.email,
         password: values.password,
         options: {
@@ -87,10 +87,10 @@ export default function SignupPage() {
         },
       })
 
-      if (error) throw error
+      if (result.error) throw result.error
 
       // If email confirmation is enabled, there will be no session.
-      if (!data.session) {
+      if (!result.data.session) {
         setSuccessMessage(
           'Account created. Please check your email to verify your account before signing in.'
         )
@@ -98,8 +98,7 @@ export default function SignupPage() {
         return
       }
 
-      // If we have an active session, try to fetch the backend profile and store credentials
-      const accessToken = data.session.access_token
+      const accessToken = result.data.session.access_token
       const profile = await fetchUserProfileWithToken(accessToken)
 
       if (profile) {
@@ -167,8 +166,8 @@ export default function SignupPage() {
               </Alert>
             )}
 
-            <Form {...(form as any)}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <Form {...form}>
+              <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-5">
                 <FormField
                   control={form.control}
                   name="full_name"

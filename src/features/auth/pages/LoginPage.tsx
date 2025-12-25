@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, Shield, Eye, EyeOff, Building2 } from 'lucide-react'
 import { useState } from 'react'
+import { getErrorMessage } from '@/lib/errors'
 
 const schema = z.object({
   phone: z.string().min(8, 'Phone is required'),
@@ -35,8 +36,8 @@ const LoginPage = () => {
       const res = await login(values).unwrap()
       dispatch(setCredentials({ token: res.access_token, user: res.user }))
       navigate('/dashboard', { replace: true })
-    } catch (err: any) {
-      const error = err?.data?.detail || 'Login failed. Please check your credentials.'
+    } catch (err: unknown) {
+      const error = getErrorMessage(err, 'Login failed. Please check your credentials.')
       dispatch(setError(error))
       setErrorMessage(error)
     } finally {
@@ -91,7 +92,7 @@ const LoginPage = () => {
             )}
 
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-5">
                 <FormField
                   control={form.control}
                   name="phone"

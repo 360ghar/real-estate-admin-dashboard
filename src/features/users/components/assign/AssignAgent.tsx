@@ -5,6 +5,7 @@ import Combobox from '@/components/ui/combobox'
 import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
 import { usersApi } from '@/features/users/api/usersApi'
 import { useAppDispatch } from '@/hooks/redux'
+import { getErrorMessage } from '@/lib/errors'
 
 const AssignAgent = ({ userId }: { userId: number }) => {
   const [agentId, setAgentId] = useState<number | ''>('')
@@ -20,7 +21,7 @@ const AssignAgent = ({ userId }: { userId: number }) => {
       ).unwrap()
       toast({ title: 'Assigned', description: 'Agent assigned successfully' })
     } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Please try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Please try again'), variant: 'destructive' })
     }
   }
 
@@ -28,13 +29,13 @@ const AssignAgent = ({ userId }: { userId: number }) => {
     <div className="flex gap-2">
       <div className="w-64">
         <Combobox
-          items={(agents.data?.results || []).map((a) => ({ value: String(a.id), label: a.name }))}
-          value={String(agentId)}
-          onChange={(v) => setAgentId(v ? Number(v) : '')}
+          items={(agents.data?.results || []).map((a) => ({ value: a.id, label: a.name }))}
+          value={agentId}
+          onChange={(v) => setAgentId(v !== '' ? Number(v) : '')}
           placeholder="Search agent…"
         />
       </div>
-      <Button onClick={assign} disabled={!agentId}>Assign</Button>
+      <Button onClick={() => { void assign() }} disabled={!agentId}>Assign</Button>
     </div>
   )
 }

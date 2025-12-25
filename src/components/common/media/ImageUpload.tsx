@@ -4,7 +4,6 @@ import { GripVertical } from 'lucide-react'
 import { useUploadFileMutation } from '@/features/core/api/uploadApi'
 
 type Props = {
-  bucket?: string
   folder?: string
   value?: string[]
   onChange?: (urls: string[]) => void
@@ -13,7 +12,9 @@ type Props = {
   onPrimaryChange?: (url: string) => void
 }
 
-const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onChange, multiple = true, primary = null, onPrimaryChange }: Props) => {
+type AllowedImageType = 'image/jpeg' | 'image/jpg' | 'image/png' | 'image/webp' | 'image/gif'
+
+const ImageUpload = ({ folder = 'properties', value = [], onChange, multiple = true, primary = null, onPrimaryChange }: Props) => {
   const inputRef = useRef<HTMLInputElement | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadFile] = useUploadFileMutation()
@@ -24,7 +25,7 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
     'image/png',
     'image/webp',
     'image/gif',
-  ] as const
+  ] as const satisfies readonly AllowedImageType[]
 
   const pick = () => inputRef.current?.click()
   const remove = (url: string) => onChange?.(value.filter((u) => u !== url))
@@ -35,7 +36,8 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
     try {
       const urls: string[] = []
       for (const file of Array.from(files)) {
-        if (!allowedImageTypes.includes(file.type as any)) {
+        const fileType = file.type as AllowedImageType
+        if (!allowedImageTypes.includes(fileType)) {
           // eslint-disable-next-line no-alert
           alert(`Unsupported file type: ${file.type}. Allowed: ${allowedImageTypes.join(', ')}`)
           continue
@@ -44,11 +46,11 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
         // folder hint (optional, backend may ignore)
         fd.append('file', file)
         if (folder) fd.append('folder', folder)
-        const res = await uploadFile(file).unwrap()
+        const res = await uploadFile(fd).unwrap()
         urls.push(res.public_url)
       }
       onChange?.([...(value || []), ...urls])
-    } catch (e) {
+    } catch (_e) {
       // eslint-disable-next-line no-alert
       alert('Upload failed. Please try again or check your connection.')
     } finally {
@@ -125,7 +127,7 @@ const ImageUpload = ({ bucket = 'public', folder = 'properties', value = [], onC
           accept={allowedImageTypes.join(',')}
           multiple={multiple}
           className="hidden"
-          onChange={(e) => onFiles(e.target.files)}
+        onChange={(e) => { void onFiles(e.target.files) }}
         />
       </div>
     </div>

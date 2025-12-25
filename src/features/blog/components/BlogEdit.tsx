@@ -14,6 +14,8 @@ import { useToast } from '@/hooks/use-toast'
 import { blogPostSchema, type BlogPostForm } from '@/lib/blogValidation'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
+import { getErrorMessage } from '@/lib/errors'
+import type { BlogCategory, BlogTag } from '@/types/blog'
 
 interface BlogEditProps {
   identifier: string
@@ -53,8 +55,8 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
       setValue('content', post.content)
       setValue('excerpt', post.excerpt || '')
       setValue('cover_image_url', post.cover_image_url || '')
-      setValue('categories', post.categories?.map((cat: any) => cat.slug) || [])
-      setValue('tags', post.tags?.map((tag: any) => tag.slug) || [])
+      setValue('categories', post.categories?.map((cat) => cat.slug) || [])
+      setValue('tags', post.tags?.map((tag) => tag.slug) || [])
       setValue('active', !!post.active)
       if (post.cover_image_url) {
         setImages([post.cover_image_url])
@@ -84,17 +86,17 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
       toast({ title: 'Updated', description: 'Blog post updated successfully' })
       onSuccess?.(res.slug)
     } catch (e: unknown) {
-      toast({ title: 'Update failed', description: (e as any)?.data?.detail || 'Please check inputs', variant: 'destructive' })
+      toast({ title: 'Update failed', description: getErrorMessage(e, 'Please check inputs'), variant: 'destructive' })
     }
   }
 
   // Prepare category and tag options for multi-select
-  const categoryOptions = categoriesData?.items.map((cat: any) => ({
+  const categoryOptions = categoriesData?.items.map((cat: BlogCategory) => ({
     value: cat.slug,
     label: cat.name,
   })) || []
 
-  const tagOptions = tagsData?.items.map((tag: any) => ({
+  const tagOptions = tagsData?.items.map((tag: BlogTag) => ({
     value: tag.slug,
     label: tag.name,
   })) || []
@@ -152,7 +154,7 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <FormField
                   control={form.control}

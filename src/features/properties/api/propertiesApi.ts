@@ -47,7 +47,7 @@ export interface PaginatedPropertyResponse {
   page: number
   limit: number
   total_pages: number
-  filters_applied?: any
+  filters_applied?: Record<string, unknown>
   search_center?: {
     latitude: number
     longitude: number
@@ -96,6 +96,8 @@ export interface PropertySearchParams {
   limit?: number
   // Auth-aware
   exclude_swiped?: boolean
+  // Semantic search
+  semantic_search?: boolean
 }
 
 export interface PropertyCreate {
@@ -128,6 +130,14 @@ export interface PropertyCreate {
 
 export interface PropertyUpdate extends Partial<PropertyCreate> {}
 
+const toSearchParams = (params: PropertySearchParams): Record<string, unknown> => {
+  const next: Record<string, unknown> = { ...params }
+  if (Array.isArray(params.property_type)) next.property_type = params.property_type.join(',')
+  if (Array.isArray(params.amenities)) next.amenities = params.amenities.join(',')
+  if (Array.isArray(params.features)) next.features = params.features.join(',')
+  return next
+}
+
 export const propertiesApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // Upload a single file via backend (Supabase handled server-side)
@@ -145,7 +155,7 @@ export const propertiesApi = api.injectEndpoints({
     searchProperties: builder.query<PaginatedPropertyResponse, PropertySearchParams>({
       query: (params) => ({
         url: '/properties/',
-        params: params as Record<string, any>
+        params: toSearchParams(params)
       }),
       providesTags: (res) =>
         res?.properties
@@ -160,7 +170,7 @@ export const propertiesApi = api.injectEndpoints({
     listProperties: builder.query<{ results: PropertyResponse[]; count?: number; total_pages?: number }, PropertySearchParams>({
       query: (params) => ({
         url: '/properties/',
-        params: { ...params, page: params.page || 1, limit: params.limit || 20 } as Record<string, any>
+        params: toSearchParams({ ...params, page: params.page || 1, limit: params.limit || 20 })
       }),
       transformResponse: (response: PaginatedPropertyResponse) => ({
         results: response.properties,
@@ -216,6 +226,20 @@ export const propertiesApi = api.injectEndpoints({
       }),
       providesTags: [{ type: 'Property', id: 'RECOMMENDATIONS' }],
     }),
+
+    semanticSearchProperties: builder.query<PaginatedPropertyResponse, PropertySearchParams>({
+      query: (params) => ({
+        url: '/properties/semantic-search',
+        params: toSearchParams(params)
+      }),
+      providesTags: (res) =>
+        res?.properties
+          ? [
+              ...res.properties.map((p) => ({ type: 'Property' as const, id: p.id })),
+              { type: 'Property' as const, id: 'LIST' },
+            ]
+          : [{ type: 'Property' as const, id: 'LIST' }],
+    }),
   }),
 })
 
@@ -228,4 +252,5 @@ export const {
   useUpdatePropertyMutation,
   useDeletePropertyMutation,
   useGetRecommendationsQuery,
+  useSemanticSearchPropertiesQuery,
 } = propertiesApi

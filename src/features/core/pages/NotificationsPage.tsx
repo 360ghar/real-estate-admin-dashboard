@@ -8,9 +8,14 @@ import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
 import { useSendMarketingBroadcastMutation, useSendMarketingToSegmentMutation } from '@/features/core/api/notificationsApi'
 import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
+import { getErrorMessage } from '@/lib/errors'
 
 const NotificationsPage: React.FC = () => {
   const { toast } = useToast()
+
+  const segmentRoles = ['user', 'agent', 'admin', 'all'] as const
+  type SegmentRole = typeof segmentRoles[number]
+  const isSegmentRole = (value: string): value is SegmentRole => segmentRoles.includes(value as SegmentRole)
 
   const [broadcastType, setBroadcastType] = useState<string>('promotion_generic')
   const [broadcastTitle, setBroadcastTitle] = useState<string>('Latest offers from 360 Ghar')
@@ -19,7 +24,7 @@ const NotificationsPage: React.FC = () => {
   const [segmentType, setSegmentType] = useState<string>('promotion_generic')
   const [segmentTitle, setSegmentTitle] = useState<string>('Personalised update from 360 Ghar')
   const [segmentBody, setSegmentBody] = useState<string>('')
-  const [segmentRole, setSegmentRole] = useState<'user' | 'agent' | 'admin' | 'all'>('user')
+  const [segmentRole, setSegmentRole] = useState<SegmentRole>('user')
   const [segmentAgentId, setSegmentAgentId] = useState<number | 'all'>('all')
 
   const [sendBroadcast, sendBroadcastState] = useSendMarketingBroadcastMutation()
@@ -60,7 +65,7 @@ const NotificationsPage: React.FC = () => {
     } catch (e: unknown) {
       toast({
         title: 'Failed to send broadcast',
-        description: (e as any)?.data?.detail || 'Please try again.',
+        description: getErrorMessage(e, 'Please try again.'),
         variant: 'destructive',
       })
     }
@@ -94,7 +99,7 @@ const NotificationsPage: React.FC = () => {
     } catch (e: unknown) {
       toast({
         title: 'Failed to send to segment',
-        description: (e as any)?.data?.detail || 'Please try again.',
+        description: getErrorMessage(e, 'Please try again.'),
         variant: 'destructive',
       })
     }
@@ -152,7 +157,7 @@ const NotificationsPage: React.FC = () => {
           <div className="flex justify-end">
             <Button
               type="button"
-              onClick={handleSendBroadcast}
+              onClick={() => { void handleSendBroadcast() }}
               disabled={sendBroadcastState.isLoading}
             >
               {sendBroadcastState.isLoading ? 'Sending…' : 'Send broadcast'}
@@ -174,7 +179,7 @@ const NotificationsPage: React.FC = () => {
               <Label>User role</Label>
               <Select
                 value={segmentRole}
-                onValueChange={(v) => setSegmentRole(v as any)}
+                onValueChange={(v) => { if (isSegmentRole(v)) setSegmentRole(v) }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="All roles" />
@@ -238,7 +243,7 @@ const NotificationsPage: React.FC = () => {
           <div className="flex justify-end">
             <Button
               type="button"
-              onClick={handleSendSegment}
+              onClick={() => { void handleSendSegment() }}
               disabled={sendSegmentState.isLoading}
             >
               {sendSegmentState.isLoading ? 'Sending…' : 'Send to segment'}

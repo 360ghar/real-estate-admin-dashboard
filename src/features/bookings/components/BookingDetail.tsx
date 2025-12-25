@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/errors'
+import type { BookingReview } from '@/types/api'
 
 const BookingDetail = ({ id }: { id: number }) => {
   const { data } = useGetBookingQuery(id)
@@ -23,7 +25,7 @@ const BookingDetail = ({ id }: { id: number }) => {
       toast({ title: 'Cancelled', description: 'Booking cancelled' })
       setOpen(null)
     } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
   }
   const doPay = async () => {
@@ -32,7 +34,7 @@ const BookingDetail = ({ id }: { id: number }) => {
       toast({ title: 'Payment processed', description: 'Payment recorded' })
       setOpen(null)
     } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
   }
   const doReview = async () => {
@@ -40,11 +42,12 @@ const BookingDetail = ({ id }: { id: number }) => {
       const [ratingStr, ...rest] = text.split(' ')
       const rating = Number(ratingStr) || 5
       const reviewText = rest.join(' ') || 'Great stay.'
-      await review({ bookingId: id, reviewData: { rating, review_text: reviewText } as any }).unwrap()
+      const reviewData: BookingReview = { rating, review_text: reviewText }
+      await review({ bookingId: id, reviewData }).unwrap()
       toast({ title: 'Review added', description: 'Thank you' })
       setOpen(null)
     } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
   }
 
@@ -105,9 +108,21 @@ const BookingDetail = ({ id }: { id: number }) => {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(null)}>Close</Button>
-            {open === 'cancel' && <Button onClick={doCancel} disabled={cancelState.isLoading}>{cancelState.isLoading ? 'Cancelling…' : 'Cancel Booking'}</Button>}
-            {open === 'payment' && <Button onClick={doPay} disabled={payState.isLoading || !payment.txn || !payment.amount}>{payState.isLoading ? 'Processing…' : 'Process'}</Button>}
-            {open === 'review' && <Button onClick={doReview} disabled={reviewState.isLoading}>{reviewState.isLoading ? 'Saving…' : 'Add Review'}</Button>}
+            {open === 'cancel' && (
+              <Button onClick={() => { void doCancel() }} disabled={cancelState.isLoading}>
+                {cancelState.isLoading ? 'Cancelling…' : 'Cancel Booking'}
+              </Button>
+            )}
+            {open === 'payment' && (
+              <Button onClick={() => { void doPay() }} disabled={payState.isLoading || !payment.txn || !payment.amount}>
+                {payState.isLoading ? 'Processing…' : 'Process'}
+              </Button>
+            )}
+            {open === 'review' && (
+              <Button onClick={() => { void doReview() }} disabled={reviewState.isLoading}>
+                {reviewState.isLoading ? 'Saving…' : 'Add Review'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

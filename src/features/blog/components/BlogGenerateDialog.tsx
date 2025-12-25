@@ -12,6 +12,7 @@ import {
 } from '@/features/blog/api/blogsApi'
 import type { BlogGenerationResult } from '@/types/blog'
 import { Sparkles, ListOrdered } from 'lucide-react'
+import { getErrorMessage } from '@/lib/errors'
 
 interface BlogGenerateDialogProps {
   open: boolean
@@ -64,10 +65,10 @@ const BlogGenerateDialog = ({ open, onOpenChange }: BlogGenerateDialogProps) => 
           description: `${res.length} draft blog ${res.length === 1 ? 'post' : 'posts'} have been created.`,
         })
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Generation failed',
-        description: error?.data?.detail || 'Unable to generate blog content. Please try again.',
+        description: getErrorMessage(error, 'Unable to generate blog content. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -103,7 +104,7 @@ const BlogGenerateDialog = ({ open, onOpenChange }: BlogGenerateDialogProps) => 
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-6">
           <div className="flex items-center justify-between gap-4">
             <div className="inline-flex rounded-md bg-muted p-1 text-xs">
               <Button

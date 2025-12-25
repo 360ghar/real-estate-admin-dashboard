@@ -1,22 +1,21 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { Plus, Edit, Download, Smartphone, Monitor, CheckCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/errors'
 import {
   useGetAppUpdatesQuery,
   useCreateAppUpdateMutation,
   useUpdateAppUpdateMutation,
-  
 } from '@/features/core/api/coreApi'
 import type { AppUpdate } from '@/types/api'
 
@@ -111,11 +110,11 @@ const AppUpdatesPage: React.FC = () => {
         is_active: true,
         min_supported_version: ''
       })
-      refetch()
-    } catch (error: any) {
+      void refetch()
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.message || 'Failed to save app update',
+        description: getErrorMessage(error, 'Failed to save app update'),
         variant: 'destructive'
       })
     }
@@ -142,9 +141,9 @@ const AppUpdatesPage: React.FC = () => {
     try {
       await updateUpdate({ id: update.id, data: { is_active: false } }).unwrap()
       toast({ title: 'Success', description: 'Update deactivated successfully' })
-      refetch()
-    } catch (error: any) {
-      toast({ title: 'Error', description: error?.data?.message || 'Failed to deactivate', variant: 'destructive' })
+      void refetch()
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: getErrorMessage(error, 'Failed to deactivate'), variant: 'destructive' })
     } finally {
       setIsDeleting(false)
     }
@@ -199,7 +198,7 @@ const AppUpdatesPage: React.FC = () => {
                 }
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="version">Version *</Label>
@@ -411,7 +410,7 @@ const AppUpdatesPage: React.FC = () => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDeactivate(update)} disabled={isDeleting}>
+                    <Button variant="outline" size="sm" onClick={() => { void handleDeactivate(update) }} disabled={isDeleting}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>

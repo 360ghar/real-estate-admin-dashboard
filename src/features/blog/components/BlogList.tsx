@@ -10,9 +10,10 @@ import { Link } from 'react-router-dom'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useGetBlogPostsQuery, useDeleteBlogPostMutation, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
 import { toast } from '@/hooks/use-toast'
-import type { BlogPost } from '@/types/blog'
+import type { BlogPost, BlogPostFilters } from '@/types/blog'
 import { Search, RotateCcw, Edit2, Trash2, Eye, CheckCircle, EyeOff } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
+import { getErrorMessage } from '@/lib/errors'
 
 const BlogList = () => {
   const [q, setQ] = useState('')
@@ -20,10 +21,10 @@ const BlogList = () => {
   const [categoriesText, setCategoriesText] = useState('')
   const [tagsText, setTagsText] = useState('')
   const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(20)
+  const pageSize = 20
 
   const params = useMemo(() => {
-    const p: any = { page, limit: pageSize }
+    const p: BlogPostFilters = { page, limit: pageSize }
     if (dq) p.q = dq
     const cats = categoriesText.split(',').map((s) => s.trim()).filter(Boolean)
     const tags = tagsText.split(',').map((s) => s.trim()).filter(Boolean)
@@ -47,10 +48,10 @@ const BlogList = () => {
         title: 'Success',
         description: 'Blog post deleted successfully',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.detail || 'Failed to delete blog post',
+        description: getErrorMessage(error, 'Failed to delete blog post'),
         variant: 'destructive',
       })
     }
@@ -66,10 +67,10 @@ const BlogList = () => {
           ? 'The blog post is now visible to users.'
           : 'The blog post has been moved back to drafts.',
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         title: 'Update failed',
-        description: error.data?.detail || 'Failed to update publish status',
+        description: getErrorMessage(error, 'Failed to update publish status'),
         variant: 'destructive',
       })
     }
@@ -150,7 +151,7 @@ const BlogList = () => {
           <Button
             variant={row.original.active ? 'outline' : 'default'}
             size="sm"
-            onClick={() => handleToggleStatus(row.original)}
+            onClick={() => { void handleToggleStatus(row.original) }}
             disabled={isTogglingStatus}
           >
             {row.original.active ? (
@@ -168,7 +169,7 @@ const BlogList = () => {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleDeletePost(row.original)}
+            onClick={() => { void handleDeletePost(row.original) }}
             disabled={isDeleting}
           >
             <Trash2 className="h-4 w-4" />
@@ -211,7 +212,7 @@ const BlogList = () => {
           <div className="text-center py-8">
             <div className="text-lg font-medium mb-2">Failed to load posts</div>
             <div className="text-muted-foreground mb-4">Please check your connection and try again</div>
-            <Button onClick={() => refetch()}>
+            <Button onClick={() => { void refetch() }}>
               <RotateCcw className="h-4 w-4 mr-2" />
               Retry
             </Button>

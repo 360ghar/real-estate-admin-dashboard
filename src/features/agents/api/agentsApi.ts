@@ -4,7 +4,8 @@ import type {
   AgentCreate,
   AgentWorkload,
   AgentSystemStats,
-  PaginatedResponse
+  PaginatedResponse,
+  Visit
 } from '@/types/api'
 
 export interface AgentSummary {
@@ -52,7 +53,7 @@ export const agentsApi = api.injectEndpoints({
     listAgents: builder.query<{ results: AgentSummary[]; count?: number }, { include_inactive?: boolean; page?: number; limit?: number } | void>({
       query: (params) => ({
         url: '/agents/',
-        params: { page: 1, limit: 20, ...(params || {}) } as Record<string, any>
+        params: { page: 1, limit: 20, ...(params || {}) } as Record<string, unknown>
       }),
       transformResponse: (response: PaginatedResponse<AgentSummary>) => ({
         results: response.items,
@@ -68,7 +69,7 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get agent by ID
-    getAgent: builder.query<AgentSummary & Record<string, any>, number>({
+    getAgent: builder.query<AgentSummary & Record<string, unknown>, number>({
       query: (id) => `/agents/${id}`,
       providesTags: (res, _e, id) => [{ type: 'Agent', id }],
     }),
@@ -145,7 +146,7 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get visits handled by agent
-    getAgentVisits: builder.query<PaginatedResponse<any>, { agentId: number; page?: number; limit?: number }>({
+    getAgentVisits: builder.query<PaginatedResponse<Visit>, { agentId: number; page?: number; limit?: number }>({
       query: ({ agentId, ...params }) => ({
         url: `/agents/${agentId}/visits/`,
         params: { page: 1, limit: 20, ...params }

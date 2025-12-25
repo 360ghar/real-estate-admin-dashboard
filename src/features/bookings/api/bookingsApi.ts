@@ -19,6 +19,8 @@ export interface BookingsQuery {
   agent_id?: number
   property_id?: number
   user_id?: number
+  q?: string
+  payment_status?: string
 }
 
 export const bookingsApi = api.injectEndpoints({
@@ -87,31 +89,45 @@ export const bookingsApi = api.injectEndpoints({
 
     // Cancel a booking
     cancelBooking: builder.mutation<void, { bookingId: number; reason: string }>({
-      query: ({ bookingId, ...data }) => ({
+      query: ({ bookingId, reason }) => ({
         url: `/bookings/cancel/`,
         method: 'POST',
-        body: data
+        body: {
+          booking_id: bookingId,
+          reason,
+        }
       }),
       invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }]
     }),
 
     // Process payment for booking
     processPayment: builder.mutation<void, { bookingId: number; paymentData: BookingPayment }>({
-      query: ({ bookingId, ...data }) => ({
+      query: ({ bookingId, paymentData }) => ({
         url: '/bookings/payment/',
         method: 'POST',
-        body: data
+        body: {
+          booking_id: bookingId,
+          ...paymentData,
+        }
       }),
       invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }]
     }),
 
     // Add review to booking
     addReview: builder.mutation<void, { bookingId: number; reviewData: BookingReview }>({
-      query: ({ bookingId, ...data }) => ({
-        url: '/bookings/review/',
-        method: 'POST',
-        body: data
-      }),
+      query: ({ bookingId, reviewData }) => {
+        const guestRating = reviewData.guest_rating ?? reviewData.rating
+        const guestReview = reviewData.guest_review ?? reviewData.review_text
+        return {
+          url: '/bookings/review/',
+          method: 'POST',
+          body: {
+            booking_id: bookingId,
+            guest_rating: guestRating,
+            guest_review: guestReview,
+          }
+        }
+      },
       invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, 'Property']
     }),
 

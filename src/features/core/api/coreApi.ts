@@ -119,10 +119,10 @@ export const coreApi = api.injectEndpoints({
       invalidatesTags: (res, _e, uniqueName) => [{ type: 'Page', id: uniqueName }, { type: 'Page', id: 'LIST' }],
     }),
 
-    // App Updates
+    // App Versions
     createAppUpdate: builder.mutation<AppUpdate, AppUpdateCreate>({
       query: (data) => ({
-        url: '/updates/',
+        url: '/versions/',
         method: 'POST',
         body: data
       }),
@@ -131,7 +131,7 @@ export const coreApi = api.injectEndpoints({
 
     checkForUpdates: builder.query<AppUpdateCheckResponse, AppUpdateCheckRequest>({
       query: (data) => ({
-        url: '/updates/check',
+        url: '/versions/check',
         method: 'POST',
         body: data
       })
@@ -139,7 +139,7 @@ export const coreApi = api.injectEndpoints({
 
     getAppUpdates: builder.query<AppUpdate[], AppUpdatesQuery | void>({
       query: (params) => ({
-        url: '/updates/',
+        url: '/versions/',
         params: { limit: 10, offset: 0, ...(params || {}) }
       }),
       providesTags: (res) =>
@@ -153,7 +153,7 @@ export const coreApi = api.injectEndpoints({
 
     updateAppUpdate: builder.mutation<AppUpdate, { id: number; data: AppUpdateUpdate }>({
       query: ({ id, data }) => ({
-        url: `/updates/${id}`,
+        url: `/versions/${id}`,
         method: 'PUT',
         body: data
       }),

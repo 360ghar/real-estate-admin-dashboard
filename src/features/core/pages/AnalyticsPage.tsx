@@ -8,7 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Home } from 'lucide-react'
 import { useState } from 'react'
 
-const KPI = ({ label, value, isLoading }: { label: string; value: any; isLoading?: boolean }) => (
+type KPIValue = number | string | null | undefined
+
+const KPI = ({ label, value, isLoading }: { label: string; value: KPIValue; isLoading?: boolean }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium">{label}</CardTitle>
@@ -22,7 +24,7 @@ const KPI = ({ label, value, isLoading }: { label: string; value: any; isLoading
 )
 
 const AnalyticsPage = () => {
-  const [view, setView] = useState('workload')
+  const [view, setView] = useState<'workload' | 'properties' | 'bookings'>('workload')
   const stats = useGetSystemStatsQuery()
   const workload = useGetWorkloadQuery()
   const s = stats.data || {}

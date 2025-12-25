@@ -1,14 +1,12 @@
-import { useState } from 'react'
 import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
 import { Card } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
-import { MoreHorizontal, Edit, BarChart3, Users, RotateCcw } from 'lucide-react'
+import { Edit, BarChart3, Users, RotateCcw } from 'lucide-react'
 import {
   ColumnDef,
 } from '@tanstack/react-table'
@@ -80,7 +78,7 @@ const AgentList = () => {
       <Card className="p-6">
         <div className="space-y-4">
           <div className="h-10 bg-muted animate-pulse rounded" />
-          {[...Array(5)].map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-16 bg-muted animate-pulse rounded" />
           ))}
         </div>
@@ -96,7 +94,7 @@ const AgentList = () => {
         description="Please check your connection and try again"
         action={{
           label: "Retry",
-          onClick: () => refetch(),
+          onClick: () => { void refetch() },
           variant: "outline"
         }}
       />
@@ -111,7 +109,7 @@ const AgentList = () => {
         description="Get started by creating your first agent"
         action={{
           label: "Create Agent",
-          onClick: () => window.location.href = "/agents/new"
+          onClick: () => { window.location.href = "/agents/new" }
         }}
       />
     )

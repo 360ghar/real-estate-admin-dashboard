@@ -1,12 +1,10 @@
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import { useGetSystemStatsQuery } from '@/features/core/api/systemApi'
 import { useGetAgentStatsQuery } from '@/features/agents/api/agentsApi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, AreaChart, Area } from 'recharts'
-import { TrendingUp, Users, Building2, Calendar, ArrowUpRight, ArrowDownRight, Activity, DollarSign, MapPin, Clock } from 'lucide-react'
+import { TrendingUp, Users, Building2, Calendar, ArrowUpRight, ArrowDownRight, Activity, DollarSign } from 'lucide-react'
 
 const StatCard = ({
   title,
@@ -59,10 +57,18 @@ const StatCard = ({
 )
 
 const DashboardPage = () => {
-  const user = useAppSelector(selectCurrentUser)
-  const role: 'admin' | 'agent' | 'user' = (user?.role as any) || (user?.agent_id ? 'agent' : 'admin')
+  const { user, role } = useUserRole()
   const system = useGetSystemStatsQuery(undefined, { skip: role !== 'admin' })
-  const agentStats = useGetAgentStatsQuery(user?.agent_id!, { skip: role !== 'agent' || !user?.agent_id })
+  const agentId = user?.agent_id
+  const agentStats = useGetAgentStatsQuery(agentId ?? 0, { skip: role !== 'agent' || !agentId })
+  const agentStatsData = agentStats.data as
+    | {
+        properties_managed?: number
+        users_assigned?: number
+        upcoming_visits?: number
+        pending_bookings?: number
+      }
+    | undefined
 
   // TODO: Replace with real API data for charts and activity feed
   // const weeklyVisitData = [] // Fetch from API endpoint
@@ -98,28 +104,28 @@ const DashboardPage = () => {
           <>
             <StatCard
               title="Properties Managed"
-              value={(agentStats.data as any)?.properties_managed ?? '--'}
+              value={agentStatsData?.properties_managed ?? '--'}
               icon={Building2}
               trend={{ value: 12, label: 'from last month' }}
               isLoading={isLoading}
             />
             <StatCard
               title="Active Users"
-              value={(agentStats.data as any)?.users_assigned ?? '--'}
+              value={agentStatsData?.users_assigned ?? '--'}
               icon={Users}
               trend={{ value: 8, label: 'from last month' }}
               isLoading={isLoading}
             />
             <StatCard
               title="Upcoming Visits"
-              value={(agentStats.data as any)?.upcoming_visits ?? '--'}
+              value={agentStatsData?.upcoming_visits ?? '--'}
               icon={Calendar}
               trend={{ value: 15, label: 'from last week' }}
               isLoading={isLoading}
             />
             <StatCard
               title="Pending Bookings"
-              value={(agentStats.data as any)?.pending_bookings ?? '--'}
+              value={agentStatsData?.pending_bookings ?? '--'}
               icon={DollarSign}
               trend={{ value: -3, label: 'from last month' }}
               isLoading={isLoading}

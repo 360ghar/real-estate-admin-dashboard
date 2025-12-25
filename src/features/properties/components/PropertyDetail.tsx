@@ -14,13 +14,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 
-const Item = ({ label, value }: { label: string; value?: any }) => (
+const Item = ({ label, value }: { label: string; value?: string | number | boolean | null }) => (
   <div className="text-sm"><span className="text-muted-foreground">{label}: </span>{String(value ?? '-')}</div>
 )
 
-const SectionTitle = ({ children }: { children: React.ReactNode }) => (
+const SectionTitle = ({ children }: { children: ReactNode }) => (
   <div className="font-medium text-sm text-muted-foreground mb-2">{children}</div>
 )
 
@@ -174,7 +174,7 @@ const PropertyDetail = ({ id }: { id: number }) => {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={doDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+            <AlertDialogAction onClick={() => { void doDelete() }} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

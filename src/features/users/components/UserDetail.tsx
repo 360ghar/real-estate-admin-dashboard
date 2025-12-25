@@ -9,12 +9,12 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useToast } from '@/hooks/use-toast'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import AssignAgent from './assign/AssignAgent'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { useGetUserNotificationsQuery } from '@/features/core/api/notificationsApi'
 import { Label } from '@/components/ui/label'
+import { getErrorMessage } from '@/lib/errors'
 
 const schema = z.object({
   full_name: z.string().optional(),
@@ -28,8 +28,7 @@ const UserDetail = ({ id }: { id: number }) => {
   const { data, isFetching } = useGetUserQuery(id)
   const [update, updateState] = useUpdateUserMutation()
   const { toast } = useToast()
-  const me = useAppSelector(selectCurrentUser)
-  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
+  const { role } = useUserRole()
   const [sendNotification, sendState] = useSendTypedNotificationMutation()
 
   const {
@@ -56,7 +55,7 @@ const UserDetail = ({ id }: { id: number }) => {
       await update({ id, data: values }).unwrap()
       toast({ title: 'Saved', description: 'User updated' })
     } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Please try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Please try again'), variant: 'destructive' })
     }
   }
 
@@ -77,7 +76,7 @@ const UserDetail = ({ id }: { id: number }) => {
     } catch (e: unknown) {
       toast({
         title: 'Failed to send',
-        description: (e as any)?.data?.detail || 'Unable to send notification. Please try again.',
+        description: getErrorMessage(e, 'Unable to send notification. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -92,7 +91,7 @@ const UserDetail = ({ id }: { id: number }) => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
             <div>
               <FormField
                 control={form.control}
@@ -198,7 +197,7 @@ const UserDetail = ({ id }: { id: number }) => {
             <div className="flex justify-end">
               <Button
                 type="button"
-                onClick={handleSendNotification}
+                onClick={() => { void handleSendNotification() }}
                 disabled={sendState.isLoading}
               >
                 {sendState.isLoading ? 'Sending…' : 'Send notification'}
@@ -225,7 +224,7 @@ const UserDetail = ({ id }: { id: number }) => {
                   variant="outline"
                   size="sm"
                   className="ml-auto mb-2"
-                  onClick={() => refetchNotifications()}
+                  onClick={() => { void refetchNotifications() }}
                 >
                   Refresh
                 </Button>

@@ -1,6 +1,4 @@
 import React, { useState } from 'react'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
 import { useGetProfileQuery, useUpdatePreferencesMutation, useUpdateLocationMutation, UserPreferences } from '@/features/users/api/usersApi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -10,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { MapPin, Save, Home, Building, Warehouse, Loader2 } from 'lucide-react'
+import { getErrorMessage } from '@/lib/errors'
 
 const UserPreferencesPage = () => {
-  const user = useAppSelector(selectCurrentUser)
   const { data: profile, isLoading: profileLoading } = useGetProfileQuery()
   const [updatePreferences, { isLoading: preferencesLoading }] = useUpdatePreferencesMutation()
   const [updateLocation, { isLoading: locationLoading }] = useUpdateLocationMutation()
@@ -31,10 +29,13 @@ const UserPreferencesPage = () => {
   } | null>(null)
 
   // Normalize preferences coming from backend (may contain nulls)
-  const normalizePreferences = (p: any): UserPreferences => {
-    const arr = (x: any) => (Array.isArray(x) ? x.filter(Boolean) : [])
-    const num = (x: any) => (typeof x === 'number' && !Number.isNaN(x) ? x : undefined)
-    const purpose = ['buy', 'rent', 'short_stay'].includes(p?.purpose) ? p.purpose : 'rent'
+  const normalizePreferences = (p: Partial<UserPreferences> | null | undefined): UserPreferences => {
+    const arr = (x: unknown) => (Array.isArray(x) ? x.filter((item): item is string => typeof item === 'string' && item.length > 0) : [])
+    const num = (x: unknown) => (typeof x === 'number' && !Number.isNaN(x) ? x : undefined)
+    const allowedPurposes = ['buy', 'rent', 'short_stay'] as const
+    const purpose = allowedPurposes.includes(p?.purpose as (typeof allowedPurposes)[number])
+      ? (p?.purpose as (typeof allowedPurposes)[number])
+      : 'rent'
     return {
       property_type: arr(p?.property_type),
       purpose,
@@ -53,16 +54,15 @@ const UserPreferencesPage = () => {
 
   // Initialize preferences from profile data
   React.useEffect(() => {
-    const profileData = profile as any // Type assertion for profile data
-    if (profileData?.preferences) {
-      setPreferences(normalizePreferences(profileData.preferences))
+    if (profile?.preferences) {
+      setPreferences(normalizePreferences(profile.preferences))
     }
-    if (profileData?.current_latitude && profileData?.current_longitude) {
+    if (typeof profile?.current_latitude === 'number' && typeof profile?.current_longitude === 'number') {
       setLocation({
-        latitude: profileData.current_latitude,
-        longitude: profileData.current_longitude,
+        latitude: profile.current_latitude,
+        longitude: profile.current_longitude,
       })
-    } else if (!location && profileData) {
+    } else if (!location && profile) {
       // Only set default location if no location is set and we have profile data
       setLocation({
         latitude: 19.0760,
@@ -79,10 +79,10 @@ const UserPreferencesPage = () => {
         title: 'Success',
         description: 'Preferences updated successfully',
       })
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: 'Failed to update preferences',
+        description: getErrorMessage(error, 'Failed to update preferences'),
         variant: 'destructive',
       })
     }
@@ -104,10 +104,10 @@ const UserPreferencesPage = () => {
         title: 'Success',
         description: 'Location updated successfully',
       })
-    } catch (error) {
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: 'Failed to update location',
+        description: getErrorMessage(error, 'Failed to update location'),
         variant: 'destructive',
       })
     }
@@ -172,7 +172,7 @@ const UserPreferencesPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handlePreferencesSubmit} className="space-y-4">
+            <form onSubmit={(e) => { void handlePreferencesSubmit(e) }} className="space-y-4">
               {/* Property Type */}
               <div>
                 <Label className="text-sm font-medium">Property Type</Label>
@@ -308,7 +308,7 @@ const UserPreferencesPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLocationSubmit} className="space-y-4">
+            <form onSubmit={(e) => { void handleLocationSubmit(e) }} className="space-y-4">
               {/* Current Location */}
               <div>
                 <Label className="text-sm font-medium">Current Location</Label>

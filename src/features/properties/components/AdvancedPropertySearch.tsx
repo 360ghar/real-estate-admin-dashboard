@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { useForm, useFieldArray } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +13,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Separator } from '@/components/ui/separator'
 import LocationPicker from '@/components/common/map/LocationPicker'
 import { useDebounce } from '@/hooks/useDebounce'
-import { Search, Filter, X, MapPin, Home, DollarSign, Bath, Bed, Square } from 'lucide-react'
+import { Search, Filter, X, MapPin } from 'lucide-react'
 
 const searchSchema = z.object({
   q: z.string().optional(),

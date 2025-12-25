@@ -1,8 +1,8 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,18 +16,17 @@ import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import {
   useGetUserVisitsQuery,
-  useGetUpcomingVisitsQuery,
-  useGetPastVisitsQuery,
   useScheduleVisitMutation,
-  useUpdateVisitMutation,
   useRescheduleVisitMutation,
   useCancelVisitMutation,
   useCompleteVisitMutation,
   useGetAllVisitsQuery
 } from '@/features/visits/api/visitsApi'
 import { useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
-import { format, addDays, isAfter, isBefore, parseISO } from 'date-fns'
-import { Calendar as CalendarIcon, MapPin, Clock, User, Plus, Edit, X, Check, AlertCircle } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+import { Calendar as CalendarIcon, MapPin, Clock, User, Plus, Edit, Check, AlertCircle } from 'lucide-react'
+import type { Visit } from '@/types/api'
+import { getErrorMessage } from '@/lib/errors'
 
 const scheduleVisitSchema = z.object({
   property_id: z.number().min(1, 'Property is required'),
@@ -44,7 +43,7 @@ type ScheduleVisitFormData = z.infer<typeof scheduleVisitSchema>
 type CompleteVisitFormData = z.infer<typeof completeVisitSchema>
 
 interface VisitCalendarProps {
-  visits: any[]
+  visits: Visit[]
   onDateSelect: (date: Date) => void
   selectedDate?: Date
 }
@@ -119,7 +118,7 @@ const VisitManagementPage: React.FC = () => {
   const { user } = useAuth()
   const { toast } = useToast()
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [selectedVisit, setSelectedVisit] = useState<any>(null)
+  const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null)
   const [showScheduleDialog, setShowScheduleDialog] = useState(false)
   const [showCompleteDialog, setShowCompleteDialog] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -139,8 +138,6 @@ const VisitManagementPage: React.FC = () => {
 
   // API calls
   const { data: userVisits, refetch: refetchUserVisits } = useGetUserVisitsQuery()
-  const { data: upcomingVisits } = useGetUpcomingVisitsQuery()
-  const { data: pastVisits } = useGetPastVisitsQuery()
 
   // Admin/Agent view
   const { data: allVisits, refetch: refetchAllVisits } = useGetAllVisitsQuery(
@@ -152,9 +149,8 @@ const VisitManagementPage: React.FC = () => {
 
   // Mutations
   const [scheduleVisit, { isLoading: scheduling }] = useScheduleVisitMutation()
-  const [updateVisit, { isLoading: updating }] = useUpdateVisitMutation()
-  const [rescheduleVisit, { isLoading: rescheduling }] = useRescheduleVisitMutation()
-  const [cancelVisit, { isLoading: cancelling }] = useCancelVisitMutation()
+  const [rescheduleVisit] = useRescheduleVisitMutation()
+  const [cancelVisit] = useCancelVisitMutation()
   const [completeVisit, { isLoading: completing }] = useCompleteVisitMutation()
 
   const visits = user?.role === 'user' ? userVisits?.visits || [] : allVisits?.items || []
@@ -180,12 +176,12 @@ const VisitManagementPage: React.FC = () => {
       })
       setShowScheduleDialog(false)
       scheduleForm.reset()
-      refetchUserVisits()
-      refetchAllVisits()
+      void refetchUserVisits()
+      void refetchAllVisits()
     } catch (error) {
       toast({
         title: 'Scheduling Failed',
-        description: 'Failed to schedule visit. Please try again.',
+        description: getErrorMessage(error, 'Failed to schedule visit. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -206,12 +202,12 @@ const VisitManagementPage: React.FC = () => {
       setShowCompleteDialog(false)
       completeForm.reset()
       setSelectedVisit(null)
-      refetchUserVisits()
-      refetchAllVisits()
+      void refetchUserVisits()
+      void refetchAllVisits()
     } catch (error) {
       toast({
         title: 'Update Failed',
-        description: 'Failed to complete visit. Please try again.',
+        description: getErrorMessage(error, 'Failed to complete visit. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -228,12 +224,12 @@ const VisitManagementPage: React.FC = () => {
         title: 'Visit Rescheduled',
         description: 'Visit has been rescheduled successfully.',
       })
-      refetchUserVisits()
-      refetchAllVisits()
+      void refetchUserVisits()
+      void refetchAllVisits()
     } catch (error) {
       toast({
         title: 'Reschedule Failed',
-        description: 'Failed to reschedule visit. Please try again.',
+        description: getErrorMessage(error, 'Failed to reschedule visit. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -251,12 +247,12 @@ const VisitManagementPage: React.FC = () => {
         title: 'Visit Cancelled',
         description: 'Visit has been cancelled successfully.',
       })
-      refetchUserVisits()
-      refetchAllVisits()
+      void refetchUserVisits()
+      void refetchAllVisits()
     } catch (error) {
       toast({
         title: 'Cancellation Failed',
-        description: 'Failed to cancel visit. Please try again.',
+        description: getErrorMessage(error, 'Failed to cancel visit. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -302,7 +298,7 @@ const VisitManagementPage: React.FC = () => {
                   Select a property and schedule a visit
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={scheduleForm.handleSubmit(handleScheduleVisit)} className="space-y-4">
+              <form onSubmit={(e) => void scheduleForm.handleSubmit(handleScheduleVisit)(e)} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="property_id">Property</Label>
                   <Select
@@ -442,7 +438,7 @@ const VisitManagementPage: React.FC = () => {
                       {searchQuery ? 'Try adjusting your search' : 'Schedule your first visit to get started'}
                     </p>
                     {user?.role !== 'admin' && (
-                      <Button onClick={() => setShowScheduleDialog(true)}>
+                      <Button onClick={() => { setShowScheduleDialog(true) }}>
                         <Plus className="h-4 w-4 mr-2" />
                         Schedule Visit
                       </Button>
@@ -524,13 +520,13 @@ const VisitManagementPage: React.FC = () => {
                                       defaultValue={format(parseISO(visit.scheduled_date), "yyyy-MM-dd'T'HH:mm")}
                                       onChange={(e) => {
                                         if (e.target.value) {
-                                          handleRescheduleVisit(visit.id, e.target.value)
+                                          void handleRescheduleVisit(visit.id, e.target.value)
                                         }
                                       }}
                                     />
                                   </div>
                                   <Button
-                                    onClick={() => handleCancelVisit(visit.id)}
+                                    onClick={() => { void handleCancelVisit(visit.id) }}
                                     variant="destructive"
                                     className="w-full"
                                   >
@@ -560,7 +556,7 @@ const VisitManagementPage: React.FC = () => {
               Add notes and feedback for the completed visit
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={completeForm.handleSubmit(handleCompleteVisit)} className="space-y-4">
+          <form onSubmit={(e) => void completeForm.handleSubmit(handleCompleteVisit)(e)} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="notes">Visit Notes</Label>
               <Textarea
@@ -583,11 +579,7 @@ const VisitManagementPage: React.FC = () => {
               <Button type="submit" disabled={completing} className="flex-1">
                 {completing ? 'Completing...' : 'Complete Visit'}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setShowCompleteDialog(false)}
-              >
+              <Button type="button" variant="outline" onClick={() => { setShowCompleteDialog(false) }}>
                 Cancel
               </Button>
             </div>

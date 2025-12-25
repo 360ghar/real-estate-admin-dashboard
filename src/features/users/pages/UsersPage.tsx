@@ -5,14 +5,12 @@ import { Users, UserPlus, TrendingUp, Shield, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 const UsersPage = ({ mode }: { mode?: 'detail' }) => {
   const params = useParams()
-  const user = useAppSelector(selectCurrentUser)
-  const role = (user?.role as 'admin' | 'agent' | 'user') || (user?.agent_id ? 'agent' : 'admin')
+  const { role } = useUserRole()
 
   if (mode === 'detail') {
     const id = Number(params.id)

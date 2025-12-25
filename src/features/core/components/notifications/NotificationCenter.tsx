@@ -1,10 +1,8 @@
 import React from 'react'
-import { Bell, X, Check, CheckCheck, Settings, Trash2 } from 'lucide-react'
+import { Bell, X, CheckCheck, Settings, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,23 +46,6 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return '📢'
       default:
         return '📩'
-    }
-  }
-
-  const getNotificationColor = (type: string) => {
-    switch (type) {
-      case 'visit_reminder':
-        return 'text-blue-600'
-      case 'booking_update':
-        return 'text-green-600'
-      case 'payment_received':
-        return 'text-emerald-600'
-      case 'property_available':
-        return 'text-purple-600'
-      case 'system_message':
-        return 'text-muted-foreground'
-      default:
-        return 'text-muted-foreground'
     }
   }
 

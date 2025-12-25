@@ -1,7 +1,7 @@
 import { useGetAgentQuery, useGetAgentStatsQuery } from '@/features/agents/api/agentsApi'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 
-const Stat = ({ label, value }: { label: string; value: any }) => (
+const Stat = ({ label, value }: { label: string; value: string | number | null | undefined }) => (
   <div className="rounded-md border bg-card p-3">
     <div className="text-xs text-muted-foreground">{label}</div>
     <div className="text-lg font-semibold">{String(value ?? '--')}</div>

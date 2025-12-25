@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
-import { Plus, Edit, Eye, Save, X, FileText } from 'lucide-react'
+import { Plus, Edit, Eye, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
@@ -11,13 +11,14 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/errors'
 import {
   useGetPagesQuery,
   useCreatePageMutation,
   useUpdatePageMutation,
   useDeletePageMutation
 } from '@/features/core/api/coreApi'
-import type { Page } from '@/types/api'
+import type { Page, PageCreate, PageUpdate } from '@/types/api'
 
 interface PageFormData {
   unique_name: string
@@ -69,6 +70,19 @@ const PagesManagementPage: React.FC = () => {
       .replace(/(^-|-$)/g, '')
   }
 
+  const parseCustomConfig = (value?: string) => {
+    if (!value) return undefined
+    try {
+      const parsed: unknown = JSON.parse(value)
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+    } catch {
+      return undefined
+    }
+    return undefined
+  }
+
   const handleInputChange = (field: keyof PageFormData, value: string | boolean) => {
     setFormData(prev => {
       const newData = { ...prev, [field]: value }
@@ -88,20 +102,19 @@ const PagesManagementPage: React.FC = () => {
     try {
       if (editingPage) {
         // Parse custom_config if provided
-        const updateData: any = {
+        const updateData: PageUpdate = {
           title: formData.title,
           content: formData.content,
           format: formData.format,
           is_active: formData.is_active,
           is_draft: formData.is_draft,
         }
-        if (formData.custom_config_text) {
-          try { updateData.custom_config = JSON.parse(formData.custom_config_text) } catch {}
-        }
+        const updateConfig = parseCustomConfig(formData.custom_config_text)
+        if (updateConfig) updateData.custom_config = updateConfig
         await updatePage({ uniqueName: editingPage.unique_name, data: updateData }).unwrap()
         toast({ title: 'Success', description: 'Page updated successfully' })
       } else {
-        const createData: any = {
+        const createData: PageCreate = {
           unique_name: formData.unique_name,
           title: formData.title,
           content: formData.content,
@@ -109,9 +122,8 @@ const PagesManagementPage: React.FC = () => {
           is_active: formData.is_active,
           is_draft: formData.is_draft,
         }
-        if (formData.custom_config_text) {
-          try { createData.custom_config = JSON.parse(formData.custom_config_text) } catch {}
-        }
+        const createConfig = parseCustomConfig(formData.custom_config_text)
+        if (createConfig) createData.custom_config = createConfig
         await createPage(createData).unwrap()
         toast({ title: 'Success', description: 'Page created successfully' })
       }
@@ -119,11 +131,11 @@ const PagesManagementPage: React.FC = () => {
       setIsDialogOpen(false)
       setEditingPage(null)
       setFormData({ unique_name: '', title: '', content: '', format: 'html', custom_config_text: '', is_active: true, is_draft: false })
-      refetch()
-    } catch (error: any) {
+      void refetch()
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.message || 'Failed to save page',
+        description: getErrorMessage(error, 'Failed to save page'),
         variant: 'destructive'
       })
     }
@@ -149,11 +161,11 @@ const PagesManagementPage: React.FC = () => {
     try {
       await deletePage(uniqueName).unwrap()
       toast({ title: 'Success', description: 'Page deleted successfully' })
-      refetch()
-    } catch (error: any) {
+      void refetch()
+    } catch (error: unknown) {
       toast({
         title: 'Error',
-        description: error.data?.message || 'Failed to delete page',
+        description: getErrorMessage(error, 'Failed to delete page'),
         variant: 'destructive'
       })
     }
@@ -177,19 +189,6 @@ const PagesManagementPage: React.FC = () => {
     setEditingPage(null)
     setFormData({ unique_name: '', title: '', content: '', format: 'html', custom_config_text: '', is_active: true, is_draft: false })
     setPreviewMode(false)
-  }
-
-  const getPageTypeColor = (type: string) => {
-    const colors: Record<string, string> = {
-      information: 'bg-blue-100 text-blue-800',
-      faq: 'bg-green-100 text-green-800',
-      terms: 'bg-yellow-100 text-yellow-800',
-      privacy: 'bg-purple-100 text-purple-800',
-      about: 'bg-pink-100 text-pink-800',
-      contact: 'bg-indigo-100 text-indigo-800',
-      custom: 'bg-muted text-foreground'
-    }
-    return colors[type] || 'bg-muted text-foreground'
   }
 
   return (
@@ -216,7 +215,7 @@ const PagesManagementPage: React.FC = () => {
                 }
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Title *</Label>
@@ -403,7 +402,7 @@ const PagesManagementPage: React.FC = () => {
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(page.unique_name)} disabled={isDeleting}>
+                    <Button variant="outline" size="sm" onClick={() => { void handleDelete(page.unique_name) }} disabled={isDeleting}>
                       <X className="h-4 w-4" />
                     </Button>
                   </div>

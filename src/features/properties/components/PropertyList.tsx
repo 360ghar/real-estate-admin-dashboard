@@ -1,6 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import { useDeletePropertyMutation, useListPropertiesQuery, PropertyResponse, PropertySearchParams } from '@/features/properties/api/propertiesApi'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
 import { Card } from '@/components/ui/card'
@@ -25,18 +24,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Eye, Edit, Trash2, Search, Filter, SortDesc, MapPin, RotateCcw, X } from 'lucide-react'
+import { Eye, Edit, Trash2, Search, Filter, MapPin, RotateCcw, X } from 'lucide-react'
 import {
   ColumnDef,
 } from '@tanstack/react-table'
 import { LoadingState } from '@/components/ui/loading-state'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Sheet, SheetClose, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { motion } from 'framer-motion'
+import { getErrorMessage } from '@/lib/errors'
 
 const PropertyList = () => {
-  const user = useAppSelector(selectCurrentUser)
-  const role = (user?.role as 'admin' | 'agent' | 'user') || (user?.agent_id ? 'agent' : 'admin')
+  const { user, role } = useUserRole()
 
   // Filter persistence - add new fields
   const { filters, setFilters, clearFilters, hasActiveFilters } = useFilterPersistence({
@@ -63,7 +62,7 @@ const PropertyList = () => {
 
   useEffect(() => {
     setFilters({ amenities: selectedAmenities })
-  }, [selectedAmenities])
+  }, [selectedAmenities, setFilters])
 
   const { data: amenitiesData } = useGetAmenitiesQuery()
 
@@ -139,7 +138,7 @@ const PropertyList = () => {
       toast({ title: 'Deleted', description: 'Property removed' })
       setConfirmId(null)
     } catch (e: unknown) {
-      toast({ title: 'Failed', description: (e as any)?.data?.detail || 'Try again', variant: 'destructive' })
+      toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
   }
 
@@ -509,7 +508,11 @@ const PropertyList = () => {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => confirmId && handleDelete(confirmId)}
+              onClick={() => {
+                if (confirmId) {
+                  void handleDelete(confirmId)
+                }
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete

@@ -1,19 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 import { useListUsersQuery } from '@/features/users/api/usersApi'
+import type { UsersQuery } from '@/features/users/api/usersApi'
+import type { User } from '@/types/api'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Link } from 'react-router-dom'
 import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
 import Pagination from '@/components/ui/pagination'
 import { useDebounce } from '@/hooks/useDebounce'
-import { Skeleton } from '@/components/ui/skeleton'
 import Combobox from '@/components/ui/combobox'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { LoadingState } from '@/components/ui/loading-state'
 import { 
   ColumnDef 
 } from '@tanstack/react-table'
@@ -21,8 +19,7 @@ import { useFilterPersistence } from '@/hooks/useFilterPersistence'
 import { DataTable } from '@/components/ui/data-table'
 
 const UserList = () => {
-  const me = useAppSelector(selectCurrentUser)
-  const role = (me?.role as 'admin' | 'agent' | 'user') || (me?.agent_id ? 'agent' : 'admin')
+  const { user: me, role } = useUserRole()
 
   // Filter persistence
   const { filters, setFilters } = useFilterPersistence({
@@ -38,11 +35,11 @@ const UserList = () => {
 
   useEffect(() => {
     setFilters({ q, agentId: agentId ? String(agentId) : '' })
-  }, [q, agentId])
+  }, [q, agentId, setFilters])
 
   const dq = useDebounce(q)
   const params = useMemo(() => {
-    const base: any = {}
+    const base: UsersQuery = {}
     if (dq) base.q = dq
     if (role === 'agent' && me?.agent_id) base.agent_id = me.agent_id
     if (role === 'admin' && agentId) base.agent_id = agentId
@@ -51,31 +48,31 @@ const UserList = () => {
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching, error, refetch } = useListUsersQuery({ ...params, page, limit: pageSize })
+  const { data, isFetching, refetch } = useListUsersQuery({ ...params, page, limit: pageSize })
   const agents = useListAgentsQuery(
     { include_inactive: false },
     { skip: role !== 'admin' }
   )
 
-  const columns: ColumnDef<any>[] = [
+  const columns: ColumnDef<User>[] = [
     {
       accessorKey: 'full_name',
       header: 'Name',
-      cell: ({ row }) => row.original.full_name || '-',
+      cell: ({ row }) => row.original.full_name ?? '-',
     },
     {
       accessorKey: 'phone',
       header: 'Phone',
-      cell: ({ row }) => row.original.phone || '-',
+      cell: ({ row }) => row.original.phone ?? '-',
     },
     {
       accessorKey: 'email',
       header: 'Email',
-      cell: ({ row }) => row.original.email || '-',
+      cell: ({ row }) => row.original.email ?? '-',
     },
     {
       header: 'Assigned Agent',
-      cell: ({ row }) => row.original.agent?.name || '-',
+      cell: ({ row }) => row.original.agent?.user?.full_name ?? '-',
     },
     {
       id: 'actions',
@@ -94,9 +91,9 @@ const UserList = () => {
         <Input placeholder="Search name, phone, email" value={q} onChange={(e) => setQ(e.target.value)} />
         {role === 'admin' && (
           <Combobox
-            items={[{ value: '' as any, label: 'All Agents' }, ...(agents.data?.results || []).map((a) => ({ value: String(a.id), label: a.name }))]}
-            value={String(agentId)}
-            onChange={(v) => setAgentId(v ? Number(v) : '')}
+            items={[{ value: '', label: 'All Agents' }, ...(agents.data?.results || []).map((a) => ({ value: a.id, label: a.name }))]}
+            value={agentId}
+            onChange={(v) => setAgentId(v !== '' ? Number(v) : '')}
             placeholder="Filter agents…"
           />
         )}
@@ -113,7 +110,7 @@ const UserList = () => {
         <EmptyState
           title="No users found"
           description={q || agentId ? 'Try adjusting search or filters.' : 'Users will appear here once available.'}
-          action={{ label: 'Refresh', onClick: () => refetch(), variant: 'outline' }}
+          action={{ label: 'Refresh', onClick: () => { void refetch() }, variant: 'outline' }}
         />
       ) : (
         <>

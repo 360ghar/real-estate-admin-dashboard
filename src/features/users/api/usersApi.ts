@@ -1,5 +1,5 @@
 import { api } from '@/store/api'
-import type { User } from '@/types'
+import type { User, UserNotificationSettings, UserPrivacySettings } from '@/types'
 
 export interface PaginatedResponse<T> {
   items: T[]
@@ -34,8 +34,8 @@ export interface UserUpdate {
   current_latitude?: number
   current_longitude?: number
   preferred_locations?: string[]
-  notification_settings?: Record<string, any>
-  privacy_settings?: Record<string, any>
+  notification_settings?: UserNotificationSettings
+  privacy_settings?: UserPrivacySettings
 }
 
 export interface UsersQuery {
@@ -75,7 +75,7 @@ export const usersApi = api.injectEndpoints({
     listUsers: builder.query<{ results: User[]; count?: number }, UsersQuery | void>({
       query: (params) => ({
         url: '/users/',
-        params: { page: 1, limit: 20, ...params } as Record<string, any>
+        params: { page: 1, limit: 20, ...params } as Record<string, unknown>
       }),
       transformResponse: (response: PaginatedResponse<User>) => ({
         results: response.items,
@@ -152,6 +152,48 @@ export const usersApi = api.injectEndpoints({
       invalidatesTags: ['User'],
     }),
 
+    // Notification settings
+    getNotificationSettings: builder.query<UserNotificationSettings, void>({
+      query: () => '/users/notification-settings',
+    }),
+
+    updateNotificationSettings: builder.mutation<void, UserNotificationSettings>({
+      query: (data) => ({
+        url: '/users/notification-settings',
+        method: 'PUT',
+        body: data,
+      }),
+    }),
+
+    updateNotificationsCompat: builder.mutation<void, Record<string, unknown>>({
+      query: (data) => ({
+        url: '/users/notifications/',
+        method: 'PUT',
+        body: data,
+      }),
+    }),
+
+    // Privacy settings
+    getPrivacySettings: builder.query<UserPrivacySettings, void>({
+      query: () => '/users/privacy-settings',
+    }),
+
+    updatePrivacySettings: builder.mutation<void, UserPrivacySettings>({
+      query: (data) => ({
+        url: '/users/privacy-settings',
+        method: 'PUT',
+        body: data,
+      }),
+    }),
+
+    updatePrivacyCompat: builder.mutation<void, Record<string, unknown>>({
+      query: (data) => ({
+        url: '/users/privacy/',
+        method: 'PUT',
+        body: data,
+      }),
+    }),
+
     // Send a typed notification to a user (multi-channel, backend-controlled)
     sendTypedNotification: builder.mutation<void, TypedUserNotificationPayload>({
       query: ({ userId, typeKey, title, body, data, deep_link }) => ({
@@ -180,5 +222,11 @@ export const {
   useUpdateProfileMutation,
   useUpdatePreferencesMutation,
   useUpdateLocationMutation,
+  useGetNotificationSettingsQuery,
+  useUpdateNotificationSettingsMutation,
+  useUpdateNotificationsCompatMutation,
+  useGetPrivacySettingsQuery,
+  useUpdatePrivacySettingsMutation,
+  useUpdatePrivacyCompatMutation,
   useSendTypedNotificationMutation,
 } = usersApi

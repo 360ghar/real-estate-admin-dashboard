@@ -33,14 +33,14 @@ export const blogsApi = api.injectEndpoints({
     getBlogPosts: builder.query<BlogPostListResponse, BlogPostFilters | void>({
       query: (params) => {
         const p = params || {}
-        const qp: Record<string, any> = {
+        const qp: Record<string, unknown> = {
           page: 1,
           limit: 20,
           ...p,
         }
-        if (Array.isArray(p?.categories)) qp.categories = p!.categories!.join(',')
-        if (Array.isArray(p?.tags)) qp.tags = p!.tags!.join(',')
-        if (Array.isArray(p?.keywords)) qp.keywords = p!.keywords!.join(',')
+        if (Array.isArray(p?.categories)) qp.categories = p.categories.join(',')
+        if (Array.isArray(p?.tags)) qp.tags = p.tags.join(',')
+        if (Array.isArray(p?.keywords)) qp.keywords = p.keywords.join(',')
         return { url: '/blog/posts', params: qp }
       },
       providesTags: (res) =>

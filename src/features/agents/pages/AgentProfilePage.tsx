@@ -1,13 +1,10 @@
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
 import { useGetAgentProfileQuery } from '@/features/agents/api/agentsApi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MapPin, Phone, Mail, Calendar, Users, TrendingUp, Star } from 'lucide-react'
+import { MapPin, Phone, Mail, Users, TrendingUp, Star } from 'lucide-react'
 
 const AgentProfilePage = () => {
-  const user = useAppSelector(selectCurrentUser)
   const { data: agentProfile, isLoading } = useGetAgentProfileQuery()
 
   if (isLoading) {

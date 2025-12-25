@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,19 +10,18 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Separator } from '@/components/ui/separator'
-import { Progress } from '@/components/ui/progress'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
+import { getErrorMessage } from '@/lib/errors'
 import {
   useGetBugReportsQuery,
-  useGetBugReportQuery,
   useCreateBugReportMutation,
   useUpdateBugReportMutation,
   useCreateBugReportWithMediaMutation
 } from '@/features/core/api/coreApi'
 import { format, parseISO } from 'date-fns'
-import { Bug, Plus, Edit, Paperclip, Image, Video, FileText, AlertTriangle, CheckCircle, Clock, User, Calendar, X } from 'lucide-react'
+import { Bug, Plus, Edit, Paperclip, Image, Video, FileText, AlertTriangle, CheckCircle, Clock, X } from 'lucide-react'
+import type { BugReport, BugReportAttachment, BugReportUpdate } from '@/types/api'
 
 const bugReportSchema = z.object({
   source: z.enum(['web', 'mobile', 'api']),
@@ -68,8 +67,8 @@ const priorityColors = {
 }
 
 interface BugReportCardProps {
-  bugReport: any
-  onUpdate?: (id: number, data: any) => void
+  bugReport: BugReport
+  onUpdate?: (id: number, data: BugReportUpdate) => void
   showActions?: boolean
 }
 
@@ -88,15 +87,15 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
                   {bugReport.description}
                 </p>
                 <div className="flex flex-wrap gap-2 mb-3">
-                  <Badge className={severityColors[bugReport.severity as keyof typeof severityColors]}>
+                  <Badge className={severityColors[bugReport.severity]}>
                     {bugReport.severity}
                   </Badge>
                   <Badge variant="outline">{bugReport.bug_type.replace('_', ' ')}</Badge>
-                  <Badge className={statusColors[bugReport.status as keyof typeof statusColors]}>
+                  <Badge className={statusColors[bugReport.status]}>
                     {bugReport.status.replace('_', ' ')}
                   </Badge>
                   {bugReport.priority && (
-                    <Badge className={priorityColors[bugReport.priority as keyof typeof priorityColors]}>
+                    <Badge className={priorityColors[bugReport.priority]}>
                       Priority: {bugReport.priority}
                     </Badge>
                   )}
@@ -169,7 +168,7 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
                   <div>
                     <h4 className="font-medium mb-2">Attachments</h4>
                     <div className="grid gap-2 md:grid-cols-2">
-                      {bugReport.attachments.map((attachment: any) => (
+                      {bugReport.attachments.map((attachment: BugReportAttachment) => (
                         <div key={attachment.id} className="flex items-center gap-2 p-2 border rounded">
                           {attachment.file_type.startsWith('image/') ? (
                             <Image className="h-5 w-5 text-blue-500" />
@@ -178,7 +177,7 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
                           ) : (
                             <FileText className="h-5 w-5 text-muted-foreground" />
                           )}
-                          <span className="text-sm truncate">{attachment.file_name}</span>
+                          <span className="text-sm truncate">{attachment.file_url.split('/').pop() || 'Attachment'}</span>
                           <span className="text-xs text-muted-foreground">
                             {(attachment.file_size / 1024).toFixed(1)}KB
                           </span>
@@ -256,18 +255,18 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
   )
 }
 
-const BugReportUpdateForm: React.FC<{ bugReport: any; onSubmit: (data: any) => void }> = ({ bugReport, onSubmit }) => {
-  const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
+const BugReportUpdateForm: React.FC<{ bugReport: BugReport; onSubmit: (data: BugReportUpdate) => void }> = ({ bugReport, onSubmit }) => {
+  const { register, handleSubmit, formState: { isSubmitting } } = useForm<BugReportUpdate>({
     defaultValues: {
       status: bugReport.status,
       priority: bugReport.priority || 'medium',
-      assigned_to: bugReport.assigned_to || '',
+      assigned_to: bugReport.assigned_to ?? undefined,
       resolution_notes: bugReport.resolution_notes || '',
     },
   })
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="space-y-2">
           <Label>Status</Label>
@@ -304,7 +303,9 @@ const BugReportUpdateForm: React.FC<{ bugReport: any; onSubmit: (data: any) => v
         <Input
           id="assigned_to"
           type="number"
-          {...register('assigned_to', { valueAsNumber: true })}
+          {...register('assigned_to', {
+            setValueAs: (value) => (value === '' || Number.isNaN(Number(value)) ? undefined : Number(value)),
+          })}
           placeholder="Enter agent ID"
         />
       </div>
@@ -412,7 +413,7 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
           {/* Basic Information */}
           <div className="grid gap-4 md:grid-cols-3">
             <div className="space-y-2">
@@ -636,18 +637,18 @@ const BugReportsPage: React.FC = () => {
     return true
   }) || []
 
-  const handleUpdateBugReport = async (id: number, data: any) => {
+  const handleUpdateBugReport = async (id: number, data: BugReportUpdate) => {
     try {
       await updateBugReport({ id, data }).unwrap()
       toast({
         title: 'Report Updated',
         description: 'Bug report has been updated successfully.',
       })
-      refetch()
-    } catch (error) {
+      void refetch()
+    } catch (error: unknown) {
       toast({
         title: 'Update Failed',
-        description: 'Failed to update bug report. Please try again.',
+        description: getErrorMessage(error, 'Failed to update bug report. Please try again.'),
         variant: 'destructive',
       })
     }
@@ -672,7 +673,7 @@ const BugReportsPage: React.FC = () => {
             Track and manage bug reports and issues
           </p>
         </div>
-        <CreateBugReportDialog onSuccess={() => refetch()} />
+        <CreateBugReportDialog onSuccess={() => { void refetch() }} />
       </div>
 
       {/* Statistics */}
@@ -775,7 +776,7 @@ const BugReportsPage: React.FC = () => {
                 <p className="text-muted-foreground mb-4">
                   {searchQuery ? 'Try adjusting your search' : 'Create your first bug report to get started'}
                 </p>
-                <CreateBugReportDialog onSuccess={() => refetch()} />
+                <CreateBugReportDialog onSuccess={() => { void refetch() }} />
               </div>
             </CardContent>
           </Card>
@@ -784,7 +785,7 @@ const BugReportsPage: React.FC = () => {
             <BugReportCard
               key={bugReport.id}
               bugReport={bugReport}
-              onUpdate={handleUpdateBugReport}
+              onUpdate={(id, data) => { void handleUpdateBugReport(id, data) }}
               showActions={user?.role === 'admin'}
             />
           ))

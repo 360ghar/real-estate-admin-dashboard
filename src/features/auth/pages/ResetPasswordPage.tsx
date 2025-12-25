@@ -38,10 +38,12 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     if (!supabase) return
 
+    const client = supabase
+
     const init = async () => {
       try {
         // If redirected from email link, session may already be present.
-        const { data: sessionRes } = await supabase.auth.getSession()
+        const { data: sessionRes } = await client.auth.getSession()
         if (sessionRes.session) {
           setIsReady(true)
           return
@@ -52,7 +54,7 @@ export default function ResetPasswordPage() {
         const access_token = hashParams.get('access_token') || ''
         const refresh_token = hashParams.get('refresh_token') || ''
         if (access_token && refresh_token) {
-          const { error } = await supabase.auth.setSession({ access_token, refresh_token })
+          const { error } = await client.auth.setSession({ access_token, refresh_token })
           if (error) throw error
           setIsReady(true)
           return
@@ -62,7 +64,7 @@ export default function ResetPasswordPage() {
         const urlParams = new URLSearchParams(window.location.search)
         const code = urlParams.get('code')
         if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code)
+          const { error } = await client.auth.exchangeCodeForSession(code)
           if (error) throw error
           setIsReady(true)
           return
@@ -124,8 +126,8 @@ export default function ResetPasswordPage() {
               <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Preparing reset form...
             </div>
           ) : (
-            <Form {...(form as any)}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <Form {...form}>
+              <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-5">
                 <FormField
                   control={form.control}
                   name="password"

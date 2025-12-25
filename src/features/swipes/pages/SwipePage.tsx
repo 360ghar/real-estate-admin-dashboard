@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useGetRecommendationsQuery } from '@/features/properties/api/propertiesApi'
 import { useSwipePropertyMutation } from '@/features/swipes/api/swipesApi'
 import SwipeCard from '../components/SwipeCard'
@@ -17,7 +17,7 @@ const SwipePage = () => {
         if (!properties || !properties[currentIndex]) return
 
         const property = properties[currentIndex]
-        const action = direction === 'right' ? 'like' : 'dislike'
+        const isLiked = direction === 'right'
 
         // Optimistic update: move to next card immediately
         setCurrentIndex((prev) => prev + 1)
@@ -25,7 +25,7 @@ const SwipePage = () => {
         try {
             const result = await swipeProperty({
                 property_id: property.id,
-                action,
+                is_liked: isLiked,
             }).unwrap()
 
             if (result.match) {
@@ -43,7 +43,7 @@ const SwipePage = () => {
 
     const reset = () => {
         setCurrentIndex(0)
-        refetch()
+        void refetch()
     }
 
     if (isLoading) {
@@ -70,7 +70,7 @@ const SwipePage = () => {
                         <SwipeCard
                             key={currentProperties[currentIndex].id}
                             property={currentProperties[currentIndex]}
-                            onSwipe={handleSwipe}
+                            onSwipe={(direction) => { void handleSwipe(direction) }}
                         />
                     )}
                 </AnimatePresence>

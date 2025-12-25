@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -10,19 +10,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Calendar } from '@/components/ui/calendar'
 import { Separator } from '@/components/ui/separator'
-import { Progress } from '@/components/ui/progress'
 import { skipToken } from '@reduxjs/toolkit/query'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import {
   useGetUserBookingsQuery,
-  useGetUpcomingBookingsQuery,
-  useGetPastBookingsQuery,
   useCreateBookingMutation,
-  useUpdateBookingMutation,
   useCancelBookingMutation,
   useProcessPaymentMutation,
   useAddReviewMutation,
@@ -31,8 +26,9 @@ import {
   useGetAllBookingsQuery
 } from '@/features/bookings/api/bookingsApi'
 import { useGetPropertyQuery } from '@/features/properties/api/propertiesApi'
-import { format, addDays, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns'
-import { Calendar as CalendarIcon, MapPin, Users, DollarSign, Clock, Star, CreditCard, Plus, Edit, X, Check, AlertCircle, CalendarDays } from 'lucide-react'
+import { format, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns'
+import { Calendar as CalendarIcon, MapPin, Clock, Star, CreditCard, Plus, Check, AlertCircle, CalendarDays } from 'lucide-react'
+import type { Booking, BookingReview, BookingPricing, AvailabilityInfo } from '@/types/api'
 
 const createBookingSchema = z.object({
   property_id: z.number().min(1, 'Property is required'),
@@ -62,10 +58,10 @@ type CreateBookingFormData = z.infer<typeof createBookingSchema>
 type ReviewFormData = z.infer<typeof reviewSchema>
 
 interface BookingCardProps {
-  booking: any
-  onUpdate?: (booking: any) => void
+  booking: Booking
+  onUpdate?: (booking: Booking) => void
   onCancel?: (bookingId: number) => void
-  onReview?: (bookingId: number, review: any) => void
+  onReview?: (bookingId: number, review: BookingReview) => void
   showActions?: boolean
 }
 
@@ -194,26 +190,29 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                   </div>
                 </div>
 
-                {booking.review && (
-                  <div className="mt-3 p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="flex">
-                        {[...Array(5)].map((_, i) => (
-                          <Star
-                            key={i}
-                            className={`h-4 w-4 ${
-                              i < booking.review.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
-                            }`}
-                          />
-                        ))}
+                {booking.review && (() => {
+                  const review = booking.review
+                  return (
+                    <div className="mt-3 p-3 bg-muted rounded-lg">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-4 w-4 ${
+                                i < review.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-sm font-medium">{review.rating}/5</span>
                       </div>
-                      <span className="text-sm font-medium">{booking.review.rating}/5</span>
+                      {review.review_text && (
+                        <p className="text-sm">{review.review_text}</p>
+                      )}
                     </div>
-                    {booking.review.review_text && (
-                      <p className="text-sm">{booking.review.review_text}</p>
-                    )}
-                  </div>
-                )}
+                  )
+                })()}
               </div>
             )}
           </div>
@@ -291,8 +290,17 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
     },
   })
 
+  const aspectLabels = {
+    cleanliness: 'Cleanliness',
+    location: 'Location',
+    value: 'Value',
+    communication: 'Communication',
+    accuracy: 'Accuracy',
+    checkin: 'Check-in',
+  } as const
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4">
       <div className="space-y-2">
         <Label>Overall Rating</Label>
         <div className="flex gap-1">
@@ -330,18 +338,11 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {Object.entries({
-          cleanliness: 'Cleanliness',
-          location: 'Location',
-          value: 'Value',
-          communication: 'Communication',
-          accuracy: 'Accuracy',
-          checkin: 'Check-in',
-        }).map(([key, label]) => (
+        {(Object.entries(aspectLabels) as Array<[keyof typeof aspectLabels, string]>).map(([key, label]) => (
           <div key={key} className="space-y-2">
             <Label>{label}</Label>
             <Select
-              {...(register(`aspects.${key}` as any, { valueAsNumber: true }) as any)}
+              {...register(`aspects.${key}` as const, { valueAsNumber: true })}
               defaultValue="5"
             >
               <SelectTrigger>
@@ -379,8 +380,8 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
     to: Date | undefined
   }>({ from: undefined, to: undefined })
 
-  const [pricingInfo, setPricingInfo] = useState<any>(null)
-  const [availabilityInfo, setAvailabilityInfo] = useState<any>(null)
+  const [pricingInfo, setPricingInfo] = useState<BookingPricing | null>(null)
+  const [availabilityInfo, setAvailabilityInfo] = useState<AvailabilityInfo | null>(null)
 
   const { data: property } = useGetPropertyQuery(propertyId || 0, {
     skip: !propertyId || !isOpen,
@@ -488,7 +489,7 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
           </Card>
         )}
 
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
           {/* Date Selection */}
           <div className="space-y-4">
             <Label className="text-base">Select Dates</Label>
@@ -641,8 +642,6 @@ const BookingManagementPage: React.FC = () => {
 
   // API calls
   const { data: userBookings, refetch: refetchUserBookings } = useGetUserBookingsQuery()
-  const { data: upcomingBookings } = useGetUpcomingBookingsQuery()
-  const { data: pastBookings } = useGetPastBookingsQuery()
 
   // Admin/Agent view
   const { data: allBookings, refetch: refetchAllBookings } = useGetAllBookingsQuery(
@@ -681,8 +680,8 @@ const BookingManagementPage: React.FC = () => {
         title: 'Booking Cancelled',
         description: 'Your booking has been cancelled successfully.',
       })
-      refetchUserBookings()
-      refetchAllBookings()
+      void refetchUserBookings()
+      void refetchAllBookings()
     } catch (error) {
       toast({
         title: 'Cancellation Failed',
@@ -692,7 +691,7 @@ const BookingManagementPage: React.FC = () => {
     }
   }
 
-  const handleProcessPayment = async (booking: any) => {
+  const handleProcessPayment = async (booking: Booking) => {
     try {
       await processPayment({
         bookingId: booking.id,
@@ -706,8 +705,8 @@ const BookingManagementPage: React.FC = () => {
         title: 'Payment Processed',
         description: 'Payment has been processed successfully.',
       })
-      refetchUserBookings()
-      refetchAllBookings()
+      void refetchUserBookings()
+      void refetchAllBookings()
     } catch (error) {
       toast({
         title: 'Payment Failed',
@@ -717,7 +716,7 @@ const BookingManagementPage: React.FC = () => {
     }
   }
 
-  const handleAddReview = async (bookingId: number, review: any) => {
+  const handleAddReview = async (bookingId: number, review: BookingReview) => {
     try {
       await addReview({
         bookingId,
@@ -727,8 +726,8 @@ const BookingManagementPage: React.FC = () => {
         title: 'Review Added',
         description: 'Thank you for your review!',
       })
-      refetchUserBookings()
-      refetchAllBookings()
+      void refetchUserBookings()
+      void refetchAllBookings()
     } catch (error) {
       toast({
         title: 'Review Failed',
@@ -750,8 +749,8 @@ const BookingManagementPage: React.FC = () => {
         </div>
         {user?.role !== 'admin' && (
           <CreateBookingDialog onSuccess={() => {
-            refetchUserBookings()
-            refetchAllBookings()
+            void refetchUserBookings()
+            void refetchAllBookings()
           }} />
         )}
       </div>
@@ -832,8 +831,8 @@ const BookingManagementPage: React.FC = () => {
                 </p>
                 {user?.role !== 'admin' && (
                   <CreateBookingDialog onSuccess={() => {
-                    refetchUserBookings()
-                    refetchAllBookings()
+                    void refetchUserBookings()
+                    void refetchAllBookings()
                   }} />
                 )}
               </div>
@@ -844,9 +843,9 @@ const BookingManagementPage: React.FC = () => {
             <BookingCard
               key={booking.id}
               booking={booking}
-              onUpdate={handleProcessPayment}
-              onCancel={handleCancelBooking}
-              onReview={handleAddReview}
+              onUpdate={(selectedBooking) => { void handleProcessPayment(selectedBooking) }}
+              onCancel={(bookingId) => { void handleCancelBooking(bookingId) }}
+              onReview={(bookingId, review) => { void handleAddReview(bookingId, review) }}
               showActions={user?.role !== 'admin'}
             />
           ))

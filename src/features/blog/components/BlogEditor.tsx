@@ -12,6 +12,8 @@ import ImageUpload from '@/components/common/media/ImageUpload'
 import { useCreateBlogPostMutation, useGetBlogCategoriesQuery, useGetBlogTagsQuery } from '@/features/blog/api/blogsApi'
 import { useToast } from '@/hooks/use-toast'
 import { blogPostSchema, type BlogPostForm } from '@/lib/blogValidation'
+import { getErrorMessage } from '@/lib/errors'
+import type { BlogCategory, BlogTag } from '@/types/blog'
 
 const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
   const { toast } = useToast()
@@ -57,17 +59,17 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
       toast({ title: 'Created', description: 'Blog post created successfully' })
       onSuccess?.(res.slug)
     } catch (e: unknown) {
-      toast({ title: 'Save failed', description: (e as any)?.data?.detail || 'Please check inputs', variant: 'destructive' })
+      toast({ title: 'Save failed', description: getErrorMessage(e, 'Please check inputs'), variant: 'destructive' })
     }
   }
 
   // Prepare category and tag options for multi-select
-  const categoryOptions = categoriesData?.items.map((cat: any) => ({
+  const categoryOptions = categoriesData?.items.map((cat: BlogCategory) => ({
     value: cat.slug,
     label: cat.name,
   })) || []
 
-  const tagOptions = tagsData?.items.map((tag: any) => ({
+  const tagOptions = tagsData?.items.map((tag: BlogTag) => ({
     value: tag.slug,
     label: tag.name,
   })) || []
@@ -81,7 +83,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="grid gap-4 md:grid-cols-2">
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
                 <FormField
                   control={form.control}

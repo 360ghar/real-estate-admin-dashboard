@@ -72,8 +72,8 @@ export default function ForgotPasswordPage() {
             </Alert>
           )}
 
-          <Form {...(form as any)}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+          <Form {...form}>
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-5">
               <FormField
                 control={form.control}
                 name="email"

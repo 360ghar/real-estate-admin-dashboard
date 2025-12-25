@@ -1,6 +1,5 @@
 import { Navigate, Outlet } from 'react-router-dom'
-import { useAppSelector } from '@/hooks/redux'
-import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
 
 type Role = 'admin' | 'agent' | 'user'
 
@@ -9,15 +8,13 @@ interface RoleBasedRouteProps {
 }
 
 const RoleBasedRoute = ({ allowedRoles }: RoleBasedRouteProps) => {
-  const currentUser = useAppSelector(selectCurrentUser)
+  const { user: currentUser, role } = useUserRole()
 
   if (!currentUser) {
     return <Navigate to="/login" replace />
   }
 
   // Prefer explicit role from API; fall back for older payloads
-  const role: Role = (currentUser.role as Role) || (currentUser.agent_id ? 'agent' : 'admin')
-
   if (!allowedRoles.includes(role)) {
     return <Navigate to="/access-denied" replace />
   }

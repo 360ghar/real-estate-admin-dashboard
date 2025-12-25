@@ -1,38 +1,34 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
-interface FilterPersistenceOptions<T> {
+interface FilterPersistenceOptions<T extends Record<string, unknown>> {
   key: string
   defaultValue: T
   debounceMs?: number
 }
 
-export function useFilterPersistence<T extends Record<string, any>>({
+export function useFilterPersistence<T extends Record<string, unknown>>({
   key,
   defaultValue,
   debounceMs = 300
 }: FilterPersistenceOptions<T>) {
+  const defaultValueRef = useRef(defaultValue)
   const [filters, setFiltersState] = useState<T>(() => {
     try {
       const saved = localStorage.getItem(`filters_${key}`)
-      return saved ? { ...defaultValue, ...JSON.parse(saved) } : defaultValue
+      return saved
+        ? { ...defaultValueRef.current, ...(JSON.parse(saved) as Partial<T>) }
+        : { ...defaultValueRef.current }
     } catch {
-      return defaultValue
+      return { ...defaultValueRef.current }
     }
   })
 
   const setFilters = (newFilters: Partial<T>) => {
-    const updated = { ...filters, ...newFilters }
-    setFiltersState(updated)
-
-    try {
-      localStorage.setItem(`filters_${key}`, JSON.stringify(updated))
-    } catch (error) {
-      console.warn('Failed to save filters to localStorage:', error)
-    }
+    setFiltersState((prev) => ({ ...prev, ...newFilters }))
   }
 
   const clearFilters = () => {
-    setFiltersState(defaultValue)
+    setFiltersState({ ...defaultValueRef.current })
     try {
       localStorage.removeItem(`filters_${key}`)
     } catch (error) {
@@ -41,13 +37,29 @@ export function useFilterPersistence<T extends Record<string, any>>({
   }
 
   const resetFilters = () => {
-    setFilters(defaultValue)
+    setFilters({ ...defaultValueRef.current })
   }
+
+  const isEqual = (a: unknown, b: unknown) => {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) return false
+      return a.every((item, index) => item === b[index])
+    }
+    return a === b
+  }
+
+  const hasActiveFilters = (Object.keys(filters) as Array<keyof T>).some((k) =>
+    !isEqual(filters[k], defaultValueRef.current[k])
+  )
 
   // Auto-save on filter changes
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
+        if (!hasActiveFilters) {
+          localStorage.removeItem(`filters_${key}`)
+          return
+        }
         localStorage.setItem(`filters_${key}`, JSON.stringify(filters))
       } catch (error) {
         console.warn('Failed to auto-save filters:', error)
@@ -55,15 +67,13 @@ export function useFilterPersistence<T extends Record<string, any>>({
     }, debounceMs)
 
     return () => clearTimeout(timer)
-  }, [filters, key, debounceMs])
+  }, [filters, key, debounceMs, hasActiveFilters])
 
   return {
     filters,
     setFilters,
     clearFilters,
     resetFilters,
-    hasActiveFilters: Object.keys(filters).some(
-      k => filters[k] !== defaultValue[k] && filters[k] !== '' && filters[k] !== null
-    )
+    hasActiveFilters
   }
 }

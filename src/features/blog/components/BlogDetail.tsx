@@ -9,6 +9,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { LoadingState } from '@/components/ui/loading-state'
 import { useToast } from '@/hooks/use-toast'
 import { useDeleteBlogPostMutation, useGetBlogPostQuery, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
+import { getErrorMessage } from '@/lib/errors'
+
+const getErrorStatus = (error: unknown) => {
+  if (!error || typeof error !== 'object') return undefined
+  const status = (error as { status?: unknown }).status
+  return typeof status === 'number' ? status : undefined
+}
 
 const isProbablyHtml = (content: string) => {
   const value = content.trim()
@@ -23,7 +30,7 @@ const isProbablyHtml = (content: string) => {
 const estimateReadingTimeMinutes = (content: string) => {
   const plainText = content
     .replace(/<[^>]+>/g, ' ')
-    .replace(/[`*_>#\-]/g, ' ')
+    .replace(/[`*_>#-]/g, ' ')
   const words = plainText.trim().split(/\s+/).filter(Boolean).length
   if (!words) return null
   return Math.max(1, Math.round(words / 200))
@@ -55,7 +62,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
     } catch (e: unknown) {
       toast({
         title: 'Update failed',
-        description: (e as any)?.data?.detail || 'Failed to update publish status',
+        description: getErrorMessage(e, 'Failed to update publish status'),
         variant: 'destructive',
       })
     }
@@ -77,7 +84,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
     } catch (e: unknown) {
       toast({
         title: 'Delete failed',
-        description: (e as any)?.data?.detail || 'Failed to delete blog post',
+        description: getErrorMessage(e, 'Failed to delete blog post'),
         variant: 'destructive',
       })
     }
@@ -100,7 +107,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
   }
 
   if (error) {
-    const status = (error as any)?.status
+    const status = getErrorStatus(error)
     const isNotFound = status === 404
 
     return (
@@ -122,7 +129,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
               </AlertDescription>
             </Alert>
             {!isNotFound && (
-              <Button size="sm" variant="outline" onClick={() => refetch()}>
+              <Button size="sm" variant="outline" onClick={() => { void refetch() }}>
                 <RotateCcw className="mr-2 h-4 w-4" />
                 Retry
               </Button>
@@ -187,7 +194,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
           <Button
             variant={post.active ? 'outline' : 'default'}
             size="sm"
-            onClick={handleToggleStatus}
+            onClick={() => { void handleToggleStatus() }}
             disabled={isTogglingStatus}
           >
             {post.active ? (
@@ -205,7 +212,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={handleDelete}
+            onClick={() => { void handleDelete() }}
             disabled={isDeleting}
           >
             <Trash2 className="mr-2 h-4 w-4" />
@@ -260,10 +267,10 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
             />
           )}
           <div className="flex flex-wrap gap-2">
-            {(post.categories || []).map((c: any) => (
+            {(post.categories || []).map((c) => (
               <Badge key={c.slug} variant="secondary">{c.name}</Badge>
             ))}
-            {(post.tags || []).map((t: any) => (
+            {(post.tags || []).map((t) => (
               <Badge key={t.slug} variant="outline">#{t.name}</Badge>
             ))}
           </div>

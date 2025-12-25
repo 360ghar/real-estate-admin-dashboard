@@ -14,6 +14,7 @@ export interface VisitsQuery {
   agent_id?: number
   property_id?: number
   user_id?: number
+  q?: string
 }
 
 export const visitsApi = api.injectEndpoints({
@@ -64,10 +65,13 @@ export const visitsApi = api.injectEndpoints({
 
     // Reschedule a visit
     rescheduleVisit: builder.mutation<Visit, { visitId: number; newDate: string; reason: string }>({
-      query: ({ visitId, ...data }) => ({
+      query: ({ visitId, newDate, reason }) => ({
         url: `/visits/${visitId}/reschedule`,
         method: 'POST',
-        body: data
+        body: {
+          new_date: newDate,
+          reason,
+        }
       }),
       invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }]
     }),
