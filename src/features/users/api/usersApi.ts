@@ -1,49 +1,16 @@
 import { api } from '@/store/api'
-import type { User, UserNotificationSettings, UserPrivacySettings } from '@/types'
+import type {
+  User,
+  UserNotificationSettings,
+  UserPrivacySettings,
+  UserPreferences,
+  UserUpdate,
+  UsersQuery,
+  PaginatedResponse,
+} from '@/types'
 
-export interface PaginatedResponse<T> {
-  items: T[]
-  total: number
-  page: number
-  limit: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
-}
-
-export interface UserPreferences {
-  property_type: string[]
-  purpose: string
-  budget_min?: number
-  budget_max?: number
-  bedrooms_min?: number
-  bedrooms_max?: number
-  area_min?: number
-  area_max?: number
-  location_preference: string[]
-  max_distance_km: number
-}
-
-export interface UserUpdate {
-  email?: string
-  full_name?: string
-  phone?: string
-  date_of_birth?: string
-  profile_image_url?: string
-  preferences?: UserPreferences
-  current_latitude?: number
-  current_longitude?: number
-  preferred_locations?: string[]
-  notification_settings?: UserNotificationSettings
-  privacy_settings?: UserPrivacySettings
-}
-
-export interface UsersQuery {
-  page?: number
-  limit?: number
-  q?: string
-  agent_id?: number
-}
+// Re-export types for backward compatibility with existing imports
+export type { UserPreferences, UserUpdate, UsersQuery, PaginatedResponse }
 
 export interface TypedUserNotificationPayload {
   userId: number

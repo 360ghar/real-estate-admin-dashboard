@@ -43,16 +43,17 @@ export interface User {
 }
 
 export interface UserPreferences {
-  property_type: string[]
-  purpose: 'buy' | 'rent' | 'short_stay'
-  budget_min: number
-  budget_max: number
-  bedrooms_min: number
-  bedrooms_max: number
-  area_min: number
-  area_max: number
-  location_preference: string[]
-  max_distance_km: number
+  [key: string]: unknown
+  property_type?: string[]
+  purpose?: 'buy' | 'rent' | 'short_stay'
+  budget_min?: number
+  budget_max?: number
+  bedrooms_min?: number
+  bedrooms_max?: number
+  area_min?: number
+  area_max?: number
+  location_preference?: string[]
+  max_distance_km?: number
 }
 
 export interface UserNotificationSettings {

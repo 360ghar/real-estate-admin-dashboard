@@ -33,6 +33,26 @@ const CategoriesPage = lazy(() => import('@/features/blog/pages/categories/Categ
 const TagsPage = lazy(() => import('@/features/blog/pages/tags/TagsPage'))
 const NotificationsPage = lazy(() => import('@/features/core/pages/NotificationsPage'))
 const SwipePage = lazy(() => import('@/features/swipes/pages/SwipePage'))
+
+// Property Management (PM)
+const PmDashboardPage = lazy(() => import('@/features/pm/pages/PmDashboardPage'))
+const PmOwnersPage = lazy(() => import('@/features/pm/pages/PmOwnersPage'))
+const PmOwnerDetailPage = lazy(() => import('@/features/pm/pages/PmOwnerDetailPage'))
+const PmPropertiesPage = lazy(() => import('@/features/pm/pages/PmPropertiesPage'))
+const PmPropertyDetailPage = lazy(() => import('@/features/pm/pages/PmPropertyDetailPage'))
+const PmApplicationsPage = lazy(() => import('@/features/pm/pages/PmApplicationsPage'))
+const PmApplicationDetailPage = lazy(() => import('@/features/pm/pages/PmApplicationDetailPage'))
+const PmLeasesPage = lazy(() => import('@/features/pm/pages/PmLeasesPage'))
+const PmLeaseDetailPage = lazy(() => import('@/features/pm/pages/PmLeaseDetailPage'))
+const PmRentLedgerPage = lazy(() => import('@/features/pm/pages/PmRentLedgerPage'))
+const PmExpensesPage = lazy(() => import('@/features/pm/pages/PmExpensesPage'))
+const PmMaintenancePage = lazy(() => import('@/features/pm/pages/PmMaintenancePage'))
+const PmDocumentsPage = lazy(() => import('@/features/pm/pages/PmDocumentsPage'))
+const PmInspectionsPage = lazy(() => import('@/features/pm/pages/PmInspectionsPage'))
+const PmInspectionDetailPage = lazy(() => import('@/features/pm/pages/PmInspectionDetailPage'))
+const PmReportsPage = lazy(() => import('@/features/pm/pages/PmReportsPage'))
+const PmAuditLogPage = lazy(() => import('@/features/pm/pages/PmAuditLogPage'))
+const PmSettingsPage = lazy(() => import('@/features/pm/pages/PmSettingsPage'))
 function App() {
   return (
     <ErrorBoundary>
@@ -55,6 +75,26 @@ function App() {
               {/* Staff-only (admin + agent) */}
               <Route element={<RoleBasedRoute allowedRoles={["admin", "agent"]} />}>
                 <Route path="/dashboard" element={<DashboardPage />} />
+
+                {/* PM Portal */}
+                <Route path="/pm" element={<Navigate to="/pm/dashboard" replace />} />
+                <Route path="/pm/dashboard" element={<PmDashboardPage />} />
+                <Route path="/pm/owners" element={<PmOwnersPage />} />
+                <Route path="/pm/owners/:ownerId" element={<PmOwnerDetailPage />} />
+                <Route path="/pm/properties" element={<PmPropertiesPage />} />
+                <Route path="/pm/properties/:propertyId" element={<PmPropertyDetailPage />} />
+                <Route path="/pm/applications" element={<PmApplicationsPage />} />
+                <Route path="/pm/applications/:applicationId" element={<PmApplicationDetailPage />} />
+                <Route path="/pm/leases" element={<PmLeasesPage />} />
+                <Route path="/pm/leases/:leaseId" element={<PmLeaseDetailPage />} />
+                <Route path="/pm/rent-ledger" element={<PmRentLedgerPage />} />
+                <Route path="/pm/expenses" element={<PmExpensesPage />} />
+                <Route path="/pm/maintenance" element={<PmMaintenancePage />} />
+                <Route path="/pm/documents" element={<PmDocumentsPage />} />
+                <Route path="/pm/inspections" element={<PmInspectionsPage />} />
+                <Route path="/pm/inspections/:inspectionId" element={<PmInspectionDetailPage />} />
+                <Route path="/pm/reports" element={<PmReportsPage />} />
+
                 <Route path="/properties" element={<PropertiesPage />} />
                 <Route path="/properties/new" element={<PropertiesPage mode="create" />} />
                 <Route path="/properties/:id" element={<PropertiesPage mode="edit" />} />
@@ -90,6 +130,10 @@ function App() {
                   <Route path="/app-updates" element={<AppUpdatesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   {/* Reviews module removed */}
+
+                  {/* PM admin-only */}
+                  <Route path="/pm/audit" element={<PmAuditLogPage />} />
+                  <Route path="/pm/settings" element={<PmSettingsPage />} />
                 </Route>
               </Route>
             </Route>

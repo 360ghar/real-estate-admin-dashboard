@@ -12,11 +12,11 @@ const Sidebar = () => {
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
+        <SheetContent side="left" className="p-0 w-64 overflow-y-auto">
           <SidebarContent />
         </SheetContent>
       </Sheet>
-      <div className="hidden md:block w-64 flex-shrink-0 border-r bg-background">
+      <div className="hidden md:flex md:flex-col w-64 flex-shrink-0 border-r bg-background h-full overflow-hidden">
         <SidebarContent />
       </div>
     </>

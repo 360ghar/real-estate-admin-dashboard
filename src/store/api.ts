@@ -48,6 +48,19 @@ export const api = createApi({
     'BlogCategory',
     'BlogTag',
     'Swipe',
+    // Property Management (PM)
+    'PmDashboard',
+    'PmProperty',
+    'PmLease',
+    'PmRentCharge',
+    'PmRentPayment',
+    'PmExpense',
+    'PmMaintenanceRequest',
+    'PmDocument',
+    'PmInspection',
+    'PmAssignment',
+    'PmApplicationForm',
+    'PmApplication',
   ],
   endpoints: (builder) => ({
     login: builder.mutation<

@@ -201,7 +201,7 @@ const UserPreferencesPage = () => {
               {/* Purpose */}
               <div>
                 <Label htmlFor="purpose">Purpose</Label>
-                <Select value={preferences.purpose} onValueChange={(value) => setPreferences(prev => ({ ...prev, purpose: value }))}>
+                <Select value={preferences.purpose} onValueChange={(value) => setPreferences(prev => ({ ...prev, purpose: value as 'buy' | 'rent' | 'short_stay' }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>

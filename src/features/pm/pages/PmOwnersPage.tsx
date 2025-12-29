@@ -1,0 +1,172 @@
+import { useMemo, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
+import { UserRound, Users } from 'lucide-react'
+import { useUserRole } from '@/hooks/useUserRole'
+import { useDebounce } from '@/hooks/useDebounce'
+import { useAppDispatch } from '@/hooks/redux'
+import { setSelectedOwner } from '@/features/pm/slices/pmSlice'
+import { useGetUsersQuery } from '@/features/users/api/usersApi'
+import AssignAgent from '@/features/users/components/assign/AssignAgent'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DataTable } from '@/components/ui/data-table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import Pagination from '@/components/ui/pagination'
+import type { User } from '@/types'
+
+const getOwnerLabel = (u: Pick<User, 'full_name' | 'phone' | 'email'>) =>
+  (u.full_name || u.phone || u.email || 'Unnamed owner').trim()
+
+const getKycStatus = (u: User): string => {
+  const prefs = u.preferences as unknown as Record<string, unknown> | undefined
+  const raw = prefs?.pm_kyc_status ?? prefs?.kyc_status
+  return typeof raw === 'string' && raw.trim() ? raw : 'unknown'
+}
+
+export default function PmOwnersPage() {
+  const { role } = useUserRole()
+  const dispatch = useAppDispatch()
+  const navigate = useNavigate()
+
+  const [page, setPage] = useState(1)
+  const [q, setQ] = useState('')
+  const debouncedQ = useDebounce(q, 300)
+
+  const users = useGetUsersQuery({ page, limit: 20, q: debouncedQ || undefined })
+
+  const owners = useMemo(() => (users.data?.items || []).filter((u) => u.role === 'user'), [users.data?.items])
+
+  const columns = useMemo<ColumnDef<User>[]>(() => {
+    return [
+      {
+        accessorKey: 'full_name',
+        header: 'Owner',
+        cell: ({ row }) => (
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <UserRound className="h-4 w-4" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate font-medium">{getOwnerLabel(row.original)}</div>
+              <div className="truncate text-xs text-muted-foreground">ID: {row.original.id}</div>
+            </div>
+          </div>
+        ),
+      },
+      {
+        accessorKey: 'phone',
+        header: 'Phone',
+        cell: ({ row }) => <span className="text-sm">{row.original.phone || '—'}</span>,
+      },
+      {
+        accessorKey: 'agent_id',
+        header: 'Assigned RM',
+        cell: ({ row }) => (
+          <span className="text-sm">
+            {row.original.agent_id ? `Agent #${row.original.agent_id}` : 'Unassigned'}
+          </span>
+        ),
+      },
+      {
+        id: 'kyc',
+        header: 'KYC',
+        cell: ({ row }) => {
+          const status = getKycStatus(row.original)
+          const variant = status === 'verified' ? 'default' : status === 'pending' ? 'secondary' : 'outline'
+          return <Badge variant={variant}>{status}</Badge>
+        },
+      },
+      {
+        id: 'actions',
+        header: '',
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link to={`/pm/owners/${row.original.id}`}>View</Link>
+            </Button>
+            {role === 'agent' ? (
+              <Button
+                size="sm"
+                onClick={() => {
+                  dispatch(setSelectedOwner({ id: row.original.id, label: getOwnerLabel(row.original) }))
+                  navigate('/pm/properties')
+                }}
+              >
+                Select
+              </Button>
+            ) : role === 'admin' ? (
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button size="sm">Assign RM</Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-xl">
+                  <DialogHeader>
+                    <DialogTitle>Assign Relationship Manager</DialogTitle>
+                  </DialogHeader>
+                  <AssignAgent userId={row.original.id} />
+                </DialogContent>
+              </Dialog>
+            ) : null}
+          </div>
+        ),
+      },
+    ]
+  }, [dispatch, navigate, role])
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold tracking-tight">Owners</h1>
+          <p className="text-sm text-muted-foreground">
+            {role === 'admin' ? 'All owner portfolios.' : 'Owners assigned to you.'}
+          </p>
+        </div>
+        <Badge variant="secondary" className="h-fit">
+          <Users className="mr-1 h-3 w-3" />
+          {users.data?.total ?? owners.length} total
+        </Badge>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Owner List</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="max-w-md">
+              <Input
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Search by name / phone / email…"
+              />
+            </div>
+          </div>
+
+          {users.isLoading ? (
+            <div className="text-sm text-muted-foreground">Loading…</div>
+          ) : owners.length ? (
+            <>
+              <DataTable columns={columns} data={owners} />
+              <Pagination
+                page={page}
+                pageSize={20}
+                total={users.data?.total || 0}
+                onChange={(next) => setPage(next)}
+              />
+            </>
+          ) : (
+            <EmptyState
+              title="No owners found"
+              description="Try adjusting your search."
+            />
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

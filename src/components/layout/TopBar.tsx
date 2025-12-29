@@ -1,17 +1,22 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAppDispatch, useAppSelector } from '@/hooks/redux'
 import { selectCurrentUser, clearCredentials } from '@/features/auth/slices/authSlice'
+import { useUserRole } from '@/hooks/useUserRole'
+import OwnerSelector from '@/features/pm/components/OwnerSelector'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { Link } from 'react-router-dom'
 import { User, Settings, LogOut } from 'lucide-react'
 import { ModeToggle } from '@/components/common/mode-toggle'
 
 const TopBar = () => {
   const user = useAppSelector(selectCurrentUser)
+  const { role } = useUserRole()
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const showOwnerSelector = location.pathname.startsWith('/pm') && (role === 'admin' || role === 'agent')
 
   const logout = () => {
     dispatch(clearCredentials())
@@ -21,6 +26,7 @@ const TopBar = () => {
   return (
     <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4">
       <div className="flex items-center gap-3">
+        {showOwnerSelector && <OwnerSelector />}
         <div className="flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm font-medium text-muted-foreground">
