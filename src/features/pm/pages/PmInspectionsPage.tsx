@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ClipboardCheck, Plus } from 'lucide-react'
+import { AlertCircle, ClipboardCheck, Plus } from 'lucide-react'
+import { INSPECTION_TYPES, PAGE_SIZES } from '@/features/pm/constants'
 import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
@@ -100,6 +101,24 @@ export default function PmInspectionsPage() {
   const [roomsJson, setRoomsJson] = useState('{}')
   const [overallNotes, setOverallNotes] = useState('')
 
+  const resetCreateForm = useCallback(() => {
+    setLeaseId('')
+    setInspectionType('routine')
+    setConductedAt('')
+    setRoomsJson('{}')
+    setOverallNotes('')
+  }, [])
+
+  const handleCreateOpenChange = useCallback(
+    (open: boolean) => {
+      setCreateOpen(open)
+      if (!open) {
+        resetCreateForm()
+      }
+    },
+    [resetCreateForm],
+  )
+
   const submitCreate = async () => {
     if (!leaseId) {
       toast({ title: 'Missing fields', description: 'Lease is required.', variant: 'destructive' })
@@ -141,7 +160,7 @@ export default function PmInspectionsPage() {
             <h1 className="text-3xl font-bold tracking-tight">Inspections</h1>
             <p className="text-sm text-muted-foreground">Create and track inspection checklists (JSON-based).</p>
           </div>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -175,9 +194,11 @@ export default function PmInspectionsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="move_in">move_in</SelectItem>
-                      <SelectItem value="move_out">move_out</SelectItem>
-                      <SelectItem value="routine">routine</SelectItem>
+                      {INSPECTION_TYPES.map((t) => (
+                        <SelectItem key={t.value} value={t.value}>
+                          {t.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -221,14 +242,30 @@ export default function PmInspectionsPage() {
                   <SelectValue placeholder="Page size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
+                  {PAGE_SIZES.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {inspections.isLoading ? (
+            {inspections.isError ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-sm text-muted-foreground">
+                  Failed to load inspections
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { void inspections.refetch() }}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : inspections.isLoading ? (
               <div className="text-sm text-muted-foreground">Loading…</div>
             ) : inspections.data?.length ? (
               <>

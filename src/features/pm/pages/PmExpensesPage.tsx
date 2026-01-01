@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Download, Plus } from 'lucide-react'
+import { AlertCircle, Download, Plus } from 'lucide-react'
+import { EXPENSE_CATEGORIES, PAGE_SIZES } from '@/features/pm/constants'
 import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
@@ -163,11 +164,38 @@ export default function PmExpensesPage() {
   const [notes, setNotes] = useState('')
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
 
+  const resetCreateForm = useCallback(() => {
+    setPropertyId('')
+    setNewCategory('maintenance')
+    setAmount('')
+    setExpenseDate('')
+    setDescription('')
+    setNotes('')
+    setReceiptFile(null)
+  }, [])
+
+  const handleCreateOpenChange = useCallback(
+    (open: boolean) => {
+      setCreateOpen(open)
+      if (!open) {
+        resetCreateForm()
+      }
+    },
+    [resetCreateForm],
+  )
+
   const submitCreate = async () => {
     if (!propertyId || !amount || !expenseDate) {
       toast({ title: 'Missing fields', description: 'Property, amount, and date are required.', variant: 'destructive' })
       return
     }
+
+    const amountNum = Number(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({ title: 'Invalid amount', description: 'Amount must be a positive number.', variant: 'destructive' })
+      return
+    }
+
     try {
       const selectedPropertyOwnerId = (properties.data || []).find((p) => String(p.id) === String(propertyId))?.owner_id
       const effectiveOwnerId = ownerId ?? selectedPropertyOwnerId ?? null
@@ -189,7 +217,7 @@ export default function PmExpensesPage() {
         owner_id: effectiveOwnerId || undefined,
         property_id: Number(propertyId),
         category: newCategory,
-        amount: Number(amount),
+        amount: amountNum,
         expense_date: expenseDate,
         description: description || undefined,
         notes: notes || undefined,
@@ -197,8 +225,7 @@ export default function PmExpensesPage() {
       }
       await createExpense(payload).unwrap()
       toast({ title: 'Added', description: 'Expense added.' })
-      setCreateOpen(false)
-      setReceiptFile(null)
+      handleCreateOpenChange(false)
     } catch (e: unknown) {
       toast({ title: 'Failed', description: getErrorMessage(e, 'Could not add expense.'), variant: 'destructive' })
     }
@@ -216,7 +243,7 @@ export default function PmExpensesPage() {
             <p className="text-sm text-muted-foreground">Track expenses and attach receipts.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
@@ -250,15 +277,11 @@ export default function PmExpensesPage() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="maintenance">maintenance</SelectItem>
-                        <SelectItem value="repairs">repairs</SelectItem>
-                        <SelectItem value="insurance">insurance</SelectItem>
-                        <SelectItem value="property_tax">property_tax</SelectItem>
-                        <SelectItem value="hoa">hoa</SelectItem>
-                        <SelectItem value="utilities">utilities</SelectItem>
-                        <SelectItem value="marketing">marketing</SelectItem>
-                        <SelectItem value="legal">legal</SelectItem>
-                        <SelectItem value="other">other</SelectItem>
+                        {EXPENSE_CATEGORIES.map((c) => (
+                          <SelectItem key={c.value} value={c.value}>
+                            {c.label}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -325,21 +348,17 @@ export default function PmExpensesPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
-              <Select value={category} onValueChange={(v) => { setCategory(v as ExpenseCategory | ''); setOffset(0) }}>
+              <Select value={category || "all"} onValueChange={(v) => { setCategory(v === "all" ? "" : (v as ExpenseCategory)); setOffset(0) }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
-                  <SelectItem value="maintenance">maintenance</SelectItem>
-                  <SelectItem value="repairs">repairs</SelectItem>
-                  <SelectItem value="insurance">insurance</SelectItem>
-                  <SelectItem value="property_tax">property_tax</SelectItem>
-                  <SelectItem value="hoa">hoa</SelectItem>
-                  <SelectItem value="utilities">utilities</SelectItem>
-                  <SelectItem value="marketing">marketing</SelectItem>
-                  <SelectItem value="legal">legal</SelectItem>
-                  <SelectItem value="other">other</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  {EXPENSE_CATEGORIES.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setOffset(0) }} />
@@ -349,14 +368,30 @@ export default function PmExpensesPage() {
                   <SelectValue placeholder="Page size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
+                  {PAGE_SIZES.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {expenses.isLoading ? (
+            {expenses.isError ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-sm text-muted-foreground">
+                  Failed to load expenses
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { void expenses.refetch() }}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : expenses.isLoading ? (
               <div className="text-sm text-muted-foreground">Loading…</div>
             ) : expenses.data?.length ? (
               <>
@@ -445,15 +480,11 @@ function ExpenseEditForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="maintenance">maintenance</SelectItem>
-              <SelectItem value="repairs">repairs</SelectItem>
-              <SelectItem value="insurance">insurance</SelectItem>
-              <SelectItem value="property_tax">property_tax</SelectItem>
-              <SelectItem value="hoa">hoa</SelectItem>
-              <SelectItem value="utilities">utilities</SelectItem>
-              <SelectItem value="marketing">marketing</SelectItem>
-              <SelectItem value="legal">legal</SelectItem>
-              <SelectItem value="other">other</SelectItem>
+              {EXPENSE_CATEGORIES.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

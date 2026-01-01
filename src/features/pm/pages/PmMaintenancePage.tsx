@@ -1,6 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Plus, Wrench } from 'lucide-react'
+import { AlertCircle, Plus, Wrench } from 'lucide-react'
+import {
+  MAINTENANCE_CATEGORIES,
+  MAINTENANCE_REQUEST_STATUSES,
+  MAINTENANCE_URGENCIES,
+  PAGE_SIZES,
+  WORK_ORDER_STATUSES,
+} from '@/features/pm/constants'
 import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
@@ -137,6 +144,26 @@ export default function PmMaintenancePage() {
   const [preferredContactMethod, setPreferredContactMethod] = useState('')
   const [availabilityNotes, setAvailabilityNotes] = useState('')
 
+  const resetCreateForm = useCallback(() => {
+    setPropertyId('')
+    setCategory('plumbing')
+    setUrgency('medium')
+    setTitle('')
+    setDescription('')
+    setPreferredContactMethod('')
+    setAvailabilityNotes('')
+  }, [])
+
+  const handleCreateOpenChange = useCallback(
+    (open: boolean) => {
+      setCreateOpen(open)
+      if (!open) {
+        resetCreateForm()
+      }
+    },
+    [resetCreateForm],
+  )
+
   const submitCreate = async () => {
     if (!propertyId || !title) {
       toast({ title: 'Missing fields', description: 'Property and title are required.', variant: 'destructive' })
@@ -171,7 +198,7 @@ export default function PmMaintenancePage() {
             <h1 className="text-3xl font-bold tracking-tight">Maintenance</h1>
             <p className="text-sm text-muted-foreground">Triage requests and manage work orders (no vendors).</p>
           </div>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <Dialog open={createOpen} onOpenChange={handleCreateOpenChange}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
@@ -205,14 +232,11 @@ export default function PmMaintenancePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="plumbing">plumbing</SelectItem>
-                      <SelectItem value="electrical">electrical</SelectItem>
-                      <SelectItem value="hvac">hvac</SelectItem>
-                      <SelectItem value="appliance">appliance</SelectItem>
-                      <SelectItem value="structural">structural</SelectItem>
-                      <SelectItem value="pest_control">pest_control</SelectItem>
-                      <SelectItem value="cleaning">cleaning</SelectItem>
-                      <SelectItem value="other">other</SelectItem>
+                      {MAINTENANCE_CATEGORIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -223,10 +247,11 @@ export default function PmMaintenancePage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="emergency">emergency</SelectItem>
-                      <SelectItem value="high">high</SelectItem>
-                      <SelectItem value="medium">medium</SelectItem>
-                      <SelectItem value="low">low</SelectItem>
+                      {MAINTENANCE_URGENCIES.map((u) => (
+                        <SelectItem key={u.value} value={u.value}>
+                          {u.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -269,31 +294,30 @@ export default function PmMaintenancePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
-              <Select value={requestStatus} onValueChange={(v) => { setRequestStatus(v as MaintenanceRequestStatus | ''); setOffset(0) }}>
+              <Select value={requestStatus || "all"} onValueChange={(v) => { setRequestStatus(v === "all" ? "" : (v as MaintenanceRequestStatus)); setOffset(0) }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Request status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
-                  <SelectItem value="open">open</SelectItem>
-                  <SelectItem value="in_review">in_review</SelectItem>
-                  <SelectItem value="work_order_created">work_order_created</SelectItem>
-                  <SelectItem value="resolved">resolved</SelectItem>
-                  <SelectItem value="closed">closed</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  {MAINTENANCE_REQUEST_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Select value={workOrderStatus} onValueChange={(v) => { setWorkOrderStatus(v as WorkOrderStatus | ''); setOffset(0) }}>
+              <Select value={workOrderStatus || "all"} onValueChange={(v) => { setWorkOrderStatus(v === "all" ? "" : (v as WorkOrderStatus)); setOffset(0) }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Work order" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All</SelectItem>
-                  <SelectItem value="created">created</SelectItem>
-                  <SelectItem value="assigned">assigned</SelectItem>
-                  <SelectItem value="in_progress">in_progress</SelectItem>
-                  <SelectItem value="completed">completed</SelectItem>
-                  <SelectItem value="closed">closed</SelectItem>
-                  <SelectItem value="cancelled">cancelled</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
+                  {WORK_ORDER_STATUSES.map((s) => (
+                    <SelectItem key={s.value} value={s.value}>
+                      {s.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
               <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setOffset(0) }}>
@@ -301,14 +325,30 @@ export default function PmMaintenancePage() {
                   <SelectValue placeholder="Page size" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
+                  {PAGE_SIZES.map((size) => (
+                    <SelectItem key={size} value={String(size)}>
+                      {size}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {requests.isLoading ? (
+            {requests.isError ? (
+              <div className="flex flex-col items-center gap-2 py-8 text-center">
+                <AlertCircle className="h-8 w-8 text-destructive" />
+                <p className="text-sm text-muted-foreground">
+                  Failed to load maintenance requests
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { void requests.refetch() }}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : requests.isLoading ? (
               <div className="text-sm text-muted-foreground">Loading…</div>
             ) : requests.data?.length ? (
               <>
@@ -377,28 +417,27 @@ function MaintenanceUpdateForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="open">open</SelectItem>
-              <SelectItem value="in_review">in_review</SelectItem>
-              <SelectItem value="work_order_created">work_order_created</SelectItem>
-              <SelectItem value="resolved">resolved</SelectItem>
-              <SelectItem value="closed">closed</SelectItem>
+              {MAINTENANCE_REQUEST_STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
         <div className="space-y-2">
           <Label>Work order status</Label>
-          <Select value={woStatus} onValueChange={(v) => setWoStatus(v as WorkOrderStatus | '')}>
+          <Select value={woStatus || "none"} onValueChange={(v) => setWoStatus(v === "none" ? "" : (v as WorkOrderStatus))}>
             <SelectTrigger>
               <SelectValue placeholder="—" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">—</SelectItem>
-              <SelectItem value="created">created</SelectItem>
-              <SelectItem value="assigned">assigned</SelectItem>
-              <SelectItem value="in_progress">in_progress</SelectItem>
-              <SelectItem value="completed">completed</SelectItem>
-              <SelectItem value="closed">closed</SelectItem>
-              <SelectItem value="cancelled">cancelled</SelectItem>
+              <SelectItem value="none">—</SelectItem>
+              {WORK_ORDER_STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
