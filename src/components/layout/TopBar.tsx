@@ -6,7 +6,9 @@ import OwnerSelector from '@/features/pm/components/OwnerSelector'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { User, Settings, LogOut } from 'lucide-react'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { SidebarContent } from './SidebarContent'
+import { User, Settings, LogOut, Menu } from 'lucide-react'
 import { ModeToggle } from '@/components/common/mode-toggle'
 
 const TopBar = () => {
@@ -24,10 +26,26 @@ const TopBar = () => {
   }
 
   return (
-    <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-6 py-4">
+    <header className="flex items-center justify-between border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 md:px-6 py-3 md:py-4">
       <div className="flex items-center gap-3">
+        {/* Mobile hamburger menu */}
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="ghost" size="touch-icon" className="md:hidden -ml-2">
+              <Menu className="h-5 w-5" />
+              <span className="sr-only">Open navigation menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="p-0 w-72 overflow-y-auto">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Navigation Menu</SheetTitle>
+            </SheetHeader>
+            <SidebarContent />
+          </SheetContent>
+        </Sheet>
+
         {showOwnerSelector && <OwnerSelector />}
-        <div className="flex items-center gap-2">
+        <div className="hidden sm:flex items-center gap-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
           <span className="text-sm font-medium text-muted-foreground">
             Welcome back{user?.full_name ? `, ${user.full_name}` : ''}

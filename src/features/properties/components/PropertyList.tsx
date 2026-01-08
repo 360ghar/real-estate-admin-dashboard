@@ -3,7 +3,7 @@ import { useUserRole } from '@/hooks/useUserRole'
 import { useDeletePropertyMutation, useListPropertiesQuery, PropertyResponse, PropertySearchParams } from '@/features/properties/api/propertiesApi'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
 import { Card } from '@/components/ui/card'
-import { DataTable } from '@/components/ui/data-table'
+import { ResponsiveDataTable } from '@/components/ui/responsive-data-table'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,9 @@ import Pagination from '@/components/ui/pagination'
 import { useToast } from '@/hooks/use-toast'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useFilterPersistence } from '@/hooks/useFilterPersistence'
+import { useIsMobile } from '@/hooks/useMediaQuery'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MobileFilters, FilterSection } from '@/components/ui/mobile-filters'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,7 +26,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Eye, Edit, Trash2, Search, Filter, MapPin, RotateCcw, X } from 'lucide-react'
+import { Eye, Edit, Trash2, Search, Filter, MapPin, RotateCcw, X, Bed, Bath, Square } from 'lucide-react'
 import {
   ColumnDef,
 } from '@tanstack/react-table'
@@ -36,6 +38,7 @@ import { getErrorMessage } from '@/lib/errors'
 
 const PropertyList = () => {
   const { user, role } = useUserRole()
+  const isMobile = useIsMobile()
 
   // Filter persistence - add new fields
   const { filters, setFilters, clearFilters, hasActiveFilters } = useFilterPersistence({
@@ -243,12 +246,257 @@ const PropertyList = () => {
     },
   ]
 
+  // Mobile card renderer for properties
+  const renderPropertyCard = (property: PropertyResponse) => (
+    <Card className="p-4 hover:bg-muted/50 transition-colors">
+      <div className="flex gap-3">
+        {/* Thumbnail */}
+        <div className="w-24 h-24 flex-shrink-0 rounded-md overflow-hidden bg-muted">
+          {property.main_image_url ? (
+            <img
+              src={property.main_image_url}
+              alt={property.title}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+              <Square className="h-8 w-8" />
+            </div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-medium truncate">{property.title}</h3>
+            <Badge
+              variant={property.status === 'available' ? 'default' : 'secondary'}
+              className="shrink-0"
+            >
+              {property.status}
+            </Badge>
+          </div>
+
+          <div className="text-sm text-muted-foreground flex items-center gap-1 mb-2">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{property.city}, {property.locality}</span>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+            {property.bedrooms !== undefined && (
+              <span className="flex items-center gap-1">
+                <Bed className="h-3 w-3" /> {property.bedrooms}
+              </span>
+            )}
+            {property.bathrooms !== undefined && (
+              <span className="flex items-center gap-1">
+                <Bath className="h-3 w-3" /> {property.bathrooms}
+              </span>
+            )}
+            <Badge variant={property.purpose === 'buy' ? 'default' : 'outline'} className="text-xs">
+              {property.purpose}
+            </Badge>
+          </div>
+
+          <div className="font-semibold text-primary">
+            ₹{property.base_price.toLocaleString('en-IN')}
+          </div>
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex justify-end gap-2 mt-3 pt-3 border-t">
+        <Link to={`/properties/${property.id}/view`}>
+          <Button variant="ghost" size="touch-icon">
+            <Eye className="h-5 w-5" />
+          </Button>
+        </Link>
+        <Link to={`/properties/${property.id}`}>
+          <Button variant="ghost" size="touch-icon">
+            <Edit className="h-5 w-5" />
+          </Button>
+        </Link>
+        <Button
+          variant="ghost"
+          size="touch-icon"
+          onClick={() => setConfirmId(property.id)}
+          className="text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-5 w-5" />
+        </Button>
+      </div>
+    </Card>
+  )
+
+  // Filter controls component (shared between mobile and desktop)
+  const FilterControls = () => (
+    <>
+      <FilterSection label="Sort">
+        <Select value={filters.sortBy} onValueChange={(v) => setFilters({ sortBy: v })}>
+          <SelectTrigger>
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">Newest First</SelectItem>
+            <SelectItem value="oldest">Oldest First</SelectItem>
+            <SelectItem value="price_asc">Price: Low to High</SelectItem>
+            <SelectItem value="price_desc">Price: High to Low</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      <FilterSection label="Location">
+        <Input
+          placeholder="City"
+          value={filters.city}
+          onChange={(e) => setFilters({ city: e.target.value })}
+        />
+        <Input
+          placeholder="Locality"
+          value={filters.locality}
+          onChange={(e) => setFilters({ locality: e.target.value })}
+          className="mt-2"
+        />
+      </FilterSection>
+
+      <FilterSection label="Property Type">
+        <Select
+          value={filters.propertyType}
+          onValueChange={(v) => setFilters({ propertyType: v === 'all' ? '' : v })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All Types" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            <SelectItem value="apartment">Apartment</SelectItem>
+            <SelectItem value="house">House</SelectItem>
+            <SelectItem value="builder_floor">Builder Floor</SelectItem>
+            <SelectItem value="room">Room</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      <FilterSection label="Purpose">
+        <Select
+          value={filters.purpose}
+          onValueChange={(v) => setFilters({ purpose: v === 'all' ? '' : v })}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="All" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="buy">Buy</SelectItem>
+            <SelectItem value="rent">Rent</SelectItem>
+            <SelectItem value="short_stay">Short Stay</SelectItem>
+          </SelectContent>
+        </Select>
+      </FilterSection>
+
+      <FilterSection label="Price Range">
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="number"
+            placeholder="Min"
+            value={filters.priceMin}
+            onChange={(e) => setFilters({ priceMin: e.target.value })}
+          />
+          <Input
+            type="number"
+            placeholder="Max"
+            value={filters.priceMax}
+            onChange={(e) => setFilters({ priceMax: e.target.value })}
+          />
+        </div>
+      </FilterSection>
+
+      <FilterSection label="Bedrooms">
+        <div className="grid grid-cols-2 gap-2">
+          <Input
+            type="number"
+            placeholder="Min"
+            value={filters.bedroomsMin}
+            onChange={(e) => setFilters({ bedroomsMin: e.target.value })}
+          />
+          <Input
+            type="number"
+            placeholder="Max"
+            value={filters.bedroomsMax}
+            onChange={(e) => setFilters({ bedroomsMax: e.target.value })}
+          />
+        </div>
+      </FilterSection>
+
+      <FilterSection label="Amenities">
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="w-full justify-start">
+              <Filter className="h-4 w-4 mr-2" />
+              {selectedAmenities.length > 0
+                ? `${selectedAmenities.length} selected`
+                : 'Select amenities'}
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-[400px]">
+            <SheetHeader>
+              <SheetTitle>Select Amenities</SheetTitle>
+              <SheetDescription>
+                Choose amenities to filter properties.
+              </SheetDescription>
+            </SheetHeader>
+            <div className="py-4 space-y-2 max-h-[300px] overflow-y-auto">
+              {amenities.map((amenity) => (
+                <div key={amenity.id} className="flex items-center space-x-2 p-2 hover:bg-accent rounded">
+                  <Checkbox
+                    id={`amenity-${amenity.id}`}
+                    checked={selectedAmenities.includes(amenity.id)}
+                    onCheckedChange={() => handleAmenityToggle(amenity.id)}
+                  />
+                  <label
+                    htmlFor={`amenity-${amenity.id}`}
+                    className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
+                  >
+                    {amenity.name}
+                  </label>
+                </div>
+              ))}
+            </div>
+          </SheetContent>
+        </Sheet>
+      </FilterSection>
+
+      <FilterSection label="Search Radius">
+        <Input
+          type="number"
+          placeholder="Radius (km)"
+          value={filters.radius}
+          onChange={(e) => setFilters({ radius: e.target.value })}
+        />
+      </FilterSection>
+    </>
+  )
+
+  // Count active filters
+  const activeFilterCount = [
+    filters.city,
+    filters.locality,
+    filters.propertyType,
+    filters.purpose,
+    filters.priceMin,
+    filters.priceMax,
+    filters.bedroomsMin,
+    filters.bedroomsMax,
+    filters.radius,
+    selectedAmenities.length > 0 ? 'amenities' : '',
+  ].filter(Boolean).length
+
   return (
     <div className="space-y-6">
       {/* Search and Filters */}
-      <Card className="p-6">
+      <Card className="p-4 md:p-6">
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -258,10 +506,26 @@ const PropertyList = () => {
                 className="pl-10"
               />
             </div>
+
+            {/* Mobile: Filter sheet */}
+            <div className="md:hidden">
+              <MobileFilters
+                activeCount={activeFilterCount}
+                onClear={() => {
+                  clearFilters()
+                  setSelectedAmenities([])
+                }}
+                title="Property Filters"
+              >
+                <FilterControls />
+              </MobileFilters>
+            </div>
+
+            {/* Desktop: Inline filter toggle */}
             <Button
               variant="outline"
               onClick={() => setFilters({ showFilters: !filters.showFilters })}
-              className={hasActiveFilters ? 'border-primary text-primary' : ''}
+              className={`hidden md:flex ${hasActiveFilters ? 'border-primary text-primary' : ''}`}
             >
               <Filter className="h-4 w-4 mr-2" />
               Filters
@@ -272,12 +536,12 @@ const PropertyList = () => {
               )}
             </Button>
             {hasActiveFilters && (
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
+              <Button variant="ghost" size="sm" onClick={clearFilters} className="hidden md:flex">
                 <X className="h-4 w-4 mr-2" />
                 Clear
               </Button>
             )}
-            <div className="w-40 ml-auto">
+            <div className="hidden md:block w-40 ml-auto">
               <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Rows" />
@@ -291,13 +555,14 @@ const PropertyList = () => {
             </div>
           </div>
 
+          {/* Desktop: Expandable filter panel */}
           {filters.showFilters && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.3 }}
-              className="overflow-hidden"
+              className="hidden md:block overflow-hidden"
             >
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 pt-4 border-t">
                 <Select value={filters.sortBy} onValueChange={(v) => setFilters({ sortBy: v })}>
@@ -439,16 +704,16 @@ const PropertyList = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card className="p-6">
+        <Card className="p-4 md:p-6">
           {isFetching ? (
-            <LoadingState type="card" rows={5} />
+            <LoadingState type={isMobile ? 'cards' : 'card'} rows={5} />
           ) : error ? (
             <div className="text-center py-8">
               <div className="text-lg font-medium mb-2">Failed to load properties</div>
               <div className="text-muted-foreground mb-4">
                 Please check your connection and try again
               </div>
-              <Button onClick={() => window.location.reload()}>
+              <Button onClick={() => window.location.reload()} size={isMobile ? 'touch' : 'default'}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Retry
               </Button>
@@ -462,13 +727,13 @@ const PropertyList = () => {
                   : 'Get started by creating your first property'}
               </div>
               {hasActiveFilters ? (
-                <Button variant="outline" onClick={clearFilters}>
+                <Button variant="outline" onClick={clearFilters} size={isMobile ? 'touch' : 'default'}>
                   <X className="h-4 w-4 mr-2" />
                   Clear Filters
                 </Button>
               ) : (
                 <Link to="/properties/new">
-                  <Button>
+                  <Button size={isMobile ? 'touch' : 'default'}>
                     Create Property
                   </Button>
                 </Link>
@@ -479,9 +744,10 @@ const PropertyList = () => {
               <div className="text-sm text-muted-foreground">
                 Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, data.count || 0)} of {data.count || 0} properties
               </div>
-              <DataTable
+              <ResponsiveDataTable
                 columns={columns}
                 data={data.results}
+                mobileCardRender={renderPropertyCard}
               />
               {data.count && data.count > pageSize && (
                 <Pagination
