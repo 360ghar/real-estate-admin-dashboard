@@ -23,10 +23,11 @@ import {
   useGetAllVisitsQuery
 } from '@/features/visits/api/visitsApi'
 import { useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 import { Calendar as CalendarIcon, MapPin, Clock, User, Plus, Edit, Check, AlertCircle } from 'lucide-react'
 import type { Visit } from '@/types/api'
 import { getErrorMessage } from '@/lib/errors'
+import { localInputToServerTimestamp, parseServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
 
 const scheduleVisitSchema = z.object({
   property_id: z.number().min(1, 'Property is required'),
@@ -51,14 +52,16 @@ interface VisitCalendarProps {
 const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits, onDateSelect, selectedDate }) => {
   const hasVisitOnDate = (date: Date) => {
     return visits.some(visit => {
-      const visitDate = parseISO(visit.scheduled_date)
+      const visitDate = parseServerTimestamp(visit.scheduled_date)
+      if (!visitDate) return false
       return format(visitDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
     })
   }
 
   const getVisitsForDate = (date: Date) => {
     return visits.filter(visit => {
-      const visitDate = parseISO(visit.scheduled_date)
+      const visitDate = parseServerTimestamp(visit.scheduled_date)
+      if (!visitDate) return false
       return format(visitDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
     })
   }
@@ -97,7 +100,10 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits, onDateSelect, sel
                     <div>
                       <p className="text-sm font-medium">{visit.property?.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(parseISO(visit.scheduled_date), 'HH:mm')}
+                        {(() => {
+                          const visitDate = parseServerTimestamp(visit.scheduled_date)
+                          return visitDate ? format(visitDate, 'HH:mm') : 'Invalid date'
+                        })()}
                       </p>
                     </div>
                     <Badge variant={visit.status === 'scheduled' ? 'default' : 'secondary'}>
@@ -128,7 +134,7 @@ const VisitManagementPage: React.FC = () => {
   const scheduleForm = useForm<ScheduleVisitFormData>({
     resolver: zodResolver(scheduleVisitSchema),
     defaultValues: {
-      scheduled_date: format(selectedDate, "yyyy-MM-dd'T'HH:mm"),
+      scheduled_date: serverTimestampToLocalInput(selectedDate),
     },
   })
 
@@ -142,7 +148,7 @@ const VisitManagementPage: React.FC = () => {
   // Admin/Agent view
   const { data: allVisits, refetch: refetchAllVisits } = useGetAllVisitsQuery(
     { status: statusFilter === 'all' ? undefined : statusFilter },
-    { skip: user?.role === 'user' }
+    { skip: !user || user.role === 'user' }
   )
 
   const { data: properties } = useSearchPropertiesQuery({ limit: 100 })
@@ -169,7 +175,12 @@ const VisitManagementPage: React.FC = () => {
 
   const handleScheduleVisit = async (data: ScheduleVisitFormData) => {
     try {
-      await scheduleVisit(data).unwrap()
+      const scheduledDate = localInputToServerTimestamp(data.scheduled_date)
+      if (!scheduledDate) {
+        scheduleForm.setError('scheduled_date', { message: 'Enter a valid date and time' })
+        return
+      }
+      await scheduleVisit({ ...data, scheduled_date: scheduledDate }).unwrap()
       toast({
         title: 'Visit Scheduled',
         description: 'Your visit has been scheduled successfully.',
@@ -215,9 +226,18 @@ const VisitManagementPage: React.FC = () => {
 
   const handleRescheduleVisit = async (visitId: number, newDate: string) => {
     try {
+      const normalizedDate = localInputToServerTimestamp(newDate)
+      if (!normalizedDate) {
+        toast({
+          title: 'Reschedule Failed',
+          description: 'Enter a valid date and time.',
+          variant: 'destructive',
+        })
+        return
+      }
       await rescheduleVisit({
         visitId,
-        newDate,
+        newDate: normalizedDate,
         reason: 'Rescheduled by user',
       }).unwrap()
       toast({
@@ -461,7 +481,10 @@ const VisitManagementPage: React.FC = () => {
                             </p>
                             <p className="text-sm text-muted-foreground">
                               <Clock className="h-4 w-4 inline mr-1" />
-                              {format(parseISO(visit.scheduled_date), 'MMM dd, yyyy - HH:mm')}
+                              {(() => {
+                                const visitDate = parseServerTimestamp(visit.scheduled_date)
+                                return visitDate ? format(visitDate, 'MMM dd, yyyy - HH:mm') : 'Invalid date'
+                              })()}
                             </p>
                             {user?.role !== 'user' && visit.user && (
                               <p className="text-sm text-muted-foreground">
@@ -517,14 +540,19 @@ const VisitManagementPage: React.FC = () => {
                                     <Label>New Date & Time</Label>
                                     <Input
                                       type="datetime-local"
-                                      defaultValue={format(parseISO(visit.scheduled_date), "yyyy-MM-dd'T'HH:mm")}
-                                      onChange={(e) => {
-                                        if (e.target.value) {
-                                          void handleRescheduleVisit(visit.id, e.target.value)
-                                        }
-                                      }}
+                                      id={`reschedule-${visit.id}`}
+                                      defaultValue={serverTimestampToLocalInput(visit.scheduled_date)}
                                     />
                                   </div>
+                                  <Button
+                                    onClick={() => {
+                                      const input = document.getElementById(`reschedule-${visit.id}`) as HTMLInputElement
+                                      if (input?.value) void handleRescheduleVisit(visit.id, input.value)
+                                    }}
+                                    className="w-full"
+                                  >
+                                    Confirm Reschedule
+                                  </Button>
                                   <Button
                                     onClick={() => { void handleCancelVisit(visit.id) }}
                                     variant="destructive"

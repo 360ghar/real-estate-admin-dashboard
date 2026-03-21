@@ -43,16 +43,17 @@ export interface User {
 }
 
 export interface UserPreferences {
-  property_type: string[]
-  purpose: 'buy' | 'rent' | 'short_stay'
-  budget_min: number
-  budget_max: number
-  bedrooms_min: number
-  bedrooms_max: number
-  area_min: number
-  area_max: number
-  location_preference: string[]
-  max_distance_km: number
+  [key: string]: unknown
+  property_type?: string[]
+  purpose?: 'buy' | 'rent' | 'short_stay'
+  budget_min?: number
+  budget_max?: number
+  bedrooms_min?: number
+  bedrooms_max?: number
+  area_min?: number
+  area_max?: number
+  location_preference?: string[]
+  max_distance_km?: number
 }
 
 export interface UserNotificationSettings {
@@ -107,22 +108,20 @@ export interface UserUpdate {
 // Agent Types
 export interface Agent {
   id: number
-  user_id: number
-  employee_id: string
-  specialization: string
+  name: string
+  contact_number?: string
+  description?: string
+  avatar_url?: string
+  languages?: string[]
   agent_type: 'general' | 'specialist' | 'senior'
-  experience_level: 'junior' | 'intermediate' | 'expert'
-  years_of_experience: number
-  bio?: string
-  languages: string[]
-  working_hours: WorkingHours
-  commission_rate: number
-  service_areas: string[]
-  max_clients: number
+  experience_level: 'beginner' | 'intermediate' | 'expert'
+  working_hours?: Record<string, unknown>
+  total_users_assigned: number
+  user_satisfaction_rating: number
+  is_active: boolean
   is_available: boolean
-  performance_metrics: AgentPerformanceMetrics
   created_at: string
-  updated_at: string
+  updated_at?: string
   user?: User
 }
 
@@ -137,69 +136,62 @@ export interface WorkingHours {
 }
 
 export interface AgentPerformanceMetrics {
-  total_properties_sold: number
-  total_properties_rented: number
-  total_commission_earned: number
-  average_response_time: number
-  client_satisfaction_score: number
-  properties_handled: number
-  visits_completed: number
-  bookings_converted: number
+  total_users_assigned: number
+  user_satisfaction_rating: number
+  active_conversations: number
+  daily_interactions: number
+  weekly_interactions: number
+  efficiency_score: number
 }
 
 export interface AgentCreate {
-  user_id: number
-  employee_id: string
-  specialization: string
-  agent_type: 'general' | 'specialist' | 'senior'
-  experience_level?: 'junior' | 'intermediate' | 'expert'
-  years_of_experience?: number
-  bio?: string
+  name: string
+  contact_number?: string
+  description?: string
+  avatar_url?: string
   languages?: string[]
-  working_hours?: WorkingHours
-  commission_rate?: number
-  service_areas?: string[]
-  max_clients?: number
-  is_available?: boolean
-  performance_metrics?: Partial<AgentPerformanceMetrics>
+  agent_type: 'general' | 'specialist' | 'senior'
+  experience_level?: 'beginner' | 'intermediate' | 'expert'
+  working_hours?: Record<string, unknown>
 }
 
 export interface AgentWorkload {
   agent_id: number
   agent_name: string
-  active_clients: number
-  pending_visits: number
-  active_bookings: number
-  utilization_rate: number
-  max_capacity: number
+  current_users: number
+  utilization_percentage: number
+  is_available: boolean
+  queue_length: number
 }
 
 export interface AgentSystemStats {
   total_agents: number
   active_agents: number
-  average_clients_per_agent: number
-  total_clients_assigned: number
-  workload_distribution: Record<string, number>
-  performance_metrics: Record<string, number>
+  total_users_served: number
+  system_satisfaction_score: number
+  agents_by_type: Record<string, number>
+  load_distribution: AgentWorkload[]
+}
+
+export interface AgentWithStats extends Agent {
+  stats: AgentPerformanceMetrics
 }
 
 // Property Types
 export interface Property {
   id: number
   title: string
-  description: string
+  description?: string
   property_type: 'house' | 'apartment' | 'builder_floor' | 'room'
   purpose: 'buy' | 'rent' | 'short_stay'
   base_price: number
-  location: {
-    latitude: number
-    longitude: number
-  }
-  city: string
-  locality: string
-  pincode: string
-  area_sqft: number
-  bedrooms: number
+  latitude?: number
+  longitude?: number
+  city?: string
+  locality?: string
+  pincode?: string
+  area_sqft?: number
+  bedrooms?: number
   bathrooms: number
   balconies?: number
   parking_spaces?: number
@@ -215,47 +207,49 @@ export interface Property {
   owner_id: number
   owner_name?: string
   owner_contact?: string
-  status: 'available' | 'rented' | 'sold' | 'maintenance'
+  status: 'available' | 'rented' | 'sold' | 'under_offer' | 'maintenance'
   liked?: boolean
   user_has_scheduled_visit?: boolean
   user_scheduled_visit_count?: number
   user_next_visit_date?: string
-  distance?: number
+  distance_km?: number
   created_at: string
-  updated_at: string
+  updated_at?: string
 }
 
 export interface PropertyImage {
   id: number
-  url: string
-  is_main: boolean
+  property_id: number
+  image_url: string
   caption?: string
-  order: number
+  image_category: string
+  display_order?: number
+  is_main_image: boolean
 }
 
 export interface Amenity {
   id: number
-  name: string
-  category: string
-  description?: string
+  title: string
+  name?: string
+  category?: string
   icon?: string
-  is_active: boolean
+  is_active?: boolean
 }
 
 export interface PropertyCreate {
   title: string
-  description: string
-  property_type: 'house' | 'apartment' | 'builder_floor' | 'room'
-  purpose: 'buy' | 'rent' | 'short_stay'
+  description?: string
+  property_type: string
+  purpose: string
   base_price: number
-  latitude: number
-  longitude: number
+  latitude?: number
+  longitude?: number
   city: string
   locality: string
-  pincode: string
-  area_sqft: number
-  bedrooms: number
-  bathrooms: number
+  pincode?: string
+  area_sqft?: number
+  bedrooms?: number
+  bathrooms?: number
   balconies?: number
   parking_spaces?: number
   floor_number?: number
@@ -268,10 +262,12 @@ export interface PropertyCreate {
   main_image_url?: string
   owner_name?: string
   owner_contact?: string
+  monthly_rent?: number
 }
 
 export interface PropertyUpdate extends Partial<PropertyCreate> {
-  status?: 'available' | 'rented' | 'sold' | 'maintenance'
+  status?: 'available' | 'rented' | 'sold' | 'under_offer' | 'maintenance'
+  is_available?: boolean
 }
 
 export interface PropertySearchParams {
@@ -376,6 +372,7 @@ export interface Booking {
   id: number
   property_id: number
   user_id: number
+  booking_reference: string
   check_in_date: string
   check_out_date: string
   guests: number
@@ -384,23 +381,26 @@ export interface Booking {
   primary_guest_email: string
   special_requests?: string
   guest_details?: Record<string, unknown>
-  base_price: number
-  total_nights: number
-  subtotal: number
-  taxes: number
-  service_fee: number
+  nights: number
+  base_amount: number
+  taxes_amount: number
+  service_charges: number
+  discount_amount: number
   total_amount: number
-  currency: string
-  status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'completed' | 'refunded'
-  payment_status: 'unpaid' | 'partial' | 'paid' | 'refunded'
+  booking_status: 'pending' | 'confirmed' | 'checked_in' | 'checked_out' | 'cancelled' | 'completed'
+  payment_status: 'pending' | 'partial' | 'paid' | 'refunded' | 'failed'
   payment_method?: string
   transaction_id?: string
-  paid_at?: string
-  cancelled_at?: string
+  payment_date?: string
+  cancellation_date?: string
   cancellation_reason?: string
+  guest_rating?: number
+  guest_review?: string
+  host_rating?: number
+  host_review?: string
   review?: BookingReview
   created_at: string
-  updated_at: string
+  updated_at?: string
   property?: Property
   user?: User
 }
@@ -430,24 +430,27 @@ export interface BookingAvailability {
   property_id: number
   check_in_date: string
   check_out_date: string
+  guests: number
 }
 
 export interface AvailabilityInfo {
-  is_available: boolean
-  conflicting_bookings?: Booking[]
-  available_dates?: string[]
-  pricing_info?: BookingPricing
+  available: boolean
+  reason?: string
+  max_occupancy?: number
 }
 
 export interface BookingPricing {
-  base_price: number
-  total_nights: number
-  subtotal: number
-  taxes: number
-  service_fee: number
+  property_id: number
+  check_in_date: string
+  check_out_date: string
+  guests: number
+  nights: number
+  base_amount: number
+  taxes_amount: number
+  service_charges: number
+  discount_amount: number
   total_amount: number
-  currency: string
-  breakdown: PricingBreakdown[]
+  breakdown?: Record<string, number>
 }
 
 export interface PricingBreakdown {
@@ -463,25 +466,15 @@ export interface BookingPayment {
 }
 
 export interface BookingReview {
-  rating: number
-  review_text?: string
-  guest_rating?: number
+  guest_rating: number
   guest_review?: string
-  aspects?: {
-    cleanliness?: number
-    location?: number
-    value?: number
-    communication?: number
-    accuracy?: number
-    checkin?: number
-  }
 }
 
 export interface BookingList {
   bookings: Booking[]
   total: number
   upcoming: number
-  past: number
+  completed: number
   cancelled: number
 }
 
@@ -499,8 +492,9 @@ export interface BookingsQuery {
 // Core System Types
 export interface BugReport {
   id: number
+  user_id?: number | null
   source: 'web' | 'mobile' | 'api'
-  bug_type: 'ui_bug' | 'functional_bug' | 'performance_issue' | 'security_issue' | 'other'
+  bug_type: 'ui_bug' | 'functionality_bug' | 'performance_issue' | 'crash' | 'feature_request' | 'other'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -509,17 +503,14 @@ export interface BugReport {
   actual_behavior?: string
   device_info?: DeviceInfo
   app_version?: string
+  media_urls?: string[]
   tags?: string[]
   status: 'open' | 'in_progress' | 'resolved' | 'closed'
-  priority?: 'low' | 'medium' | 'high' | 'critical'
   assigned_to?: number
-  resolution_notes?: string
-  created_by: number
+  resolution?: string
   created_at: string
-  updated_at: string
+  updated_at?: string
   resolved_at?: string
-  user?: User
-  attachments?: BugReportAttachment[]
 }
 
 export interface DeviceInfo {
@@ -530,18 +521,9 @@ export interface DeviceInfo {
   screen_resolution?: string
 }
 
-export interface BugReportAttachment {
-  id: number
-  bug_report_id: number
-  file_url: string
-  file_type: string
-  file_size: number
-  created_at: string
-}
-
 export interface BugReportCreate {
   source: 'web' | 'mobile' | 'api'
-  bug_type: 'ui_bug' | 'functional_bug' | 'performance_issue' | 'security_issue' | 'other'
+  bug_type: 'ui_bug' | 'functionality_bug' | 'performance_issue' | 'crash' | 'feature_request' | 'other'
   severity: 'low' | 'medium' | 'high' | 'critical'
   title: string
   description: string
@@ -555,9 +537,9 @@ export interface BugReportCreate {
 
 export interface BugReportUpdate {
   status?: 'open' | 'in_progress' | 'resolved' | 'closed'
-  priority?: 'low' | 'medium' | 'high' | 'critical'
   assigned_to?: number
-  resolution_notes?: string
+  resolution?: string
+  tags?: string[]
 }
 
 export interface BugReportsQuery {
@@ -679,19 +661,20 @@ export interface AppUpdatesQuery {
 
 // Health Check
 export interface HealthResponse {
-  status: 'healthy' | 'unhealthy'
+  status: 'healthy' | 'degraded'
+  database: string
+  database_url?: string
   timestamp: string
-  service: string
-  details?: Record<string, unknown>
+  version: string
 }
 
 // App Configuration (non-sensitive)
 export interface AppConfig {
-  app_name?: string
-  environment?: string
-  features?: Record<string, boolean>
-  ui?: Record<string, unknown>
-  [key: string]: string | boolean | Record<string, unknown> | undefined
+  api_version: string
+  environment: string
+  database: string
+  auth: string
+  features: string[]
 }
 
 // Upload Types

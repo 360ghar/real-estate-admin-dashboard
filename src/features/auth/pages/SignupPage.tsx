@@ -35,7 +35,8 @@ const schema = z
 
 type FormValues = z.infer<typeof schema>
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string
+const API_BASE_URL =
+  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api/v1'
 
 async function fetchUserProfileWithToken(token: string): Promise<User | null> {
   try {
@@ -82,7 +83,6 @@ export default function SignupPage() {
           data: {
             full_name: values.full_name,
             phone: values.phone,
-            role: 'agent',
           },
         },
       })
@@ -102,9 +102,7 @@ export default function SignupPage() {
       const profile = await fetchUserProfileWithToken(accessToken)
 
       if (profile) {
-        // Ensure role is agent for portal onboarding
-        const user: User = { ...profile, role: 'agent' as User['role'] }
-        dispatch(setCredentials({ token: accessToken, user }))
+        dispatch(setCredentials({ token: accessToken, user: profile }))
         navigate('/dashboard', { replace: true })
       } else {
         setSuccessMessage(
@@ -279,4 +277,3 @@ export default function SignupPage() {
     </div>
   )
 }
-

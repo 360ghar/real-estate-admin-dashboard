@@ -22,33 +22,35 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea'
 import { useDebounce } from '@/hooks/useDebounce'
 
+const numPreprocess = (v: unknown) => (v === '' || v === null || v === undefined ? undefined : Number(v))
+
 const schema = z.object({
   title: z.string().min(3),
   description: z.string().optional(),
-  type: z.enum(['apartment', 'house', 'builder_floor', 'room'], { required_error: 'Property type is required' }),
+  property_type: z.enum(['apartment', 'house', 'builder_floor', 'room'], { required_error: 'Property type is required' }),
   purpose: z.enum(['buy', 'rent', 'short_stay'], { required_error: 'Purpose is required' }),
   status: z.string().optional(),
-  price: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1, "Price is required")),
+  base_price: z.preprocess(numPreprocess, z.number().min(1, "Price is required")),
   city: z.string().min(1, "City is required"),
   locality: z.string().min(1, "Locality is required"),
   address: z.string().optional(),
-  latitude: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().optional()),
-  longitude: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().optional()),
+  latitude: z.preprocess(numPreprocess, z.number().optional()),
+  longitude: z.preprocess(numPreprocess, z.number().optional()),
   owner_id: z.preprocess((v) => (v === '' ? undefined : Number(v)), z.number().optional()),
   is_available: z.preprocess((v) => (v === 'true' ? true : v === 'false' ? false : v), z.boolean().optional()),
   available_from: z.string().optional(),
-  amenities: z.array(z.number()).optional(),
+  amenity_ids: z.array(z.number()).optional(),
   pincode: z.string().optional(),
-  area_sqft: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1, "Area is required")),
-  bedrooms: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
-  bathrooms: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
-  balconies: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
-  parking_spaces: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
-  floor_number: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
-  total_floors: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1)),
-  age_of_property: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(0)),
-  max_occupancy: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1)),
-  minimum_stay_days: z.preprocess((v) => (v === '' || v === null || v === undefined ? undefined : Number(v)), z.number().min(1)),
+  area_sqft: z.preprocess(numPreprocess, z.number().min(1, "Area is required")),
+  bedrooms: z.preprocess(numPreprocess, z.number().min(0)),
+  bathrooms: z.preprocess(numPreprocess, z.number().min(0)),
+  balconies: z.preprocess(numPreprocess, z.number().min(0)),
+  parking_spaces: z.preprocess(numPreprocess, z.number().min(0)),
+  floor_number: z.preprocess(numPreprocess, z.number().min(0)),
+  total_floors: z.preprocess(numPreprocess, z.number().min(1)),
+  age_of_property: z.preprocess(numPreprocess, z.number().min(0)),
+  max_occupancy: z.preprocess(numPreprocess, z.number().min(1)),
+  minimum_stay_days: z.preprocess(numPreprocess, z.number().min(1)),
   features: z.array(z.string()).optional(),
   owner_name: z.string().optional(),
   owner_contact: z.string().optional(),
@@ -80,10 +82,10 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
     defaultValues: {
       title: '',
       description: '',
-      type: '' as 'house' | 'apartment' | 'builder_floor' | 'room',
+      property_type: '' as 'house' | 'apartment' | 'builder_floor' | 'room',
       purpose: '' as 'buy' | 'rent' | 'short_stay',
       status: 'available',
-      price: undefined,
+      base_price: undefined,
       city: '',
       locality: '',
       address: '',
@@ -92,7 +94,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
       owner_id: undefined,
       is_available: true,
       available_from: '',
-      amenities: [],
+      amenity_ids: [],
       pincode: '',
       area_sqft: undefined,
       bedrooms: 0,
@@ -121,18 +123,18 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
       const extras = data as PropertyResponse & {
         is_available?: boolean
         available_from?: string
-        amenities?: Array<number | string>
+        amenities?: Array<{ id: number }>
         thumbnail_url?: string
       }
       const amenityIds = Array.isArray(extras.amenities)
-        ? extras.amenities.map((amenity) => Number(amenity)).filter((value) => !Number.isNaN(value))
+        ? extras.amenities.map((amenity) => Number(amenity.id)).filter((value) => !Number.isNaN(value))
         : []
       reset({
         title: data.title,
         description: data.description,
-        type: data.property_type,
+        property_type: data.property_type,
         purpose: data.purpose,
-        price: data.base_price,
+        base_price: data.base_price,
         city: data.city,
         locality: data.locality,
         pincode: data.pincode,
@@ -150,14 +152,14 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         owner_id: data.owner_id,
         is_available: extras.is_available,
         available_from: extras.available_from,
-        amenities: amenityIds,
+        amenity_ids: amenityIds,
         features: data.features || [],
         owner_name: data.owner_name,
         owner_contact: data.owner_contact,
-        latitude: data.location.latitude,
-        longitude: data.location.longitude,
+        latitude: data.latitude,
+        longitude: data.longitude,
       })
-      setImages(data.images || [])
+      setImages((data.images || []).map((image) => image.image_url))
       setPrimaryImage(extras.thumbnail_url ?? data.main_image_url ?? null)
     }
   }, [data, reset])
@@ -173,9 +175,9 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
       const payload: PropertyCreate = {
         title: values.title,
         description: values.description,
-        property_type: values.type,
+        property_type: values.property_type,
         purpose: values.purpose,
-        base_price: values.price,
+        base_price: values.base_price,
         latitude: values.latitude,
         longitude: values.longitude,
         city: values.city,
@@ -191,7 +193,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         age_of_property: values.age_of_property,
         max_occupancy: values.max_occupancy,
         minimum_stay_days: values.minimum_stay_days,
-        amenity_ids: values.amenities || [],
+        amenity_ids: values.amenity_ids || [],
         features: values.features || [],
         main_image_url: primaryImage || '',
         owner_name: values.owner_name,
@@ -256,7 +258,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
               <div>
                 <FormField
                   control={form.control}
-                  name="type"
+                  name="property_type"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Type</FormLabel>
@@ -329,7 +331,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
               <div>
                 <FormField
                   control={form.control}
-                  name="price"
+                  name="base_price"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Price</FormLabel>
@@ -396,8 +398,8 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
                 <FormLabel>Location</FormLabel>
                 <LocationPicker
                   value={(() => {
-                    const lat = data?.location?.latitude
-                    const lng = data?.location?.longitude
+                    const lat = data?.latitude
+                    const lng = data?.longitude
                     return typeof lat === 'number' && typeof lng === 'number' ? { lat, lng } : null
                   })()}
                   onChange={(p) => {
@@ -540,7 +542,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
               <div className="md:col-span-2">
                 <FormField
                   control={form.control}
-                  name="amenities"
+                  name="amenity_ids"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amenities</FormLabel>

@@ -2,31 +2,44 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
-const Card = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "rounded-xl border bg-card text-card-foreground shadow",
-      className
-    )}
-    {...props}
-  />
-))
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Apply responsive padding (p-4 on mobile, p-6 on desktop) */
+  responsive?: boolean
+}
+
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
+  ({ className, responsive = false, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "rounded-xl border bg-card text-card-foreground shadow",
+        responsive && "p-4 md:p-6",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 Card.displayName = "Card"
 
-const CardHeader = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex flex-col space-y-1.5 p-6", className)}
-    {...props}
-  />
-))
+interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Apply responsive padding */
+  responsive?: boolean
+}
+
+const CardHeader = React.forwardRef<HTMLDivElement, CardHeaderProps>(
+  ({ className, responsive = false, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex flex-col space-y-1.5",
+        responsive ? "p-4 md:p-6" : "p-6",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
@@ -53,24 +66,43 @@ const CardDescription = React.forwardRef<
 ))
 CardDescription.displayName = "CardDescription"
 
-const CardContent = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
-))
+interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Apply responsive padding */
+  responsive?: boolean
+}
+
+const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
+  ({ className, responsive = false, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        responsive ? "p-4 pt-0 md:p-6 md:pt-0" : "p-6 pt-0",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 CardContent.displayName = "CardContent"
 
-const CardFooter = React.forwardRef<
-  HTMLDivElement,
-  React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
-    {...props}
-  />
-))
+interface CardFooterProps extends React.HTMLAttributes<HTMLDivElement> {
+  /** Apply responsive padding */
+  responsive?: boolean
+}
+
+const CardFooter = React.forwardRef<HTMLDivElement, CardFooterProps>(
+  ({ className, responsive = false, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn(
+        "flex items-center",
+        responsive ? "p-4 pt-0 md:p-6 md:pt-0" : "p-6 pt-0",
+        className
+      )}
+      {...props}
+    />
+  )
+)
 CardFooter.displayName = "CardFooter"
 
 export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }

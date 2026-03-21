@@ -36,13 +36,13 @@ export const visitsApi = api.injectEndpoints({
     }),
 
     // Get upcoming visits for current user
-    getUpcomingVisits: builder.query<Visit[], void>({
+    getUpcomingVisits: builder.query<{ visits: Visit[]; total: number }, void>({
       query: () => '/visits/upcoming/',
       providesTags: ['Visit']
     }),
 
     // Get past visits for current user
-    getPastVisits: builder.query<Visit[], void>({
+    getPastVisits: builder.query<{ visits: Visit[]; total: number }, void>({
       query: () => '/visits/past/',
       providesTags: ['Visit']
     }),

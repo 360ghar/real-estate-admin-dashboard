@@ -5,7 +5,8 @@ export type UserRole = 'admin' | 'agent' | 'user'
 
 export const useUserRole = () => {
   const user = useAppSelector(selectCurrentUser)
-  const role = (user?.role as UserRole) || (user?.agent_id ? 'agent' : 'admin')
+  // Only trust explicit role from API; default to 'user' to prevent privilege escalation
+  const role: UserRole = (user?.role as UserRole) || 'user'
 
   return {
     user,

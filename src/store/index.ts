@@ -1,5 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit'
 import authReducer from '@/features/auth/slices/authSlice'
+import pmReducer from '@/features/pm/slices/pmSlice'
 import { api } from './api'
 // Import endpoint modules for side effects so they inject into `api`
 import '@/features/users/api/usersApi'
@@ -11,11 +12,13 @@ import '@/features/core/api/amenitiesApi'
 import '@/features/core/api/notificationsApi'
 import '@/features/core/api/systemApi'
 import '@/features/blog/api/blogsApi'
+import '@/features/pm/api/pmApi'
 // Reviews module removed
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
+    pm: pmReducer,
     [api.reducerPath]: api.reducer,
   },
   middleware: (getDefaultMiddleware) =>
