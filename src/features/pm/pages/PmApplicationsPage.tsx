@@ -206,11 +206,10 @@ export default function PmApplicationsPage() {
               size="sm"
               onClick={() => {
                 const url = buildPublicFormUrl(row.original.slug);
-                void navigator.clipboard.writeText(url);
-                toast({
-                  title: "Copied",
-                  description: "Public form URL copied.",
-                });
+                navigator.clipboard.writeText(url).then(
+                  () => toast({ title: "Copied", description: "Public form URL copied." }),
+                  () => toast({ title: "Copy failed", description: "Could not copy to clipboard.", variant: "destructive" }),
+                );
               }}
             >
               <Copy className="mr-2 h-4 w-4" />

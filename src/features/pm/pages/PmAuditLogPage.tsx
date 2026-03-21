@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Activity } from 'lucide-react'
+import { formatINR } from '@/features/pm/utils'
 import { useGetPmDashboardActivityQuery } from '@/features/pm/api/pmApi'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -7,12 +8,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 
-const formatINR = (value: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
-
 export default function PmAuditLogPage() {
   const [ownerIdRaw, setOwnerIdRaw] = useState('')
-  const ownerId = ownerIdRaw ? Number(ownerIdRaw) : null
+  const ownerId = ownerIdRaw && !isNaN(Number(ownerIdRaw)) ? Number(ownerIdRaw) : null
 
   const activity = useGetPmDashboardActivityQuery({ owner_id: ownerId || null, limit: 50 })
 
@@ -36,7 +34,7 @@ export default function PmAuditLogPage() {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
             <Label>Owner ID (optional)</Label>
-            <Input value={ownerIdRaw} onChange={(e) => setOwnerIdRaw(e.target.value)} placeholder="e.g. 123" />
+            <Input type="number" value={ownerIdRaw} onChange={(e) => setOwnerIdRaw(e.target.value)} placeholder="e.g. 123" />
           </div>
         </CardContent>
       </Card>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Download, Plus } from 'lucide-react'
+import { formatINR, downloadCsv } from '@/features/pm/utils'
 import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
@@ -30,25 +31,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
-
-const formatINR = (value: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
-
-const downloadCsv = (filename: string, rows: Record<string, unknown>[]) => {
-  const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))))
-  const escape = (v: unknown) => {
-    const s = v === null || v === undefined ? '' : String(v)
-    return `"${s.replaceAll('"', '""')}"`
-  }
-  const csv = [headers.join(','), ...rows.map((r) => headers.map((h) => escape(r[h])).join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
 
 export default function PmRentLedgerPage() {
   const { role } = useUserRole()
@@ -154,7 +136,7 @@ export default function PmRentLedgerPage() {
       lease_id: generateScope === 'lease' ? Number(generateLeaseId) : undefined,
       start_month: generateStartMonth || undefined,
       months: Number(generateMonths),
-    } as unknown as RentChargeGenerateRequest
+    }
     try {
       const res = await generateCharges(payload).unwrap()
       toast({ title: 'Generated', description: `Created ${res.created}, skipped ${res.skipped}.` })

@@ -79,10 +79,21 @@ export default function PmPropertyDetailPage() {
       return
     }
 
+    const dueDayNum = Number(paymentDueDay)
+    if (isNaN(dueDayNum) || dueDayNum < 1 || dueDayNum > 28) {
+      toast({ title: 'Invalid due day', description: 'Payment due day must be between 1 and 28.', variant: 'destructive' })
+      return
+    }
+    const graceDaysNum = Number(graceDays)
+    if (isNaN(graceDaysNum) || graceDaysNum < 0 || graceDaysNum > 30) {
+      toast({ title: 'Invalid grace period', description: 'Grace period must be between 0 and 30 days.', variant: 'destructive' })
+      return
+    }
+
     const payload: ManagedPropertyUpdate = {
       management_status: managementStatus,
-      payment_due_day: Number(paymentDueDay),
-      grace_period_days: Number(graceDays),
+      payment_due_day: dueDayNum,
+      grace_period_days: graceDaysNum,
       late_fee_policy: lateFeePolicy,
     }
 

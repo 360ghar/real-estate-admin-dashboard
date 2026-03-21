@@ -37,6 +37,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
+import { localInputToServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
 
 export default function PmMaintenancePage() {
   const { role, user } = useUserRole()
@@ -167,6 +168,10 @@ export default function PmMaintenancePage() {
   const submitCreate = async () => {
     if (!propertyId || !title) {
       toast({ title: 'Missing fields', description: 'Property and title are required.', variant: 'destructive' })
+      return
+    }
+    if (isNaN(Number(propertyId))) {
+      toast({ title: 'Invalid property', description: 'Please select a valid property.', variant: 'destructive' })
       return
     }
     const payload: MaintenanceRequestCreate = {
@@ -403,7 +408,7 @@ function MaintenanceUpdateForm({
   const [priority, setPriority] = useState(request.priority || '')
   const [estimatedCost, setEstimatedCost] = useState(request.estimated_cost?.toString() || '')
   const [actualCost, setActualCost] = useState(request.actual_cost?.toString() || '')
-  const [scheduledFor, setScheduledFor] = useState(request.scheduled_for ? request.scheduled_for.slice(0, 16) : '')
+  const [scheduledFor, setScheduledFor] = useState(serverTimestampToLocalInput(request.scheduled_for))
   const [completionNotes, setCompletionNotes] = useState(request.completion_notes || '')
   const [assignToMe, setAssignToMe] = useState(defaultAssignedAgentId ? 'yes' : 'no')
 
@@ -484,7 +489,7 @@ function MaintenanceUpdateForm({
               priority: priority || undefined,
               estimated_cost: estimatedCost ? Number(estimatedCost) : undefined,
               actual_cost: actualCost ? Number(actualCost) : undefined,
-              scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : undefined,
+              scheduled_for: localInputToServerTimestamp(scheduledFor) ?? undefined,
               completion_notes: completionNotes || undefined,
             }
             void onSubmit(payload)

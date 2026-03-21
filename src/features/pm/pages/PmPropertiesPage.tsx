@@ -186,10 +186,20 @@ export default function PmPropertiesPage() {
         payment_due_day: Number(paymentDueDay),
         grace_period_days: Number(graceDays),
       }).unwrap();
-      await updateProperty({
-        property_id: created.id,
-        payload: { late_fee_policy: lateFeePolicy },
-      }).unwrap();
+      try {
+        await updateProperty({
+          property_id: created.id,
+          payload: { late_fee_policy: lateFeePolicy },
+        }).unwrap();
+      } catch {
+        toast({
+          title: "Partial success",
+          description: "Property created, but late fee policy could not be saved. Please update it manually.",
+          variant: "destructive",
+        });
+        handleCreateOpenChange(false);
+        return;
+      }
       toast({ title: "Created", description: "Managed property created." });
       handleCreateOpenChange(false);
     } catch (e: unknown) {

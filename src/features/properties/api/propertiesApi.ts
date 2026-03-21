@@ -1,33 +1,45 @@
 import { api } from '@/store/api'
+import type { PropertyCreate, PropertyUpdate } from '@/types/api'
 
 // Updated Property interface to match API documentation
 export interface PropertyResponse {
   id: number
   title: string
-  description: string
+  description?: string
   property_type: 'house' | 'apartment' | 'builder_floor' | 'room'
   purpose: 'buy' | 'rent' | 'short_stay'
   base_price: number
-  location: {
-    latitude: number
-    longitude: number
-  }
-  city: string
-  locality: string
-  pincode: string
-  area_sqft: number
-  bedrooms: number
-  bathrooms: number
-  balconies: number
-  parking_spaces: number
-  floor_number: number
-  total_floors: number
-  age_of_property: number
-  max_occupancy: number
-  minimum_stay_days: number
-  amenities: string[]
+  latitude?: number
+  longitude?: number
+  city?: string
+  locality?: string
+  pincode?: string
+  area_sqft?: number
+  bedrooms?: number
+  bathrooms?: number
+  balconies?: number
+  parking_spaces?: number
+  floor_number?: number
+  total_floors?: number
+  age_of_property?: number
+  max_occupancy?: number
+  minimum_stay_days?: number
+  amenities: Array<{
+    id: number
+    title: string
+    icon?: string
+    category?: string
+  }>
   features: string[]
-  images: string[]
+  images: Array<{
+    id: number
+    property_id: number
+    image_url: string
+    caption?: string
+    image_category: string
+    display_order?: number
+    is_main_image: boolean
+  }>
   main_image_url: string
   owner_id: number
   owner_name: string
@@ -37,8 +49,9 @@ export interface PropertyResponse {
   user_has_scheduled_visit: boolean
   user_scheduled_visit_count: number
   user_next_visit_date?: string
-  distance?: number
+  distance_km?: number
   created_at: string
+  updated_at?: string
 }
 
 export interface PaginatedPropertyResponse {
@@ -100,42 +113,22 @@ export interface PropertySearchParams {
   semantic_search?: boolean
 }
 
-export interface PropertyCreate {
-  title: string
-  description?: string
-  property_type: string
-  purpose: string
-  base_price: number
-  latitude?: number
-  longitude?: number
-  city: string
-  locality: string
-  pincode?: string
-  area_sqft: number
-  bedrooms: number
-  bathrooms: number
-  balconies?: number
-  parking_spaces?: number
-  floor_number?: number
-  total_floors?: number
-  age_of_property?: number
-  max_occupancy?: number
-  minimum_stay_days?: number
-  amenity_ids?: number[]
-  features?: string[]
-  main_image_url?: string
-  owner_name?: string
-  owner_contact?: string
-}
+// PropertyCreate and PropertyUpdate are imported from @/types/api
+export type { PropertyCreate, PropertyUpdate }
 
-export interface PropertyUpdate extends Partial<PropertyCreate> {}
+const toSearchParams = (params: PropertySearchParams): URLSearchParams => {
+  const search = new URLSearchParams()
 
-const toSearchParams = (params: PropertySearchParams): Record<string, unknown> => {
-  const next: Record<string, unknown> = { ...params }
-  if (Array.isArray(params.property_type)) next.property_type = params.property_type.join(',')
-  if (Array.isArray(params.amenities)) next.amenities = params.amenities.join(',')
-  if (Array.isArray(params.features)) next.features = params.features.join(',')
-  return next
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue
+    if (Array.isArray(value)) {
+      value.forEach((entry) => search.append(key, String(entry)))
+      continue
+    }
+    search.set(key, String(value))
+  }
+
+  return search
 }
 
 export const propertiesApi = api.injectEndpoints({

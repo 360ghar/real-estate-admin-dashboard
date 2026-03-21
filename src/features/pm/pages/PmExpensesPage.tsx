@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { AlertCircle, Download, Plus } from 'lucide-react'
 import { EXPENSE_CATEGORIES, PAGE_SIZES } from '@/features/pm/constants'
+import { formatINR, downloadCsv } from '@/features/pm/utils'
 import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
@@ -29,25 +30,6 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
-
-const formatINR = (value: number) =>
-  new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value)
-
-const downloadCsv = (filename: string, rows: Record<string, unknown>[]) => {
-  const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))))
-  const escape = (v: unknown) => {
-    const s = v === null || v === undefined ? '' : String(v)
-    return `"${s.replaceAll('"', '""')}"`
-  }
-  const csv = [headers.join(','), ...rows.map((r) => headers.map((h) => escape(r[h])).join(','))].join('\n')
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
-  URL.revokeObjectURL(url)
-}
 
 export default function PmExpensesPage() {
   const { role } = useUserRole()
@@ -454,6 +436,11 @@ function ExpenseEditForm({
   const [receiptFile, setReceiptFile] = useState<File | null>(null)
 
   const save = async () => {
+    const amountNum = Number(amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      toast({ title: 'Invalid amount', description: 'Amount must be a positive number.', variant: 'destructive' })
+      return
+    }
     try {
       let receiptDocumentId: number | undefined
       if (receiptFile) {
@@ -461,7 +448,7 @@ function ExpenseEditForm({
       }
       const payload: ExpenseUpdate = {
         category,
-        amount: Number(amount),
+        amount: amountNum,
         expense_date: expenseDate,
         description,
         notes,

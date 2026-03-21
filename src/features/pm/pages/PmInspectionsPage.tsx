@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
+import { localInputToServerTimestamp, parseServerTimestamp } from '@/lib/dateTime'
 
 export default function PmInspectionsPage() {
   const { role } = useUserRole()
@@ -67,7 +68,7 @@ export default function PmInspectionsPage() {
       {
         accessorKey: 'conducted_at',
         header: 'Conducted',
-        cell: ({ row }) => new Date(row.original.conducted_at).toLocaleString(),
+        cell: ({ row }) => parseServerTimestamp(row.original.conducted_at)?.toLocaleString() ?? '—',
       },
       {
         id: 'signed',
@@ -124,7 +125,12 @@ export default function PmInspectionsPage() {
       toast({ title: 'Missing fields', description: 'Lease is required.', variant: 'destructive' })
       return
     }
-    const selectedLeaseOwnerId = (leases.data || []).find((l) => String(l.id) === String(leaseId))?.owner_id
+    const selectedLease = (leases.data || []).find((l) => String(l.id) === String(leaseId))
+    if (!selectedLease) {
+      toast({ title: 'Lease not found', description: 'Selected lease could not be found. Please refresh and try again.', variant: 'destructive' })
+      return
+    }
+    const selectedLeaseOwnerId = selectedLease.owner_id
     let roomsData: Record<string, unknown> | undefined
     try {
       roomsData = roomsJson ? (JSON.parse(roomsJson) as Record<string, unknown>) : undefined
@@ -138,7 +144,7 @@ export default function PmInspectionsPage() {
       inspection_type: inspectionType,
       rooms_data: roomsData,
       overall_notes: overallNotes || undefined,
-      conducted_at: conductedAt ? new Date(conductedAt).toISOString() : undefined,
+      conducted_at: localInputToServerTimestamp(conductedAt) ?? undefined,
     }
     try {
       await createInspection(payload).unwrap()

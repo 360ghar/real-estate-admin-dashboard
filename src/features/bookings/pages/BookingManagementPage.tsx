@@ -25,7 +25,7 @@ import {
   useCalculatePricingQuery,
   useGetAllBookingsQuery
 } from '@/features/bookings/api/bookingsApi'
-import { useGetPropertyQuery } from '@/features/properties/api/propertiesApi'
+import { useGetPropertyQuery, useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
 import { format, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns'
 import { Calendar as CalendarIcon, MapPin, Clock, Star, CreditCard, Plus, Check, AlertCircle, CalendarDays } from 'lucide-react'
 import type { Booking, BookingReview, BookingPricing, AvailabilityInfo } from '@/types/api'
@@ -324,9 +324,11 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
   )
 }
 
-const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => void }> = ({ propertyId, onSuccess }) => {
+const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => void }> = ({ propertyId: externalPropertyId, onSuccess }) => {
   const { toast } = useToast()
   const [isOpen, setIsOpen] = useState(false)
+  const [selectedPropertyId, setSelectedPropertyId] = useState<number | undefined>(externalPropertyId)
+  const [propertySearch, setPropertySearch] = useState('')
   const [selectedDates, setSelectedDates] = useState<{
     from: Date | undefined
     to: Date | undefined
@@ -335,6 +337,11 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
   const [pricingInfo, setPricingInfo] = useState<BookingPricing | null>(null)
   const [availabilityInfo, setAvailabilityInfo] = useState<AvailabilityInfo | null>(null)
 
+  const propertyId = selectedPropertyId
+  const { data: searchResults } = useSearchPropertiesQuery(
+    { q: propertySearch, limit: 10 },
+    { skip: !isOpen || !!externalPropertyId || propertySearch.length < 2 }
+  )
   const { data: property } = useGetPropertyQuery(propertyId || 0, {
     skip: !propertyId || !isOpen,
   })
@@ -387,6 +394,7 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
     try {
       await createBooking({
         ...data,
+        property_id: propertyId!,
         check_in_date: selectedDates.from!.toISOString(),
         check_out_date: selectedDates.to!.toISOString(),
       }).unwrap()
@@ -422,6 +430,36 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
             Select dates and enter guest details for your booking
           </DialogDescription>
         </DialogHeader>
+
+        {/* Property Selection */}
+        {!externalPropertyId && (
+          <div className="space-y-2 mb-4">
+            <Label>Search Property</Label>
+            <Input
+              placeholder="Search by title or location..."
+              value={propertySearch}
+              onChange={(e) => setPropertySearch(e.target.value)}
+            />
+            {searchResults?.properties && searchResults.properties.length > 0 && !propertyId && (
+              <div className="border rounded-md max-h-40 overflow-y-auto">
+                {searchResults.properties.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-b-0"
+                    onClick={() => {
+                      setSelectedPropertyId(p.id)
+                      setPropertySearch(p.title)
+                    }}
+                  >
+                    <span className="font-medium">{p.title}</span>
+                    <span className="text-muted-foreground ml-2">{p.city}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {property && (
           <Card className="mb-4">
@@ -570,7 +608,7 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
           <div className="flex gap-2">
             <Button
               type="submit"
-              disabled={!selectedDates.from || !selectedDates.to || !availabilityInfo?.available}
+              disabled={!propertyId || !selectedDates.from || !selectedDates.to || !availabilityInfo?.available}
               className="flex-1"
             >
               Create Booking
