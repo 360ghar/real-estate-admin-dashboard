@@ -62,12 +62,15 @@ export default function PmExpensesPage() {
   const [limit, setLimit] = useState(50)
   const [offset, setOffset] = useState(0)
 
+  // Validate date range: only pass dates if start < end (or one is empty)
+  const validDateRange = !startDate || !endDate || startDate <= endDate
+
   const expenses = useListPmExpensesQuery(
     {
       owner_id: ownerId,
       category: category || undefined,
-      start_date: startDate || undefined,
-      end_date: endDate || undefined,
+      start_date: validDateRange && startDate ? startDate : undefined,
+      end_date: validDateRange && endDate ? endDate : undefined,
       limit,
       offset,
     },
@@ -362,7 +365,8 @@ export default function PmExpensesPage() {
                 </SelectContent>
               </Select>
               <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setOffset(0) }} />
-              <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setOffset(0) }} />
+              <Input type="date" value={endDate} onChange={(e) => { setEndDate(e.target.value); setOffset(0) }} className={!validDateRange ? 'border-destructive' : ''} />
+              {!validDateRange && <span className="text-xs text-destructive">End date must be after start date</span>}
               <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setOffset(0) }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Page size" />

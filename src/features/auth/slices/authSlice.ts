@@ -6,16 +6,29 @@ interface AuthState {
   token: string | null
   user: User | null
   isLoading: boolean
+  initialized: boolean
   error: string | null
 }
 
+function loadUserFromStorage(): User | null {
+  try {
+    if (typeof localStorage === 'undefined') return null
+    const raw = localStorage.getItem('user')
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Record<string, unknown>
+    if (!parsed?.id) return null
+    return parsed as unknown as User
+  } catch {
+    if (typeof localStorage !== 'undefined') localStorage.removeItem('user')
+    return null
+  }
+}
+
 const initialState: AuthState = {
-  token: typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null,
-  user:
-    typeof localStorage !== 'undefined' && localStorage.getItem('user')
-      ? (JSON.parse(localStorage.getItem('user') as string) as User)
-      : null,
+  token: null,
+  user: loadUserFromStorage(),
   isLoading: false,
+  initialized: false,
   error: null,
 }
 
@@ -23,11 +36,12 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
-    setCredentials: (state, action: PayloadAction<{ token: string; user: User }>) => {
-      state.token = action.payload.token
+    setCredentials: (state, action: PayloadAction<{ token?: string | null; user: User }>) => {
+      if (action.payload.token !== undefined) {
+        state.token = action.payload.token
+      }
       state.user = action.payload.user
       if (typeof localStorage !== 'undefined') {
-        localStorage.setItem('token', action.payload.token)
         localStorage.setItem('user', JSON.stringify(action.payload.user))
       }
     },
@@ -35,9 +49,11 @@ const authSlice = createSlice({
       state.token = null
       state.user = null
       if (typeof localStorage !== 'undefined') {
-        localStorage.removeItem('token')
         localStorage.removeItem('user')
       }
+    },
+    setInitialized: (state, action: PayloadAction<boolean>) => {
+      state.initialized = action.payload
     },
     setLoading: (state, action: PayloadAction<boolean>) => {
       state.isLoading = action.payload
@@ -48,11 +64,12 @@ const authSlice = createSlice({
   },
 })
 
-export const { setCredentials, clearCredentials, setLoading, setError } = authSlice.actions
+export const { setCredentials, clearCredentials, setInitialized, setLoading, setError } = authSlice.actions
 
-export const selectIsAuthenticated = (state: RootState) => !!state.auth.token
+export const selectIsAuthenticated = (state: RootState) => !!state.auth.token && !!state.auth.user
 export const selectCurrentUser = (state: RootState) => state.auth.user
 export const selectAuthLoading = (state: RootState) => state.auth.isLoading
 export const selectAuthError = (state: RootState) => state.auth.error
+export const selectAuthInitialized = (state: RootState) => state.auth.initialized
 
 export default authSlice.reducer

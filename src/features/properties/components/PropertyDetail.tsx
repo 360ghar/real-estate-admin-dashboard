@@ -15,6 +15,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useState, type ReactNode } from 'react'
+import { useToast } from '@/hooks/use-toast'
+import { getErrorMessage } from '@/lib/errors'
 
 const Item = ({ label, value }: { label: string; value?: string | number | boolean | null }) => (
   <div className="text-sm"><span className="text-muted-foreground">{label}: </span>{String(value ?? '-')}</div>
@@ -29,6 +31,7 @@ const PropertyDetail = ({ id }: { id: number }) => {
   const [openDelete, setOpenDelete] = useState(false)
   const [del, delState] = useDeletePropertyMutation()
   const navigate = useNavigate()
+  const { toast } = useToast()
 
   const doDelete = async () => {
     try {
@@ -37,6 +40,7 @@ const PropertyDetail = ({ id }: { id: number }) => {
       navigate('/properties')
     } catch (e) {
       setOpenDelete(false)
+      toast({ title: 'Delete Failed', description: getErrorMessage(e, 'Could not delete property'), variant: 'destructive' })
     }
   }
 
@@ -85,11 +89,11 @@ const PropertyDetail = ({ id }: { id: number }) => {
               <Item label="Locality" value={data?.locality} />
               <Item label="Pincode" value={data?.pincode} />
             </div>
-            {data?.location?.latitude !== undefined && data?.location?.longitude !== undefined && (
+            {data?.latitude !== undefined && data?.longitude !== undefined && (
               <div className="mt-3">
-                <MapPreview lat={data.location.latitude} lng={data.location.longitude} height={220} />
+                <MapPreview lat={data.latitude} lng={data.longitude} height={220} />
                 <div className="mt-2 text-xs text-muted-foreground">
-                  Lat: {data.location.latitude}, Lng: {data.location.longitude}
+                  Lat: {data.latitude}, Lng: {data.longitude}
                 </div>
               </div>
             )}
@@ -129,7 +133,7 @@ const PropertyDetail = ({ id }: { id: number }) => {
               {data?.amenities?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {data.amenities.map((a) => (
-                    <Badge key={a} variant="secondary" className="capitalize">{a.replaceAll('_', ' ')}</Badge>
+                    <Badge key={a.id} variant="secondary" className="capitalize">{a.title.replaceAll('_', ' ')}</Badge>
                   ))}
                 </div>
               ) : (
@@ -155,8 +159,8 @@ const PropertyDetail = ({ id }: { id: number }) => {
             <div>
               <SectionTitle>Media</SectionTitle>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                {data.images.map((url) => (
-                  <img key={url} src={url} className="h-28 w-full rounded-md object-cover" />
+                {data.images.map((image) => (
+                  <img key={image.id} src={image.image_url} className="h-28 w-full rounded-md object-cover" />
                 ))}
               </div>
             </div>

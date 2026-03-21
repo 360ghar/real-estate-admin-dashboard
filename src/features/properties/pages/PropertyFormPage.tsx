@@ -43,7 +43,10 @@ const propertySchema = z.object({
   features: z.array(z.string()),
   owner_name: z.string().min(1, 'Owner name is required'),
   owner_contact: z.string().min(1, 'Owner contact is required'),
-})
+}).refine(
+  (d) => d.floor_number == null || d.total_floors == null || d.total_floors >= d.floor_number,
+  { message: 'Total floors must be >= floor number', path: ['total_floors'] },
+)
 
 type PropertyFormData = z.infer<typeof propertySchema>
 
@@ -132,16 +135,18 @@ const PropertyFormPage: React.FC = () => {
         age_of_property: property.age_of_property || 0,
         max_occupancy: property.max_occupancy || 0,
         minimum_stay_days: property.minimum_stay_days || 1,
-        amenity_ids: [],
+        amenity_ids: (property.amenities || []).map((a) => a.id),
         features: property.features || [],
         owner_name: property.owner_name || '',
         owner_contact: property.owner_contact || '',
       })
-      setLocation({
-        latitude: property.location.latitude,
-        longitude: property.location.longitude,
-      })
-      setUploadedImages(property.images || [])
+      if (property.latitude !== undefined && property.longitude !== undefined) {
+        setLocation({
+          latitude: property.latitude,
+          longitude: property.longitude,
+        })
+      }
+      setUploadedImages((property.images || []).map((image) => image.image_url))
       setSelectedFeatures(property.features || [])
     }
   }, [property, isEditing, form])
@@ -513,7 +518,7 @@ const PropertyFormPage: React.FC = () => {
                           onCheckedChange={() => toggleAmenity(amenity.id)}
                         />
                         <Label htmlFor={`amenity-${amenity.id}`} className="text-sm">
-                          {amenity.name}
+                          {amenity.title || amenity.name}
                         </Label>
                       </div>
                     ))}

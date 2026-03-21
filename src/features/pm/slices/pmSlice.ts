@@ -1,4 +1,5 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit'
+import { clearCredentials } from '@/features/auth/slices/authSlice'
 import type { RootState } from '@/store'
 
 export interface SelectedOwner {
@@ -40,6 +41,12 @@ const pmSlice = createSlice({
       if (action.payload) localStorage.setItem(STORAGE_KEY, JSON.stringify(action.payload))
       else localStorage.removeItem(STORAGE_KEY)
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(clearCredentials, (state) => {
+      state.selected_owner = null
+      if (typeof localStorage !== 'undefined') localStorage.removeItem(STORAGE_KEY)
+    })
   },
 })
 

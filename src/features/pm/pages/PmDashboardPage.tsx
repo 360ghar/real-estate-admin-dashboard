@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Building2, IndianRupee, Wrench } from 'lucide-react'
+import { AlertCircle, ArrowRight, Building2, IndianRupee, Wrench } from 'lucide-react'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
 import { selectSelectedOwner } from '@/features/pm/slices/pmSlice'
 import { useGetPmDashboardActivityQuery, useGetPmDashboardOverviewQuery } from '@/features/pm/api/pmApi'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -39,6 +40,16 @@ export default function PmDashboardPage() {
         </div>
         <Badge variant="secondary">{role === 'admin' ? 'Admin' : 'Agent'}</Badge>
       </div>
+
+      {overview.isError && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            Failed to load dashboard overview.
+            <Button variant="outline" size="sm" onClick={() => void overview.refetch()}>Retry</Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -134,7 +145,15 @@ export default function PmDashboardPage() {
           ) : null}
         </CardHeader>
         <CardContent>
-          {activity.isLoading ? (
+          {activity.isError ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription className="flex items-center justify-between">
+                Failed to load activity.
+                <Button variant="outline" size="sm" onClick={() => void activity.refetch()}>Retry</Button>
+              </AlertDescription>
+            </Alert>
+          ) : activity.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-5/6" />

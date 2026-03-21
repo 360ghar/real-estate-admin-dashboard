@@ -39,19 +39,14 @@ const createBookingSchema = z.object({
   primary_guest_phone: z.string().min(1, 'Phone number is required'),
   primary_guest_email: z.string().email('Invalid email address'),
   special_requests: z.string().optional(),
-})
+}).refine(
+  (d) => !d.check_in_date || !d.check_out_date || new Date(d.check_out_date) > new Date(d.check_in_date),
+  { message: 'Check-out must be after check-in', path: ['check_out_date'] },
+)
 
 const reviewSchema = z.object({
-  rating: z.number().min(1).max(5),
-  review_text: z.string().optional(),
-  aspects: z.object({
-    cleanliness: z.number().min(1).max(5).optional(),
-    location: z.number().min(1).max(5).optional(),
-    value: z.number().min(1).max(5).optional(),
-    communication: z.number().min(1).max(5).optional(),
-    accuracy: z.number().min(1).max(5).optional(),
-    checkin: z.number().min(1).max(5).optional(),
-  }).optional(),
+  guest_rating: z.number().min(1).max(5),
+  guest_review: z.string().optional(),
 })
 
 type CreateBookingFormData = z.infer<typeof createBookingSchema>
@@ -101,7 +96,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
   }
 
   return (
-    <Card className={`transition-all ${booking.status === 'cancelled' ? 'opacity-60' : ''}`}>
+    <Card className={`transition-all ${booking.booking_status === 'cancelled' ? 'opacity-60' : ''}`}>
       <CardContent className="pt-6">
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="flex-1">
@@ -114,8 +109,8 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                 </p>
               </div>
               <div className="flex gap-2">
-                <Badge variant={getStatusColor(booking.status)}>
-                  {booking.status}
+                <Badge variant={getStatusColor(booking.booking_status)}>
+                  {booking.booking_status}
                 </Badge>
                 <Badge variant={getPaymentStatusColor(booking.payment_status)}>
                   {booking.payment_status}
@@ -167,9 +162,9 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                     <span className="text-muted-foreground">Payment Details:</span>
                     <p className="text-sm">Method: {booking.payment_method || 'N/A'}</p>
                     <p className="text-sm">Transaction ID: {booking.transaction_id || 'N/A'}</p>
-                    {booking.paid_at && (
+                    {booking.payment_date && (
                       <p className="text-sm">
-                        Paid on: {format(parseISO(booking.paid_at), 'MMM dd, yyyy')}
+                        Paid on: {format(parseISO(booking.payment_date), 'MMM dd, yyyy')}
                       </p>
                     )}
                   </div>
@@ -178,11 +173,11 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                 <div className="grid gap-3 md:grid-cols-3 text-sm">
                   <div>
                     <span className="text-muted-foreground">Base Price:</span>
-                    <p>₹{booking.base_price.toLocaleString()} × {booking.total_nights} nights</p>
+                    <p>₹{booking.base_amount.toLocaleString()} × {booking.nights} nights</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Taxes & Fees:</span>
-                    <p>₹{(booking.taxes + booking.service_fee).toLocaleString()}</p>
+                    <p>₹{(booking.taxes_amount + booking.service_charges).toLocaleString()}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Total Amount:</span>
@@ -190,29 +185,26 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                   </div>
                 </div>
 
-                {booking.review && (() => {
-                  const review = booking.review
-                  return (
-                    <div className="mt-3 p-3 bg-muted rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <div className="flex">
+                {booking.guest_rating && (
+                  <div className="mt-3 p-3 bg-muted rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="flex">
                         {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`h-4 w-4 ${
-                                i < review.rating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
-                              }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm font-medium">{review.rating}/5</span>
+                          <Star
+                            key={i}
+                            className={`h-4 w-4 ${
+                              i < booking.guest_rating! ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'
+                            }`}
+                          />
+                        ))}
                       </div>
-                      {review.review_text && (
-                        <p className="text-sm">{review.review_text}</p>
-                      )}
+                      <span className="text-sm font-medium">{booking.guest_rating}/5</span>
                     </div>
-                  )
-                })()}
+                    {booking.guest_review && (
+                      <p className="text-sm">{booking.guest_review}</p>
+                    )}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -226,7 +218,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               {showDetails ? 'Hide Details' : 'View Details'}
             </Button>
 
-            {showActions && booking.status === 'confirmed' && booking.payment_status !== 'paid' && (
+            {showActions && booking.booking_status === 'confirmed' && booking.payment_status !== 'paid' && (
               <Button
                 size="sm"
                 onClick={() => onUpdate?.(booking)}
@@ -236,7 +228,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               </Button>
             )}
 
-            {showActions && booking.status === 'confirmed' && !booking.review && (
+            {showActions && booking.booking_status === 'confirmed' && !booking.guest_rating && (
               <Dialog>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline">
@@ -258,7 +250,7 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
               </Dialog>
             )}
 
-            {showActions && ['confirmed', 'pending'].includes(booking.status) && (
+            {showActions && ['confirmed', 'pending'].includes(booking.booking_status) && (
               <Button
                 size="sm"
                 variant="destructive"
@@ -278,26 +270,9 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<ReviewFormData>({
     resolver: zodResolver(reviewSchema),
     defaultValues: {
-      rating: 5,
-      aspects: {
-        cleanliness: 5,
-        location: 5,
-        value: 5,
-        communication: 5,
-        accuracy: 5,
-        checkin: 5,
-      },
+      guest_rating: 5,
     },
   })
-
-  const aspectLabels = {
-    cleanliness: 'Cleanliness',
-    location: 'Location',
-    value: 'Value',
-    communication: 'Communication',
-    accuracy: 'Accuracy',
-    checkin: 'Check-in',
-  } as const
 
   return (
     <form onSubmit={(e) => void handleSubmit(onSubmit)(e)} className="space-y-4">
@@ -308,13 +283,13 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
             <label key={rating} className="cursor-pointer">
               <input
                 type="radio"
-                {...register('rating', { valueAsNumber: true })}
+                {...register('guest_rating', { valueAsNumber: true })}
                 value={rating}
                 className="sr-only"
               />
               <Star
                 className={`h-6 w-6 ${
-                  rating <= (watch('rating') || 0)
+                  rating <= (watch('guest_rating') || 0)
                     ? 'text-yellow-400 fill-current'
                     : 'text-muted-foreground opacity-30'
                 }`}
@@ -322,42 +297,19 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: ReviewFormData) => void }> 
             </label>
           ))}
         </div>
-        {errors.rating && (
-          <p className="text-sm text-red-500">{errors.rating.message}</p>
+        {errors.guest_rating && (
+          <p className="text-sm text-red-500">{errors.guest_rating.message}</p>
         )}
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="review_text">Review (Optional)</Label>
+        <Label htmlFor="guest_review">Review (Optional)</Label>
         <Textarea
-          id="review_text"
-          {...register('review_text')}
+          id="guest_review"
+          {...register('guest_review')}
           placeholder="Share your experience..."
           rows={4}
         />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        {(Object.entries(aspectLabels) as Array<[keyof typeof aspectLabels, string]>).map(([key, label]) => (
-          <div key={key} className="space-y-2">
-            <Label>{label}</Label>
-            <Select
-              {...register(`aspects.${key}` as const, { valueAsNumber: true })}
-              defaultValue="5"
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {[1, 2, 3, 4, 5].map(rating => (
-                  <SelectItem key={rating} value={rating.toString()}>
-                    {rating} stars
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ))}
       </div>
 
       <div className="flex gap-2">
@@ -387,12 +339,21 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
     skip: !propertyId || !isOpen,
   })
 
+  const form = useForm<CreateBookingFormData>({
+    resolver: zodResolver(createBookingSchema),
+    defaultValues: {
+      guests: 1,
+    },
+  })
+  const guestsCount = Math.max(form.watch('guests') || 1, 1)
+
   const checkAvailability = useCheckAvailabilityQuery(
     propertyId && selectedDates.from && selectedDates.to
       ? {
           property_id: propertyId,
           check_in_date: selectedDates.from.toISOString(),
           check_out_date: selectedDates.to.toISOString(),
+          guests: guestsCount,
         }
       : skipToken
   )
@@ -403,18 +364,12 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
           property_id: propertyId,
           check_in_date: selectedDates.from.toISOString(),
           check_out_date: selectedDates.to.toISOString(),
+          guests: guestsCount,
         }
       : skipToken
   )
 
   const [createBooking] = useCreateBookingMutation()
-
-  const form = useForm<CreateBookingFormData>({
-    resolver: zodResolver(createBookingSchema),
-    defaultValues: {
-      guests: 1,
-    },
-  })
 
   useEffect(() => {
     if (checkAvailability.data) {
@@ -526,10 +481,10 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
               </div>
             )}
 
-            {availabilityInfo && !availabilityInfo.is_available && (
+            {availabilityInfo && !availabilityInfo.available && (
               <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm text-red-800">
-                  Property is not available for selected dates
+                  {availabilityInfo.reason || 'Property is not available for selected dates'}
                 </p>
               </div>
             )}
@@ -543,16 +498,16 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
               </CardHeader>
               <CardContent className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span>Base Price (₹{pricingInfo.base_price} × {pricingInfo.total_nights} nights)</span>
-                  <span>₹{pricingInfo.subtotal.toLocaleString()}</span>
+                  <span>Base Price (₹{pricingInfo.base_amount.toLocaleString()} / {pricingInfo.nights} nights)</span>
+                  <span>₹{pricingInfo.base_amount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Taxes</span>
-                  <span>₹{pricingInfo.taxes.toLocaleString()}</span>
+                  <span>₹{pricingInfo.taxes_amount.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Service Fee</span>
-                  <span>₹{pricingInfo.service_fee.toLocaleString()}</span>
+                  <span>₹{pricingInfo.service_charges.toLocaleString()}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between font-medium">
@@ -615,7 +570,7 @@ const CreateBookingDialog: React.FC<{ propertyId?: number; onSuccess?: () => voi
           <div className="flex gap-2">
             <Button
               type="submit"
-              disabled={!selectedDates.from || !selectedDates.to || !availabilityInfo?.is_available}
+              disabled={!selectedDates.from || !selectedDates.to || !availabilityInfo?.available}
               className="flex-1"
             >
               Create Booking
@@ -654,7 +609,7 @@ const BookingManagementPage: React.FC = () => {
   const [processPayment] = useProcessPaymentMutation()
   const [addReview] = useAddReviewMutation()
 
-  const bookings = user?.role === 'user' ? userBookings?.bookings || [] : allBookings?.items || []
+  const bookings = user?.role === 'user' ? userBookings?.bookings || [] : allBookings?.bookings || []
 
   const filteredBookings = bookings.filter(booking => {
     if (searchQuery) {
@@ -782,7 +737,7 @@ const BookingManagementPage: React.FC = () => {
               <Check className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userBookings.past}</div>
+              <div className="text-2xl font-bold">{userBookings.completed}</div>
             </CardContent>
           </Card>
         </div>

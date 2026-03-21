@@ -135,6 +135,15 @@ export default function PmPropertiesPage() {
       });
       return;
     }
+    const graceDaysNum = Number(graceDays);
+    if (isNaN(graceDaysNum) || graceDaysNum < 0 || graceDaysNum > 30) {
+      toast({
+        title: "Invalid grace period",
+        description: "Grace period must be between 0 and 30 days.",
+        variant: "destructive",
+      });
+      return;
+    }
     const basePriceNum = Number(basePrice);
     if (isNaN(basePriceNum) || basePriceNum <= 0) {
       toast({
