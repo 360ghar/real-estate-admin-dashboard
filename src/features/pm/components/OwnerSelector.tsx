@@ -9,10 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
-import type { User } from '@/types'
-
-const getOwnerLabel = (u: Pick<User, 'full_name' | 'phone' | 'email'>) =>
-  (u.full_name || u.phone || u.email || 'Unnamed owner').trim()
+import { getOwnerLabel } from '@/features/pm/utils'
 
 export default function OwnerSelector() {
   const dispatch = useAppDispatch()

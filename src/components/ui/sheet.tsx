@@ -62,6 +62,16 @@ const SheetContent = React.forwardRef<
 >(({ side = "right", className, children, swipeToClose = true, swipeThreshold = 100, ...props }, ref) => {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
+  const internalRef = React.useRef<React.ElementRef<typeof SheetPrimitive.Content> | null>(null)
+
+  const mergedRef = React.useCallback(
+    (node: React.ElementRef<typeof SheetPrimitive.Content> | null) => {
+      internalRef.current = node
+      if (typeof ref === 'function') ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref]
+  )
 
   // Calculate opacity based on drag distance
   const getOpacity = (value: number, threshold: number) => {
@@ -86,8 +96,9 @@ const SheetContent = React.forwardRef<
       (side === 'top' && info.offset.y < -swipeThreshold)
 
     if (shouldClose) {
-      // Find and click the close button to trigger Radix close
-      const closeButton = document.querySelector('[data-radix-dialog-close-swipe]')
+      // Scope query to this sheet's own content to avoid closing the wrong sheet
+      // when multiple sheets are open simultaneously (e.g. nested sheets)
+      const closeButton = internalRef.current?.querySelector('[data-radix-dialog-close-swipe]')
       if (closeButton instanceof HTMLElement) {
         closeButton.click()
       }
@@ -123,7 +134,7 @@ const SheetContent = React.forwardRef<
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
-        ref={ref}
+        ref={mergedRef}
         className={cn(sheetVariants({ side }), className)}
         {...props}
       >

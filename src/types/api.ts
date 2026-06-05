@@ -1,4 +1,6 @@
 // Core Types
+import type { PropertyPurpose, PropertyType, PropertyStatus } from './pm'
+
 export interface ApiResponse<T> {
   data?: T
   error?: {
@@ -167,10 +169,14 @@ export interface AgentWorkload {
 export interface AgentSystemStats {
   total_agents: number
   active_agents: number
+  active_users?: number
+  properties_listed?: number
+  occupancy_rate?: number
   total_users_served: number
   system_satisfaction_score: number
   agents_by_type: Record<string, number>
   load_distribution: AgentWorkload[]
+  [key: string]: number | string | Record<string, number> | AgentWorkload[] | undefined
 }
 
 export interface AgentWithStats extends Agent {
@@ -182,8 +188,8 @@ export interface Property {
   id: number
   title: string
   description?: string
-  property_type: 'house' | 'apartment' | 'builder_floor' | 'room'
-  purpose: 'buy' | 'rent' | 'short_stay'
+  property_type: PropertyType
+  purpose: PropertyPurpose
   base_price: number
   latitude?: number
   longitude?: number
@@ -207,7 +213,7 @@ export interface Property {
   owner_id: number
   owner_name?: string
   owner_contact?: string
-  status: 'available' | 'rented' | 'sold' | 'under_offer' | 'maintenance'
+  status: PropertyStatus
   liked?: boolean
   user_has_scheduled_visit?: boolean
   user_scheduled_visit_count?: number
@@ -266,42 +272,8 @@ export interface PropertyCreate {
 }
 
 export interface PropertyUpdate extends Partial<PropertyCreate> {
-  status?: 'available' | 'rented' | 'sold' | 'under_offer' | 'maintenance'
+  status?: PropertyStatus
   is_available?: boolean
-}
-
-export interface PropertySearchParams {
-  lat?: number
-  lng?: number
-  radius?: number
-  q?: string
-  property_type?: string[]
-  purpose?: string
-  price_min?: number
-  price_max?: number
-  bedrooms_min?: number
-  bedrooms_max?: number
-  bathrooms_min?: number
-  bathrooms_max?: number
-  area_min?: number
-  area_max?: number
-  city?: string
-  locality?: string
-  pincode?: string
-  amenities?: number[]
-  features?: string[]
-  parking_spaces_min?: number
-  floor_number_min?: number
-  floor_number_max?: number
-  age_max?: number
-  check_in?: string
-  check_out?: string
-  guests?: number
-  sort_by?: 'distance' | 'price_low' | 'price_high' | 'newest' | 'popular' | 'relevance'
-  page?: number
-  limit?: number
-  exclude_swiped?: boolean
-  semantic_search?: boolean
 }
 
 export interface UnifiedPropertyResponse {
@@ -355,16 +327,6 @@ export interface VisitList {
   upcoming: number
   completed: number
   cancelled: number
-}
-
-export interface VisitsQuery {
-  page?: number
-  limit?: number
-  status?: string
-  agent_id?: number
-  property_id?: number
-  user_id?: number
-  q?: string
 }
 
 // Booking Types
@@ -476,17 +438,6 @@ export interface BookingList {
   upcoming: number
   completed: number
   cancelled: number
-}
-
-export interface BookingsQuery {
-  page?: number
-  limit?: number
-  status?: string
-  agent_id?: number
-  property_id?: number
-  user_id?: number
-  q?: string
-  payment_status?: string
 }
 
 // Core System Types
@@ -686,26 +637,6 @@ export interface UploadResponse {
   size: number
 }
 
-// Notification Types
-export interface Notification {
-  id: number
-  user_id: number
-  type: 'visit_reminder' | 'booking_update' | 'payment_received' | 'property_available' | 'system_message'
-  title: string
-  message: string
-  data?: Record<string, unknown>
-  is_read: boolean
-  created_at: string
-  expires_at?: string
-}
-
-export interface NotificationPreferences {
-  email: boolean
-  push: boolean
-  sms: boolean
-  types: Record<string, boolean>
-}
-
 // API Query Types
 export interface UsersQuery {
   page?: number
@@ -714,67 +645,83 @@ export interface UsersQuery {
   agent_id?: number
 }
 
-// Reviews Types
-export interface PropertyReview {
+// Flatmates Moderation Types
+export interface FlatmatesPrescreenFlag {
+  code: string
+  severity: 'warning' | 'high'
+  reason: string
+  field?: string
+  matched_term?: string
+}
+
+export interface FlatmatesListing {
   id: number
-  property_id: number
-  user_id: number
-  booking_id?: number
-  rating: number
+  owner_id: number
   title: string
-  comment: string
-  aspects?: {
-    cleanliness?: number
-    accuracy?: number
-    communication?: number
-    location?: number
-    check_in?: number
-    value?: number
-  }
+  description?: string
+  city?: string
+  locality?: string
+  sub_locality?: string
+  monthly_rent?: number
+  security_deposit?: number
+  maintenance_charges?: number
+  area_sqft?: number
+  bedrooms?: number
+  bathrooms?: number
+  features?: string[]
   tags?: string[]
-  is_verified: boolean
-  is_public: boolean
+  main_image_url?: string
+  image_urls?: string[]
+  status: 'pending_review' | 'live' | 'rejected' | 'paused' | 'expired'
   created_at: string
   updated_at: string
-  user: {
-    id: number
-    first_name: string
-    last_name: string
-    avatar_url?: string
-  }
+  available_from?: string
+  gender_preference?: string
+  sharing_type?: string
+  listing_preferences?: Record<string, unknown>
+  ai_prescreen_result?: 'clear' | 'flagged' | 'pending'
+  ai_prescreen_flags?: FlatmatesPrescreenFlag[]
+  ai_flag_reason?: string
+  owner?: User
 }
 
-export interface ReviewReply {
+export interface FlatmatesReport {
   id: number
-  review_id: number
-  user_id: number
-  comment: string
+  reporter_user_id: number
+  reported_user_id: number
+  reason: 'spam' | 'fake_profile' | 'abuse' | 'inappropriate' | 'other'
+  description?: string
+  status: 'open' | 'reviewed' | 'dismissed' | 'actioned'
+  conversation_id?: number
+  property_id?: number
   created_at: string
   updated_at: string
-  user: {
-    id: number
-    first_name: string
-    last_name: string
-    avatar_url?: string
-  }
+  admin_notes?: string
+  moderated_by?: number
+  reporter?: User
+  reported_user?: User
 }
 
-export interface ReviewStats {
-  average_rating: number
-  total_reviews: number
-  rating_distribution: {
-    5: number
-    4: number
-    3: number
-    2: number
-    1: number
-  }
-  aspect_averages?: {
-    cleanliness?: number
-    accuracy?: number
-    communication?: number
-    location?: number
-    check_in?: number
-    value?: number
-  }
+export interface ModerationAction {
+  action: 'approve' | 'reject' | 'request_edit'
+  reason?: string
+}
+
+export interface ReportModerationAction {
+  action: 'dismiss' | 'warn_user' | 'suspend_user' | 'escalate'
+  notes?: string
+}
+
+export interface ModerationQueueResponse {
+  listings: FlatmatesListing[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface ReportsQueueResponse {
+  reports: FlatmatesReport[]
+  total: number
+  limit: number
+  offset: number
 }

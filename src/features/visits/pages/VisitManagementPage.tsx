@@ -1,124 +1,24 @@
 import { useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { Calendar } from '@/components/ui/calendar'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import {
   useGetUserVisitsQuery,
-  useScheduleVisitMutation,
   useRescheduleVisitMutation,
   useCancelVisitMutation,
-  useCompleteVisitMutation,
   useGetAllVisitsQuery
 } from '@/features/visits/api/visitsApi'
-import { useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
-import { format } from 'date-fns'
-import { Calendar as CalendarIcon, MapPin, Clock, User, Plus, Edit, Check, AlertCircle } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Check, Plus, AlertCircle } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 import type { Visit } from '@/types/api'
 import { getErrorMessage } from '@/lib/errors'
-import { localInputToServerTimestamp, parseServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
-
-const scheduleVisitSchema = z.object({
-  property_id: z.number().min(1, 'Property is required'),
-  scheduled_date: z.string().min(1, 'Date and time are required'),
-  special_requirements: z.string().optional(),
-})
-
-const completeVisitSchema = z.object({
-  notes: z.string().min(1, 'Notes are required'),
-  feedback: z.string().optional(),
-})
-
-type ScheduleVisitFormData = z.infer<typeof scheduleVisitSchema>
-type CompleteVisitFormData = z.infer<typeof completeVisitSchema>
-
-interface VisitCalendarProps {
-  visits: Visit[]
-  onDateSelect: (date: Date) => void
-  selectedDate?: Date
-}
-
-const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits, onDateSelect, selectedDate }) => {
-  const hasVisitOnDate = (date: Date) => {
-    return visits.some(visit => {
-      const visitDate = parseServerTimestamp(visit.scheduled_date)
-      if (!visitDate) return false
-      return format(visitDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    })
-  }
-
-  const getVisitsForDate = (date: Date) => {
-    return visits.filter(visit => {
-      const visitDate = parseServerTimestamp(visit.scheduled_date)
-      if (!visitDate) return false
-      return format(visitDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
-    })
-  }
-
-  return (
-    <div className="space-y-4">
-      <Calendar
-        mode="single"
-        selected={selectedDate}
-        onSelect={(date) => date && onDateSelect(date)}
-        className="rounded-md border"
-        modifiers={{
-          hasVisit: (date) => hasVisitOnDate(date)
-        }}
-        modifiersStyles={{
-          hasVisit: {
-            backgroundColor: '#3b82f6',
-            color: 'white'
-          }
-        }}
-      />
-      {selectedDate && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm">
-              Visits for {format(selectedDate, 'MMM dd, yyyy')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {getVisitsForDate(selectedDate).length === 0 ? (
-              <p className="text-sm text-muted-foreground">No visits scheduled</p>
-            ) : (
-              <div className="space-y-2">
-                {getVisitsForDate(selectedDate).map((visit) => (
-                  <div key={visit.id} className="flex items-center justify-between p-2 border rounded">
-                    <div>
-                      <p className="text-sm font-medium">{visit.property?.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(() => {
-                          const visitDate = parseServerTimestamp(visit.scheduled_date)
-                          return visitDate ? format(visitDate, 'HH:mm') : 'Invalid date'
-                        })()}
-                      </p>
-                    </div>
-                    <Badge variant={visit.status === 'scheduled' ? 'default' : 'secondary'}>
-                      {visit.status}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  )
-}
+import { localInputToServerTimestamp } from '@/lib/dateTime'
+import { VisitCalendar } from '@/features/visits/components/VisitCalendar'
+import { VisitFilters } from '@/features/visits/components/VisitFilters'
+import { VisitCard } from '@/features/visits/components/VisitCard'
+import { ScheduleVisitDialog } from '@/features/visits/components/ScheduleVisitDialog'
+import { CompleteVisitDialog } from '@/features/visits/components/CompleteVisitDialog'
 
 const VisitManagementPage: React.FC = () => {
   const { user } = useAuth()
@@ -130,34 +30,16 @@ const VisitManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Form setup
-  const scheduleForm = useForm<ScheduleVisitFormData>({
-    resolver: zodResolver(scheduleVisitSchema),
-    defaultValues: {
-      scheduled_date: serverTimestampToLocalInput(selectedDate),
-    },
-  })
-
-  const completeForm = useForm<CompleteVisitFormData>({
-    resolver: zodResolver(completeVisitSchema),
-  })
-
   // API calls
   const { data: userVisits, refetch: refetchUserVisits } = useGetUserVisitsQuery()
 
-  // Admin/Agent view
   const { data: allVisits, refetch: refetchAllVisits } = useGetAllVisitsQuery(
     { status: statusFilter === 'all' ? undefined : statusFilter },
     { skip: !user || user.role === 'user' }
   )
 
-  const { data: properties } = useSearchPropertiesQuery({ limit: 100 })
-
-  // Mutations
-  const [scheduleVisit, { isLoading: scheduling }] = useScheduleVisitMutation()
   const [rescheduleVisit] = useRescheduleVisitMutation()
   const [cancelVisit] = useCancelVisitMutation()
-  const [completeVisit, { isLoading: completing }] = useCompleteVisitMutation()
 
   const visits = user?.role === 'user' ? userVisits?.visits || [] : allVisits?.items || []
 
@@ -173,123 +55,33 @@ const VisitManagementPage: React.FC = () => {
     return true
   })
 
-  const handleScheduleVisit = async (data: ScheduleVisitFormData) => {
-    try {
-      const scheduledDate = localInputToServerTimestamp(data.scheduled_date)
-      if (!scheduledDate) {
-        scheduleForm.setError('scheduled_date', { message: 'Enter a valid date and time' })
-        return
-      }
-      await scheduleVisit({ ...data, scheduled_date: scheduledDate }).unwrap()
-      toast({
-        title: 'Visit Scheduled',
-        description: 'Your visit has been scheduled successfully.',
-      })
-      setShowScheduleDialog(false)
-      scheduleForm.reset()
-      void refetchUserVisits()
-      void refetchAllVisits()
-    } catch (error) {
-      toast({
-        title: 'Scheduling Failed',
-        description: getErrorMessage(error, 'Failed to schedule visit. Please try again.'),
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleCompleteVisit = async (data: CompleteVisitFormData) => {
-    if (!selectedVisit) return
-
-    try {
-      await completeVisit({
-        visitId: selectedVisit.id,
-        ...data,
-      }).unwrap()
-      toast({
-        title: 'Visit Completed',
-        description: 'Visit has been marked as completed.',
-      })
-      setShowCompleteDialog(false)
-      completeForm.reset()
-      setSelectedVisit(null)
-      void refetchUserVisits()
-      void refetchAllVisits()
-    } catch (error) {
-      toast({
-        title: 'Update Failed',
-        description: getErrorMessage(error, 'Failed to complete visit. Please try again.'),
-        variant: 'destructive',
-      })
-    }
+  const refetchAll = () => {
+    void refetchUserVisits()
+    void refetchAllVisits()
   }
 
   const handleRescheduleVisit = async (visitId: number, newDate: string) => {
     try {
       const normalizedDate = localInputToServerTimestamp(newDate)
       if (!normalizedDate) {
-        toast({
-          title: 'Reschedule Failed',
-          description: 'Enter a valid date and time.',
-          variant: 'destructive',
-        })
+        toast({ title: 'Reschedule Failed', description: 'Enter a valid date and time.', variant: 'destructive' })
         return
       }
-      await rescheduleVisit({
-        visitId,
-        newDate: normalizedDate,
-        reason: 'Rescheduled by user',
-      }).unwrap()
-      toast({
-        title: 'Visit Rescheduled',
-        description: 'Visit has been rescheduled successfully.',
-      })
-      void refetchUserVisits()
-      void refetchAllVisits()
+      await rescheduleVisit({ visitId, newDate: normalizedDate, reason: 'Rescheduled by user' }).unwrap()
+      toast({ title: 'Visit Rescheduled', description: 'Visit has been rescheduled successfully.' })
+      refetchAll()
     } catch (error) {
-      toast({
-        title: 'Reschedule Failed',
-        description: getErrorMessage(error, 'Failed to reschedule visit. Please try again.'),
-        variant: 'destructive',
-      })
+      toast({ title: 'Reschedule Failed', description: getErrorMessage(error, 'Failed to reschedule visit. Please try again.'), variant: 'destructive' })
     }
   }
 
   const handleCancelVisit = async (visitId: number) => {
-    if (!confirm('Are you sure you want to cancel this visit?')) return
-
     try {
-      await cancelVisit({
-        visitId,
-        reason: 'Cancelled by user',
-      }).unwrap()
-      toast({
-        title: 'Visit Cancelled',
-        description: 'Visit has been cancelled successfully.',
-      })
-      void refetchUserVisits()
-      void refetchAllVisits()
+      await cancelVisit({ visitId, reason: 'Cancelled by user' }).unwrap()
+      toast({ title: 'Visit Cancelled', description: 'Visit has been cancelled successfully.' })
+      refetchAll()
     } catch (error) {
-      toast({
-        title: 'Cancellation Failed',
-        description: getErrorMessage(error, 'Failed to cancel visit. Please try again.'),
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled':
-        return 'default'
-      case 'completed':
-        return 'default'
-      case 'cancelled':
-        return 'destructive'
-      case 'no_show':
-        return 'secondary'
-      default:
-        return 'outline'
+      toast({ title: 'Cancellation Failed', description: getErrorMessage(error, 'Failed to cancel visit. Please try again.'), variant: 'destructive' })
     }
   }
 
@@ -299,76 +91,12 @@ const VisitManagementPage: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Visit Management</h1>
-          <p className="text-muted-foreground">
-            Schedule and manage property visits
-          </p>
+          <p className="text-muted-foreground">Schedule and manage property visits</p>
         </div>
         {user?.role !== 'admin' && (
-          <Dialog open={showScheduleDialog} onOpenChange={setShowScheduleDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="h-4 w-4 mr-2" />
-                Schedule Visit
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>Schedule New Visit</DialogTitle>
-                <DialogDescription>
-                  Select a property and schedule a visit
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={(e) => void scheduleForm.handleSubmit(handleScheduleVisit)(e)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="property_id">Property</Label>
-                  <Select
-                    value={scheduleForm.watch('property_id')?.toString()}
-                    onValueChange={(value) => scheduleForm.setValue('property_id', Number(value))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a property" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {properties?.properties.map((property) => (
-                        <SelectItem key={property.id} value={property.id.toString()}>
-                          {property.title} - {property.city}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="scheduled_date">Date & Time</Label>
-                  <Input
-                    id="scheduled_date"
-                    type="datetime-local"
-                    {...scheduleForm.register('scheduled_date')}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="special_requirements">Special Requirements</Label>
-                  <Textarea
-                    id="special_requirements"
-                    {...scheduleForm.register('special_requirements')}
-                    placeholder="Any special requirements or notes..."
-                    rows={3}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={scheduling} className="flex-1">
-                    {scheduling ? 'Scheduling...' : 'Schedule Visit'}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowScheduleDialog(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button onClick={() => setShowScheduleDialog(true)}>
+            <Plus className="h-4 w-4 mr-2" />Schedule Visit
+          </Button>
         )}
       </div>
 
@@ -380,240 +108,79 @@ const VisitManagementPage: React.FC = () => {
               <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userVisits.total}</div>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisits.total}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userVisits.upcoming}</div>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisits.upcoming}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
               <Check className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{userVisits.completed}</div>
-            </CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisits.completed}</div></CardContent>
           </Card>
         </div>
       )}
 
       <div className="grid gap-6 lg:grid-cols-4">
-        {/* Calendar Sidebar */}
         <div className="lg:col-span-1">
-          <VisitCalendar
-            visits={visits}
-            onDateSelect={setSelectedDate}
-            selectedDate={selectedDate}
-          />
+          <VisitCalendar visits={visits} onDateSelect={setSelectedDate} selectedDate={selectedDate} />
         </div>
 
-        {/* Visit List */}
         <div className="lg:col-span-3 space-y-4">
-          {/* Filters */}
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Search visits..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                  />
-                </div>
-                {user?.role !== 'user' && (
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-full sm:w-48">
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="scheduled">Scheduled</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="cancelled">Cancelled</SelectItem>
-                      <SelectItem value="no_show">No Show</SelectItem>
-                    </SelectContent>
-                  </Select>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <VisitFilters
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            statusFilter={statusFilter}
+            onStatusChange={setStatusFilter}
+            showStatusFilter={user?.role !== 'user'}
+          />
 
-          {/* Visit List */}
           <div className="space-y-4">
             {filteredVisits.length === 0 ? (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center py-8">
-                    <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No visits found</h3>
-                    <p className="text-muted-foreground mb-4">
-                      {searchQuery ? 'Try adjusting your search' : 'Schedule your first visit to get started'}
-                    </p>
-                    {user?.role !== 'admin' && (
-                      <Button onClick={() => { setShowScheduleDialog(true) }}>
-                        <Plus className="h-4 w-4 mr-2" />
-                        Schedule Visit
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+              <EmptyState
+                icon={<AlertCircle className="h-12 w-12" />}
+                title="No visits found"
+                description={searchQuery ? 'Try adjusting your search' : 'Schedule your first visit to get started'}
+              />
             ) : (
               filteredVisits.map((visit) => (
-                <Card key={visit.id}>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h3 className="font-semibold text-lg">{visit.property?.title}</h3>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              <MapPin className="h-4 w-4 inline mr-1" />
-                              {visit.property?.city}, {visit.property?.locality}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              <Clock className="h-4 w-4 inline mr-1" />
-                              {(() => {
-                                const visitDate = parseServerTimestamp(visit.scheduled_date)
-                                return visitDate ? format(visitDate, 'MMM dd, yyyy - HH:mm') : 'Invalid date'
-                              })()}
-                            </p>
-                            {user?.role !== 'user' && visit.user && (
-                              <p className="text-sm text-muted-foreground">
-                                <User className="h-4 w-4 inline mr-1" />
-                                {visit.user.full_name}
-                              </p>
-                            )}
-                            {visit.agent && (
-                              <p className="text-sm text-muted-foreground">
-                                Agent: {visit.agent.user?.full_name}
-                              </p>
-                            )}
-                            {visit.special_requirements && (
-                              <p className="text-sm mt-2 p-2 bg-muted rounded">
-                                <strong>Special Requirements:</strong> {visit.special_requirements}
-                              </p>
-                            )}
-                          </div>
-                          <Badge variant={getStatusColor(visit.status)} className="capitalize">
-                            {visit.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {visit.status === 'scheduled' && (
-                          <>
-                            {user?.role !== 'user' && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setSelectedVisit(visit)
-                                  setShowCompleteDialog(true)
-                                }}
-                              >
-                                <Check className="h-4 w-4" />
-                              </Button>
-                            )}
-                            <Sheet>
-                              <SheetTrigger asChild>
-                                <Button size="sm" variant="outline">
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                              </SheetTrigger>
-                              <SheetContent>
-                                <SheetHeader>
-                                  <SheetTitle>Reschedule Visit</SheetTitle>
-                                  <SheetDescription>
-                                    Select a new date and time for the visit
-                                  </SheetDescription>
-                                </SheetHeader>
-                                <div className="space-y-4 mt-6">
-                                  <div className="space-y-2">
-                                    <Label>New Date & Time</Label>
-                                    <Input
-                                      type="datetime-local"
-                                      id={`reschedule-${visit.id}`}
-                                      defaultValue={serverTimestampToLocalInput(visit.scheduled_date)}
-                                    />
-                                  </div>
-                                  <Button
-                                    onClick={() => {
-                                      const input = document.getElementById(`reschedule-${visit.id}`) as HTMLInputElement
-                                      if (input?.value) void handleRescheduleVisit(visit.id, input.value)
-                                    }}
-                                    className="w-full"
-                                  >
-                                    Confirm Reschedule
-                                  </Button>
-                                  <Button
-                                    onClick={() => { void handleCancelVisit(visit.id) }}
-                                    variant="destructive"
-                                    className="w-full"
-                                  >
-                                    Cancel Visit
-                                  </Button>
-                                </div>
-                              </SheetContent>
-                            </Sheet>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <VisitCard
+                  key={visit.id}
+                  visit={visit}
+                  isAdmin={user?.role === 'admin'}
+                  isUser={user?.role === 'user'}
+                  onComplete={(v) => { setSelectedVisit(v); setShowCompleteDialog(true) }}
+                  onReschedule={(id, date) => { void handleRescheduleVisit(id, date) }}
+                  onCancel={(id) => { void handleCancelVisit(id) }}
+                />
               ))
             )}
           </div>
         </div>
       </div>
 
+      {/* Schedule Visit Dialog */}
+      {user?.role !== 'admin' && (
+        <ScheduleVisitDialog
+          open={showScheduleDialog}
+          onOpenChange={setShowScheduleDialog}
+          onSuccess={refetchAll}
+        />
+      )}
+
       {/* Complete Visit Dialog */}
-      <Dialog open={showCompleteDialog} onOpenChange={setShowCompleteDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Complete Visit</DialogTitle>
-            <DialogDescription>
-              Add notes and feedback for the completed visit
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={(e) => void completeForm.handleSubmit(handleCompleteVisit)(e)} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="notes">Visit Notes</Label>
-              <Textarea
-                id="notes"
-                {...completeForm.register('notes')}
-                placeholder="Describe how the visit went..."
-                rows={4}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="feedback">Feedback (Optional)</Label>
-              <Textarea
-                id="feedback"
-                {...completeForm.register('feedback')}
-                placeholder="Any additional feedback..."
-                rows={3}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button type="submit" disabled={completing} className="flex-1">
-                {completing ? 'Completing...' : 'Complete Visit'}
-              </Button>
-              <Button type="button" variant="outline" onClick={() => { setShowCompleteDialog(false) }}>
-                Cancel
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      <CompleteVisitDialog
+        visit={selectedVisit}
+        open={showCompleteDialog}
+        onOpenChange={setShowCompleteDialog}
+        onSuccess={refetchAll}
+      />
     </div>
   )
 }

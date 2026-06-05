@@ -5,12 +5,11 @@ import type { User } from '@/types'
 interface AuthState {
   token: string | null
   user: User | null
-  isLoading: boolean
   initialized: boolean
   error: string | null
 }
 
-function loadUserFromStorage(): User | null {
+export function loadUserFromStorage(): User | null {
   try {
     if (typeof localStorage === 'undefined') return null
     const raw = localStorage.getItem('user')
@@ -27,7 +26,6 @@ function loadUserFromStorage(): User | null {
 const initialState: AuthState = {
   token: null,
   user: loadUserFromStorage(),
-  isLoading: false,
   initialized: false,
   error: null,
 }
@@ -55,20 +53,16 @@ const authSlice = createSlice({
     setInitialized: (state, action: PayloadAction<boolean>) => {
       state.initialized = action.payload
     },
-    setLoading: (state, action: PayloadAction<boolean>) => {
-      state.isLoading = action.payload
-    },
     setError: (state, action: PayloadAction<string | null>) => {
       state.error = action.payload
     },
   },
 })
 
-export const { setCredentials, clearCredentials, setInitialized, setLoading, setError } = authSlice.actions
+export const { setCredentials, clearCredentials, setInitialized, setError } = authSlice.actions
 
 export const selectIsAuthenticated = (state: RootState) => !!state.auth.token && !!state.auth.user
 export const selectCurrentUser = (state: RootState) => state.auth.user
-export const selectAuthLoading = (state: RootState) => state.auth.isLoading
 export const selectAuthError = (state: RootState) => state.auth.error
 export const selectAuthInitialized = (state: RootState) => state.auth.initialized
 

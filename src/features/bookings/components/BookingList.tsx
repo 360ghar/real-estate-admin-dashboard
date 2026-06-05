@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from 'react'
-import { useListBookingsQuery } from '@/features/bookings/api/bookingsApi'
+import { useGetAllBookingsQuery } from '@/features/bookings/api/bookingsApi'
 import type { BookingsQuery } from '@/features/bookings/api/bookingsApi'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -52,10 +52,10 @@ const bookingColumns: ColumnDef<Booking>[] = [
     },
   },
   {
-    accessorKey: 'status',
+    accessorKey: 'booking_status',
     header: 'Status',
     cell: ({ row }) => {
-      const status = row.original.status ?? 'unknown'
+      const status = row.original.booking_status ?? 'unknown'
       return <Badge variant={status === 'confirmed' ? 'default' : status === 'pending' ? 'secondary' : 'destructive'}>{status}</Badge>
     },
   },
@@ -105,7 +105,7 @@ const BookingList = () => {
   }, [status, paymentStatus, dq])
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching, refetch } = useListBookingsQuery({ ...params, page, limit: pageSize })
+  const { data, isFetching, refetch } = useGetAllBookingsQuery({ ...params, page, limit: pageSize })
 
   return (
     <Card>
@@ -116,6 +116,8 @@ const BookingList = () => {
             <SelectItem value="all">All Status</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="confirmed">Confirmed</SelectItem>
+            <SelectItem value="checked_in">Checked In</SelectItem>
+            <SelectItem value="checked_out">Checked Out</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="completed">Completed</SelectItem>
           </SelectContent>
@@ -124,8 +126,9 @@ const BookingList = () => {
           <SelectTrigger><SelectValue placeholder="Payment" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Payment</SelectItem>
-            <SelectItem value="unpaid">Unpaid</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
             <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="failed">Failed</SelectItem>
             <SelectItem value="refunded">Refunded</SelectItem>
           </SelectContent>
         </Select>
@@ -140,7 +143,7 @@ const BookingList = () => {
           </Select>
         </div>
       </div>
-      {(!isFetching && (!data?.results || data.results.length === 0)) ? (
+      {(!isFetching && (!data?.bookings || data.bookings.length === 0)) ? (
         <EmptyState
           title="No bookings found"
           description={q || status || paymentStatus ? 'Try adjusting search or filters.' : 'Bookings will appear here once created.'}
@@ -149,13 +152,13 @@ const BookingList = () => {
       ) : (
         <DataTable
           columns={bookingColumns}
-          data={data?.results || []}
+          data={data?.bookings || []}
         />
       )}
       <Pagination
         page={page}
         pageSize={pageSize}
-        total={data?.count}
+        total={data?.total}
         onChange={setPage}
       />
     </Card>

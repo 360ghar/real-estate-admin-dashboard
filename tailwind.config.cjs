@@ -16,6 +16,7 @@ module.exports = {
     extend: {
       fontFamily: {
         sans: ["Inter", "sans-serif"],
+        display: ["Space Grotesk", "Inter", "sans-serif"],
       },
       spacing: {
         'safe-top': 'var(--safe-area-inset-top)',
@@ -57,11 +58,31 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        /* Cohere semantic colors */
+        cohere: {
+          coral: "hsl(var(--cohere-coral))",
+          'coral-soft': "hsl(var(--cohere-coral-soft))",
+          'action-blue': "hsl(var(--cohere-action-blue))",
+          'deep-green': "hsl(var(--cohere-deep-green))",
+          'dark-navy': "hsl(var(--cohere-dark-navy))",
+          'form-focus': "hsl(var(--cohere-form-focus))",
+          hairline: "hsl(var(--cohere-hairline))",
+          'pale-green': "hsl(var(--cohere-pale-green))",
+          'pale-blue': "hsl(var(--cohere-pale-blue))",
+          'card-border': "hsl(var(--cohere-card-border))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        /* Cohere radius tokens */
+        'cohere-xs': '4px',
+        'cohere-sm': '8px',
+        'cohere-md': '16px',
+        'cohere-lg': '22px',
+        'cohere-xl': '30px',
+        'cohere-pill': '32px',
       },
       keyframes: {
         "accordion-down": {

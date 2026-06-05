@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useUserRole } from '@/hooks/useUserRole'
-import { useListVisitsQuery } from '@/features/visits/api/visitsApi'
+import { useGetAllVisitsQuery } from '@/features/visits/api/visitsApi'
 import type { VisitsQuery } from '@/features/visits/api/visitsApi'
 import type { Visit } from '@/types/api'
 import { Input } from '@/components/ui/input'
@@ -47,7 +47,7 @@ const VisitList = () => {
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching, refetch } = useListVisitsQuery({ ...params, page, limit: pageSize })
+  const { data, isFetching, refetch } = useGetAllVisitsQuery({ ...params, page, limit: pageSize })
 
   const columns: ColumnDef<Visit>[] = [
     {
@@ -104,7 +104,7 @@ const VisitList = () => {
           </Select>
         </div>
       </div>
-      {(!isFetching && (!data?.results || data.results.length === 0)) ? (
+      {(!isFetching && (!data?.items || data.items.length === 0)) ? (
         <EmptyState
           title="No visits found"
           description={q || status ? 'Try adjusting search or filters.' : 'Visits will appear here once scheduled.'}
@@ -112,8 +112,8 @@ const VisitList = () => {
         />
       ) : (
         <>
-          <DataTable columns={columns} data={data?.results || []} />
-          <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
+          <DataTable columns={columns} data={data?.items || []} />
+          <Pagination page={page} pageSize={pageSize} total={data?.total} onChange={setPage} />
         </>
       )}
     </Card>

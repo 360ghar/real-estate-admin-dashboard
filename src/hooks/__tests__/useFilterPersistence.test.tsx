@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react'
+import { renderHook, act } from '@testing-library/react'
 import { useFilterPersistence } from '../useFilterPersistence'
 
 describe('useFilterPersistence', () => {
@@ -7,32 +7,50 @@ describe('useFilterPersistence', () => {
   })
 
   it('returns default values initially', () => {
-    const { result } = renderHook(() => useFilterPersistence({
-      key: 'test',
-      defaultValue: { q: '', city: '' }
-    }))
+    const { result } = renderHook(() =>
+      useFilterPersistence({
+        key: 'test',
+        defaultValue: { q: '', city: '' },
+      }),
+    )
 
     expect(result.current.filters).toEqual({ q: '', city: '' })
   })
 
-  it('persists changes to localStorage', () => {
-    const { result } = renderHook(() => useFilterPersistence({
-      key: 'test',
-      defaultValue: { q: '' }
-    }))
+  it('persists active filters to localStorage (debounced)', () => {
+    jest.useFakeTimers()
+    try {
+      const { result } = renderHook(() =>
+        useFilterPersistence({
+          key: 'test',
+          defaultValue: { q: '' },
+          debounceMs: 0,
+        }),
+      )
 
-    result.current.setFilters({ q: 'search' })
+      act(() => {
+        result.current.setFilters({ q: 'search' })
+      })
+      act(() => {
+        jest.advanceTimersByTime(5)
+      })
 
-    expect(localStorage.getItem('test-filters')).toBe('{"q":"search"}')
+      // Storage key is `filters_${key}` and only non-default values persist.
+      expect(localStorage.getItem('filters_test')).toBe('{"q":"search"}')
+    } finally {
+      jest.useRealTimers()
+    }
   })
 
-  it('loads from localStorage on mount', () => {
-    localStorage.setItem('test-filters', '{"q":"saved"}')
+  it('loads persisted filters from localStorage on mount', () => {
+    localStorage.setItem('filters_test', '{"q":"saved"}')
 
-    const { result } = renderHook(() => useFilterPersistence({
-      key: 'test',
-      defaultValue: { q: '' }
-    }))
+    const { result } = renderHook(() =>
+      useFilterPersistence({
+        key: 'test',
+        defaultValue: { q: '' },
+      }),
+    )
 
     expect(result.current.filters.q).toBe('saved')
   })

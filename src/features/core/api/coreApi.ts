@@ -18,6 +18,40 @@ import type {
   HealthResponse,
   AppConfig,
 } from '@/types/api'
+import { API_BASE_URL } from '@/lib/config'
+
+const apiBaseUrl = API_BASE_URL.replace(/\/$/, '')
+const apiRootUrl = apiBaseUrl.replace(/\/api\/v1$/, '')
+
+// FAQ types (matches backend app/schemas/core.py FAQ*).
+export interface Faq {
+  id: number
+  question: string
+  answer: string
+  category?: string | null
+  tags?: string[] | null
+  display_order: number
+  is_active: boolean
+  created_at: string
+  updated_at?: string | null
+}
+
+export interface FaqCreate {
+  question: string
+  answer: string
+  category?: string | null
+  tags?: string[] | null
+  display_order?: number | null
+  is_active?: boolean
+}
+
+export type FaqUpdate = Partial<FaqCreate>
+
+export interface FaqsQuery {
+  category?: string
+  limit?: number
+  offset?: number
+}
 
 export const coreApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -28,7 +62,7 @@ export const coreApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: ['BugReport']
+      invalidatesTags: [{type: 'BugReport', id: 'LIST'}]
     }),
 
     createBugReportWithMedia: builder.mutation<BugReport, FormData>({
@@ -38,7 +72,7 @@ export const coreApi = api.injectEndpoints({
         body: formData,
         formData: true
       }),
-      invalidatesTags: ['BugReport']
+      invalidatesTags: [{type: 'BugReport', id: 'LIST'}]
     }),
 
     getBugReports: builder.query<BugReport[], BugReportsQuery | void>({
@@ -66,7 +100,7 @@ export const coreApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'BugReport', id }]
+      invalidatesTags: (res, _e, { id }) => [{ type: 'BugReport', id }, { type: 'BugReport', id: 'LIST' }]
     }),
 
     // Pages Management
@@ -76,7 +110,7 @@ export const coreApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: ['Page']
+      invalidatesTags: [{type: 'Page', id: 'LIST'}]
     }),
 
     getPages: builder.query<Page[], PagesQuery | void>({
@@ -99,7 +133,8 @@ export const coreApi = api.injectEndpoints({
     }),
 
     getPagePublic: builder.query<PagePublicResponse, string>({
-      query: (uniqueName) => `/pages/${uniqueName}/public`
+      query: (uniqueName) => `/pages/${uniqueName}/public`,
+      providesTags: (_result, _error, uniqueName) => [{ type: 'Page', id: uniqueName }],
     }),
 
     updatePage: builder.mutation<Page, { uniqueName: string; data: PageUpdate }>({
@@ -108,7 +143,7 @@ export const coreApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: (res, _e, { uniqueName }) => [{ type: 'Page', id: uniqueName }]
+      invalidatesTags: (res, _e, { uniqueName }) => [{ type: 'Page', id: uniqueName }, { type: 'Page', id: 'LIST' }]
     }),
 
     deletePage: builder.mutation<void, string>({
@@ -126,7 +161,7 @@ export const coreApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: ['AppUpdate']
+      invalidatesTags: [{type: 'AppUpdate', id: 'LIST'}]
     }),
 
     checkForUpdates: builder.query<AppUpdateCheckResponse, AppUpdateCheckRequest>({
@@ -134,7 +169,8 @@ export const coreApi = api.injectEndpoints({
         url: '/versions/check',
         method: 'POST',
         body: data
-      })
+      }),
+      providesTags: [{type: 'AppUpdate' as const, id: 'LIST'}],
     }),
 
     getAppUpdates: builder.query<AppUpdate[], AppUpdatesQuery | void>({
@@ -157,17 +193,55 @@ export const coreApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'AppUpdate', id }]
+      invalidatesTags: (res, _e, { id }) => [{ type: 'AppUpdate', id }, { type: 'AppUpdate', id: 'LIST' }]
+    }),
+
+    // FAQs
+    createFaq: builder.mutation<Faq, FaqCreate>({
+      query: (data) => ({
+        url: '/faqs',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: [{ type: 'Faq', id: 'LIST' }],
+    }),
+
+    getFaqs: builder.query<Faq[], FaqsQuery | void>({
+      query: (params) => ({
+        url: '/faqs',
+        params: { limit: 100, offset: 0, ...(params || {}) },
+      }),
+      providesTags: (res) =>
+        res && Array.isArray(res)
+          ? [...res.map((f) => ({ type: 'Faq' as const, id: f.id })), { type: 'Faq' as const, id: 'LIST' }]
+          : [{ type: 'Faq' as const, id: 'LIST' }],
+    }),
+
+    updateFaq: builder.mutation<Faq, { id: number; data: FaqUpdate }>({
+      query: ({ id, data }) => ({
+        url: `/faqs/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: (_res, _e, { id }) => [{ type: 'Faq', id }, { type: 'Faq', id: 'LIST' }],
+    }),
+
+    deleteFaq: builder.mutation<{ message?: string }, number>({
+      query: (id) => ({
+        url: `/faqs/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, id) => [{ type: 'Faq', id }, { type: 'Faq', id: 'LIST' }],
     }),
 
     // Health Check
     healthCheck: builder.query<HealthResponse, void>({
-      query: () => '/health'
+      query: () => ({ url: `${apiRootUrl}/health` })
     }),
 
     // Public Config
     getConfig: builder.query<AppConfig, void>({
-      query: () => '/config'
+      query: () => ({ url: `${apiRootUrl}/config` })
     }),
   }),
 })
@@ -188,6 +262,10 @@ export const {
   useCheckForUpdatesQuery,
   useGetAppUpdatesQuery,
   useUpdateAppUpdateMutation,
+  useCreateFaqMutation,
+  useGetFaqsQuery,
+  useUpdateFaqMutation,
+  useDeleteFaqMutation,
   useHealthCheckQuery,
   useGetConfigQuery,
 } = coreApi

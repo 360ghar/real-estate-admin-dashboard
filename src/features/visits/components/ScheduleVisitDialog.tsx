@@ -1,0 +1,116 @@
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useScheduleVisitMutation } from '@/features/visits/api/visitsApi'
+import { useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
+import { localInputToServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
+import { getErrorMessage } from '@/lib/errors'
+import { useToast } from '@/hooks/use-toast'
+import { scheduleVisitSchema, type ScheduleVisitFormValues } from '@/features/visits/validations'
+
+type ScheduleVisitFormData = ScheduleVisitFormValues
+
+interface ScheduleVisitDialogProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSuccess?: () => void
+}
+
+const ScheduleVisitDialog: React.FC<ScheduleVisitDialogProps> = ({
+  open,
+  onOpenChange,
+  onSuccess,
+}) => {
+  const { toast } = useToast()
+  const scheduleForm = useForm<ScheduleVisitFormData>({
+    resolver: zodResolver(scheduleVisitSchema),
+    defaultValues: {
+      scheduled_date: serverTimestampToLocalInput(new Date()),
+    },
+  })
+
+  const [scheduleVisit, { isLoading: scheduling }] = useScheduleVisitMutation()
+  const { data: properties } = useSearchPropertiesQuery({ limit: 100 })
+
+  const handleSubmit = async (data: ScheduleVisitFormData) => {
+    try {
+      const scheduledDate = localInputToServerTimestamp(data.scheduled_date)
+      if (!scheduledDate) {
+        scheduleForm.setError('scheduled_date', { message: 'Enter a valid date and time' })
+        return
+      }
+      await scheduleVisit({ ...data, scheduled_date: scheduledDate }).unwrap()
+      toast({ title: 'Visit Scheduled', description: 'Your visit has been scheduled successfully.' })
+      onOpenChange(false)
+      scheduleForm.reset()
+      onSuccess?.()
+    } catch (error) {
+      toast({
+        title: 'Scheduling Failed',
+        description: getErrorMessage(error, 'Failed to schedule visit. Please try again.'),
+        variant: 'destructive',
+      })
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Schedule New Visit</DialogTitle>
+          <DialogDescription>Select a property and schedule a visit</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={(e) => void scheduleForm.handleSubmit(handleSubmit)(e)} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="property_id">Property</Label>
+            <Select
+              value={scheduleForm.watch('property_id')?.toString()}
+              onValueChange={(value) => scheduleForm.setValue('property_id', Number(value))}
+            >
+              <SelectTrigger><SelectValue placeholder="Select a property" /></SelectTrigger>
+              <SelectContent>
+                {properties?.properties.map((property) => (
+                  <SelectItem key={property.id} value={property.id.toString()}>
+                    {property.title} - {property.city}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="scheduled_date">Date & Time</Label>
+            <Input
+              id="scheduled_date"
+              type="datetime-local"
+              {...scheduleForm.register('scheduled_date')}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="special_requirements">Special Requirements</Label>
+            <Textarea
+              id="special_requirements"
+              {...scheduleForm.register('special_requirements')}
+              placeholder="Any special requirements or notes..."
+              rows={3}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" disabled={scheduling} className="flex-1">
+              {scheduling ? 'Scheduling...' : 'Schedule Visit'}
+            </Button>
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export { ScheduleVisitDialog }

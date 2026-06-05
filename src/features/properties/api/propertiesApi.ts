@@ -133,17 +133,6 @@ const toSearchParams = (params: PropertySearchParams): URLSearchParams => {
 
 export const propertiesApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // Upload a single file via backend (Supabase handled server-side)
-    uploadFile: builder.mutation<
-      { public_url: string; file_path: string; file_type?: string; file_size?: number; content_type?: string; original_filename?: string },
-      FormData
-    >({
-      query: (form) => ({
-        url: '/upload/',
-        method: 'POST',
-        body: form,
-      }),
-    }),
     // Search properties with comprehensive filtering
     searchProperties: builder.query<PaginatedPropertyResponse, PropertySearchParams>({
       query: (params) => ({
@@ -157,26 +146,7 @@ export const propertiesApi = api.injectEndpoints({
               { type: 'Property' as const, id: 'LIST' },
             ]
           : [{ type: 'Property' as const, id: 'LIST' }],
-    }),
-
-    // Legacy list properties (for backward compatibility)
-    listProperties: builder.query<{ results: PropertyResponse[]; count?: number; total_pages?: number }, PropertySearchParams>({
-      query: (params) => ({
-        url: '/properties/',
-        params: toSearchParams({ ...params, page: params.page || 1, limit: params.limit || 20 })
-      }),
-      transformResponse: (response: PaginatedPropertyResponse) => ({
-        results: response.properties,
-        count: response.total,
-        total_pages: response.total_pages
-      }),
-      providesTags: (res) =>
-        res?.results
-          ? [
-              ...res.results.map((p) => ({ type: 'Property' as const, id: p.id })),
-              { type: 'Property' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Property' as const, id: 'LIST' }],
+      keepUnusedDataFor: 60,
     }),
 
     getProperty: builder.query<PropertyResponse, number>({
@@ -237,8 +207,6 @@ export const propertiesApi = api.injectEndpoints({
 })
 
 export const {
-  useUploadFileMutation,
-  useListPropertiesQuery,
   useSearchPropertiesQuery,
   useGetPropertyQuery,
   useCreatePropertyMutation,

@@ -1,0 +1,237 @@
+import { z } from 'zod'
+import { VALIDATION } from './constants'
+
+export const pmPropertyCreateSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  property_type: z.enum(['apartment', 'house', 'builder_floor', 'room']),
+  purpose: z.enum(['rent', 'buy', 'short_stay']),
+  base_price: z
+    .string()
+    .min(1, 'Base price is required')
+    .refine((v) => !isNaN(Number(v)) && Number(v) > 0, 'Base price must be a positive number'),
+  city: z.string().optional().or(z.literal('')),
+  locality: z.string().optional().or(z.literal('')),
+  full_address: z.string().optional().or(z.literal('')),
+  management_status: z.enum(['draft', 'active', 'archived']),
+  payment_due_day: z
+    .string()
+    .min(1, 'Payment due day is required')
+    .refine(
+      (v) => {
+        const n = Number(v)
+        return !isNaN(n) && n >= VALIDATION.PAYMENT_DUE_DAY_MIN && n <= VALIDATION.PAYMENT_DUE_DAY_MAX
+      },
+      `Payment due day must be between ${VALIDATION.PAYMENT_DUE_DAY_MIN} and ${VALIDATION.PAYMENT_DUE_DAY_MAX}`,
+    ),
+  grace_days: z
+    .string()
+    .min(1, 'Grace period is required')
+    .refine(
+      (v) => {
+        const n = Number(v)
+        return !isNaN(n) && n >= 0 && n <= 30
+      },
+      'Grace period must be between 0 and 30 days',
+    ),
+  late_fee_policy_json: z
+    .string()
+    .refine((v) => {
+      if (!v) return true
+      try {
+        JSON.parse(v)
+        return true
+      } catch {
+        return false
+      }
+    }, 'Late fee policy must be valid JSON'),
+})
+
+export const pmPropertySettingsSchema = z.object({
+  management_status: z.enum(['draft', 'active', 'archived']),
+  payment_due_day: z
+    .string()
+    .min(1, 'Payment due day is required')
+    .refine(
+      (v) => {
+        const n = Number(v)
+        return !isNaN(n) && n >= VALIDATION.PAYMENT_DUE_DAY_MIN && n <= VALIDATION.PAYMENT_DUE_DAY_MAX
+      },
+      `Payment due day must be between ${VALIDATION.PAYMENT_DUE_DAY_MIN} and ${VALIDATION.PAYMENT_DUE_DAY_MAX}`,
+    ),
+  grace_days: z
+    .string()
+    .min(1, 'Grace period is required')
+    .refine(
+      (v) => {
+        const n = Number(v)
+        return !isNaN(n) && n >= 0 && n <= 30
+      },
+      'Grace period must be between 0 and 30 days',
+    ),
+  late_fee_policy_json: z
+    .string()
+    .refine((v) => {
+      if (!v) return true
+      try {
+        JSON.parse(v)
+        return true
+      } catch {
+        return false
+      }
+    }, 'Late fee policy must be valid JSON'),
+})
+
+export const pmLeaseCreateSchema = z
+  .object({
+    property_id: z.string().min(1, 'Property is required'),
+    tenant_name: z.string().optional().or(z.literal('')),
+    tenant_phone: z.string().optional().or(z.literal('')),
+    tenant_email: z.string().optional().or(z.literal('')),
+    status: z.enum(['draft', 'pending_signature', 'active']),
+    start_date: z.string().min(1, 'Start date is required'),
+    end_date: z.string().min(1, 'End date is required'),
+    monthly_rent: z
+      .string()
+      .min(1, 'Monthly rent is required')
+      .refine((v) => !isNaN(Number(v)) && Number(v) > 0, 'Monthly rent must be a positive number'),
+    security_deposit: z
+      .string()
+      .min(1, 'Security deposit is required')
+      .refine((v) => !isNaN(Number(v)) && Number(v) > 0, 'Security deposit must be a positive number'),
+  })
+  .refine((data) => new Date(data.end_date) > new Date(data.start_date), {
+    message: 'End date must be after start date',
+    path: ['end_date'],
+  })
+
+export const pmLeaseRenewSchema = z
+  .object({
+    start_date: z.string().min(1, 'Start date is required'),
+    end_date: z.string().min(1, 'End date is required'),
+    monthly_rent: z.string().optional().or(z.literal('')),
+    security_deposit: z.string().optional().or(z.literal('')),
+    make_active: z.enum(['yes', 'no']),
+  })
+  .refine((data) => new Date(data.end_date) > new Date(data.start_date), {
+    message: 'End date must be after start date',
+    path: ['end_date'],
+  })
+
+export const pmRentPaymentSchema = z.object({
+  amount_paid: z
+    .string()
+    .min(1, 'Amount is required')
+    .refine((v) => !isNaN(Number(v)) && Number(v) > 0, 'Amount must be a positive number'),
+  payment_method: z.string().min(1, 'Payment method is required'),
+  reference: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+})
+
+export const pmExpenseCreateSchema = z.object({
+  property_id: z.string().min(1, 'Property is required'),
+  category: z.enum([
+    'maintenance',
+    'repairs',
+    'insurance',
+    'property_tax',
+    'hoa',
+    'utilities',
+    'marketing',
+    'legal',
+    'other',
+  ]),
+  amount: z
+    .string()
+    .min(1, 'Amount is required')
+    .refine((v) => !isNaN(Number(v)) && Number(v) > 0, 'Amount must be a positive number'),
+  expense_date: z.string().min(1, 'Expense date is required'),
+  description: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+})
+
+export const pmExpenseUpdateSchema = z.object({
+  category: z.enum([
+    'maintenance',
+    'repairs',
+    'insurance',
+    'property_tax',
+    'hoa',
+    'utilities',
+    'marketing',
+    'legal',
+    'other',
+  ]),
+  amount: z
+    .string()
+    .min(1, 'Amount is required')
+    .refine((v) => !isNaN(Number(v)) && Number(v) > 0, 'Amount must be a positive number'),
+  expense_date: z.string().min(1, 'Expense date is required'),
+  description: z.string().optional().or(z.literal('')),
+  notes: z.string().optional().or(z.literal('')),
+})
+
+export const pmMaintenanceRequestSchema = z.object({
+  property_id: z.string().min(1, 'Property is required'),
+  category: z.enum([
+    'plumbing',
+    'electrical',
+    'hvac',
+    'appliance',
+    'structural',
+    'pest_control',
+    'cleaning',
+    'other',
+  ]),
+  urgency: z.enum(['emergency', 'high', 'medium', 'low']),
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional().or(z.literal('')),
+  preferred_contact_method: z.string().optional().or(z.literal('')),
+  availability_notes: z.string().optional().or(z.literal('')),
+})
+
+export const pmInspectionCreateSchema = z.object({
+  lease_id: z.string().min(1, 'Lease is required'),
+  inspection_type: z.enum(['move_in', 'move_out', 'routine']),
+  conducted_at: z.string().optional().or(z.literal('')),
+  rooms_json: z
+    .string()
+    .refine((v) => {
+      if (!v) return true
+      try {
+        JSON.parse(v)
+        return true
+      } catch {
+        return false
+      }
+    }, 'Rooms JSON must be valid'),
+  overall_notes: z.string().optional().or(z.literal('')),
+})
+
+export const pmApplicationFormSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional().or(z.literal('')),
+  property_id: z.string().optional().or(z.literal('')),
+  application_fee_amount: z.string().optional().or(z.literal('')),
+  questions_json: z
+    .string()
+    .refine((v) => {
+      if (!v) return true
+      try {
+        JSON.parse(v)
+        return true
+      } catch {
+        return false
+      }
+    }, 'Questions must be valid JSON'),
+})
+
+export type PmPropertyCreateForm = z.infer<typeof pmPropertyCreateSchema>
+export type PmPropertySettingsForm = z.infer<typeof pmPropertySettingsSchema>
+export type PmLeaseCreateForm = z.infer<typeof pmLeaseCreateSchema>
+export type PmLeaseRenewForm = z.infer<typeof pmLeaseRenewSchema>
+export type PmRentPaymentForm = z.infer<typeof pmRentPaymentSchema>
+export type PmExpenseCreateForm = z.infer<typeof pmExpenseCreateSchema>
+export type PmExpenseUpdateForm = z.infer<typeof pmExpenseUpdateSchema>
+export type PmMaintenanceRequestForm = z.infer<typeof pmMaintenanceRequestSchema>
+export type PmInspectionCreateForm = z.infer<typeof pmInspectionCreateSchema>
+export type PmApplicationFormForm = z.infer<typeof pmApplicationFormSchema>

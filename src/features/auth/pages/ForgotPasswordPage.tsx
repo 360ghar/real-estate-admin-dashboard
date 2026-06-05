@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, Mail, Shield } from 'lucide-react'
+import { Mail, Shield } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 import { supabase } from '@/lib/supabase'
 import { mapSupabaseAuthError } from '@/lib/authErrors'
+import { forgotPasswordSchema, type ForgotPasswordFormValues } from '@/features/auth/validations'
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
@@ -14,19 +15,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
-const schema = z.object({
-  email: z.string().email('Please enter a valid email'),
-})
-
-type FormValues = z.infer<typeof schema>
-
 export default function ForgotPasswordPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const form = useForm<ForgotPasswordFormValues>({ resolver: zodResolver(forgotPasswordSchema) })
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: ForgotPasswordFormValues) => {
     if (!supabase) {
       setErrorMessage('Supabase is not configured. Please set environment variables.')
       return
@@ -95,7 +90,7 @@ export default function ForgotPasswordPage() {
                 <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
                   {isSubmitting ? (
                     <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      <LoadingSpinner size="sm" className="mr-2" />
                       Sending reset link...
                     </>
                   ) : (

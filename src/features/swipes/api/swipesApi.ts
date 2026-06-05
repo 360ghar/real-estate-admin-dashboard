@@ -37,36 +37,32 @@ export const swipesApi = api.injectEndpoints({
                 method: 'POST',
                 body: data,
             }),
-            invalidatesTags: ['Property', 'Swipe'],
+            invalidatesTags: [{type: 'Property', id: 'LIST'}, {type: 'Swipe', id: 'LIST'}],
         }),
         listSwipes: builder.query<Record<string, unknown>, SwipeListParams | void>({
             query: (params) => ({
                 url: '/swipes/',
                 params: { page: 1, limit: 20, ...(params || {}) },
             }),
-            providesTags: ['Swipe'],
+            providesTags: [{type: 'Swipe' as const, id: 'LIST'}],
         }),
         undoLastSwipe: builder.mutation<void, void>({
             query: () => ({
                 url: '/swipes/undo/',
                 method: 'DELETE',
             }),
-            invalidatesTags: ['Swipe'],
+            invalidatesTags: [{type: 'Swipe', id: 'LIST'}],
         }),
         toggleSwipeLike: builder.mutation<void, { swipeId: number | string }>({
             query: ({ swipeId }) => ({
                 url: `/swipes/${swipeId}/toggle/`,
                 method: 'PUT',
             }),
-            invalidatesTags: ['Swipe'],
+            invalidatesTags: [{type: 'Swipe', id: 'LIST'}],
         }),
         getSwipeStats: builder.query<SwipeStatsResponse, void>({
             query: () => '/swipes/stats/',
-            providesTags: ['Swipe'],
-        }),
-        getMatches: builder.query<Record<string, unknown>[], void>({
-            query: () => '/swipes/matches/',
-            providesTags: ['Swipe'],
+            providesTags: [{type: 'Swipe' as const, id: 'LIST'}],
         }),
     }),
 })
@@ -77,5 +73,4 @@ export const {
     useUndoLastSwipeMutation,
     useToggleSwipeLikeMutation,
     useGetSwipeStatsQuery,
-    useGetMatchesQuery,
 } = swipesApi

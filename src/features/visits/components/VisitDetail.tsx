@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
+import { localInputToServerTimestamp, parseServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
 
 const VisitDetail = ({ id }: { id: number }) => {
   const { data } = useGetVisitQuery(id)
@@ -19,7 +20,12 @@ const VisitDetail = ({ id }: { id: number }) => {
 
   const doReschedule = async () => {
     try {
-      await reschedule({ visitId: id, newDate: new Date(date).toISOString(), reason: text || 'Rescheduled' }).unwrap()
+      const newDate = localInputToServerTimestamp(date)
+      if (!newDate) {
+        toast({ title: 'Failed', description: 'Enter a valid date and time', variant: 'destructive' })
+        return
+      }
+      await reschedule({ visitId: id, newDate, reason: text || 'Rescheduled' }).unwrap()
       toast({ title: 'Rescheduled', description: 'Visit rescheduled' })
       setOpen(null)
     } catch (err: unknown) {
@@ -58,13 +64,13 @@ const VisitDetail = ({ id }: { id: number }) => {
           <div className="grid gap-2 text-sm">
             <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
             <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
-            <div><span className="text-muted-foreground">Scheduled:</span> {data ? new Date(data.scheduled_date).toLocaleString() : '-'}</div>
+            <div><span className="text-muted-foreground">Scheduled:</span> {data ? parseServerTimestamp(data.scheduled_date)?.toLocaleString() ?? '-' : '-'}</div>
             <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
           </div>
           <div className="mt-4 flex gap-2">
             {(data?.status === 'scheduled' || data?.status === 'rescheduled') && (
               <>
-                <Button onClick={() => { setOpen('reschedule') }}>Reschedule</Button>
+                <Button onClick={() => { setDate(serverTimestampToLocalInput(data?.scheduled_date)); setText(''); setOpen('reschedule') }}>Reschedule</Button>
                 <Button variant="outline" onClick={() => { setOpen('cancel') }}>Cancel</Button>
                 <Button variant="outline" onClick={() => { setOpen('complete') }}>Mark Completed</Button>
               </>

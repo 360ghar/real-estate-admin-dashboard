@@ -6,14 +6,16 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import Pagination from '@/components/ui/pagination'
 import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Link } from 'react-router-dom'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useGetBlogPostsQuery, useDeleteBlogPostMutation, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
 import { toast } from '@/hooks/use-toast'
 import type { BlogPost, BlogPostFilters } from '@/types/blog'
-import { Search, RotateCcw, Edit2, Trash2, Eye, CheckCircle, EyeOff } from 'lucide-react'
+import { Search, Edit2, Trash2, Eye, CheckCircle, EyeOff } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { getErrorMessage } from '@/lib/errors'
+import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 
 const BlogList = () => {
   const [q, setQ] = useState('')
@@ -38,23 +40,10 @@ const BlogList = () => {
   const [updateBlogPost, { isLoading: isTogglingStatus }] = useUpdateBlogPostMutation()
 
   const handleDeletePost = async (post: BlogPost) => {
-    if (!confirm(`Are you sure you want to delete "${post.title}"? This action cannot be undone.`)) {
-      return
-    }
-
     try {
       await deleteBlogPost(post.id).unwrap()
-      toast({
-        title: 'Success',
-        description: 'Blog post deleted successfully',
-      })
-    } catch (error: unknown) {
-      toast({
-        title: 'Error',
-        description: getErrorMessage(error, 'Failed to delete blog post'),
-        variant: 'destructive',
-      })
-    }
+      toast({ title: 'Success', description: 'Blog post deleted successfully' })
+    } catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, 'Failed to delete blog post'), variant: 'destructive' }) }
   }
 
   const handleToggleStatus = async (post: BlogPost) => {
@@ -166,14 +155,19 @@ const BlogList = () => {
               </>
             )}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { void handleDeletePost(row.original) }}
-            disabled={isDeleting}
+          <ConfirmAlertDialog
+            title="Delete Blog Post"
+            description={`Are you sure you want to delete "${row.original.title}"? This action cannot be undone.`}
+            confirmLabel="Delete"
+            variant="destructive"
+            onConfirm={() => handleDeletePost(row.original)}
           >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+            {(openDialog) => (
+              <Button variant="outline" size="sm" onClick={openDialog} disabled={isDeleting}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </ConfirmAlertDialog>
         </div>
       ),
     },
@@ -209,22 +203,20 @@ const BlogList = () => {
         {isFetching ? (
           <LoadingState type="card" rows={5} />
         ) : error ? (
-          <div className="text-center py-8">
-            <div className="text-lg font-medium mb-2">Failed to load posts</div>
-            <div className="text-muted-foreground mb-4">Please check your connection and try again</div>
-            <Button onClick={() => { void refetch() }}>
-              <RotateCcw className="h-4 w-4 mr-2" />
-              Retry
-            </Button>
-          </div>
+          <EmptyState
+            title="Failed to load posts"
+            description="Please check your connection and try again"
+            action={{
+              label: 'Retry',
+              onClick: () => { void refetch() },
+              variant: 'outline',
+            }}
+          />
         ) : !data?.items?.length ? (
-          <div className="text-center py-8">
-            <div className="text-lg font-medium mb-2">No posts found</div>
-            <div className="text-muted-foreground mb-4">Create your first blog post to get started.</div>
-            <Link to="/blogs/new">
-              <Button>New Post</Button>
-            </Link>
-          </div>
+          <EmptyState
+            title="No posts found"
+            description="Create your first blog post to get started."
+          />
         ) : (
           <div className="space-y-4">
             <div className="text-sm text-muted-foreground">

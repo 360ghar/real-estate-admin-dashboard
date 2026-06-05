@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 
 interface FilterPersistenceOptions<T extends Record<string, unknown>> {
   key: string
@@ -48,9 +48,10 @@ export function useFilterPersistence<T extends Record<string, unknown>>({
     return a === b
   }
 
-  const hasActiveFilters = (Object.keys(filters) as Array<keyof T>).some((k) =>
-    !isEqual(filters[k], defaultValueRef.current[k])
-  )
+  const hasActiveFilters = useMemo(() =>
+    (Object.keys(filters) as Array<keyof T>).some((k) =>
+      !isEqual(filters[k], defaultValueRef.current[k])
+    ), [filters, defaultValueRef])
 
   // Auto-save on filter changes
   useEffect(() => {

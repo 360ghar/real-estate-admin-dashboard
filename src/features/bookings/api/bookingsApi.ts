@@ -8,8 +8,7 @@ import type {
   AvailabilityInfo,
   BookingPricing,
   BookingPayment,
-  BookingReview,
-  PaginatedResponse
+  BookingReview
 } from '@/types/api'
 
 export interface BookingsQuery {
@@ -32,25 +31,25 @@ export const bookingsApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: ['Booking', 'Property']
+      invalidatesTags: [{type: 'Booking', id: 'LIST'}, {type: 'Property', id: 'LIST'}]
     }),
 
     // Get current user's bookings
     getUserBookings: builder.query<BookingList, void>({
       query: () => '/bookings/',
-      providesTags: ['Booking']
+      providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Get upcoming bookings for current user
-    getUpcomingBookings: builder.query<Booking[], void>({
+    getUpcomingBookings: builder.query<{ bookings: Booking[]; total: number }, void>({
       query: () => '/bookings/upcoming/',
-      providesTags: ['Booking']
+      providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Get past bookings for current user
-    getPastBookings: builder.query<Booking[], void>({
+    getPastBookings: builder.query<{ bookings: Booking[]; total: number }, void>({
       query: () => '/bookings/past/',
-      providesTags: ['Booking']
+      providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Check booking availability
@@ -74,7 +73,7 @@ export const bookingsApi = api.injectEndpoints({
     // Get booking details
     getBooking: builder.query<Booking, number>({
       query: (id) => `/bookings/${id}`,
-      providesTags: (res, _e, id) => [{ type: 'Booking', id }]
+      providesTags: (_result, _error, arg) => [{type: 'Booking' as const, id: arg}]
     }),
 
     // Update booking details
@@ -116,89 +115,35 @@ export const bookingsApi = api.injectEndpoints({
     // Add review to booking
     addReview: builder.mutation<void, { bookingId: number; reviewData: BookingReview }>({
       query: ({ bookingId, reviewData }) => {
-        const guestRating = reviewData.guest_rating ?? reviewData.rating
-        const guestReview = reviewData.guest_review ?? reviewData.review_text
         return {
           url: '/bookings/review/',
           method: 'POST',
           body: {
             booking_id: bookingId,
-            guest_rating: guestRating,
-            guest_review: guestReview,
+            guest_rating: reviewData.guest_rating,
+            guest_review: reviewData.guest_review,
           }
         }
       },
-      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, 'Property']
+      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, {type: 'Property', id: 'LIST'}]
     }),
 
     // Get all bookings (admin/agent view)
-    getAllBookings: builder.query<PaginatedResponse<Booking>, BookingsQuery>({
+    getAllBookings: builder.query<BookingList, BookingsQuery>({
       query: (params) => ({
         url: '/bookings/all/',
         params: { page: 1, limit: 20, ...params }
       }),
       providesTags: (res) =>
-        res?.items
+        res?.bookings
           ? [
-              ...res.items.map((b) => ({ type: 'Booking' as const, id: b.id })),
+              ...res.bookings.map((b) => ({ type: 'Booking' as const, id: b.id })),
               { type: 'Booking' as const, id: 'LIST' },
             ]
           : [{ type: 'Booking' as const, id: 'LIST' }],
+      extraOptions: { refetchOnFocus: true },
     }),
 
-    // Legacy list bookings (for backward compatibility)
-    listBookings: builder.query<{ results: Booking[]; count?: number }, BookingsQuery>({
-      query: (params) => ({
-        url: '/bookings/all/',
-        params: { page: 1, limit: 20, ...params }
-      }),
-      transformResponse: (response: PaginatedResponse<Booking>) => ({
-        results: response.items,
-        count: response.total
-      }),
-      providesTags: (res) =>
-        res?.results
-          ? [
-              ...res.results.map((b) => ({ type: 'Booking' as const, id: b.id })),
-              { type: 'Booking' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Booking' as const, id: 'LIST' }],
-    }),
-
-    // Get booking by ID (legacy)
-    getBookingById: builder.query<Booking, number>({
-      query: (id) => `/bookings/${id}`,
-      providesTags: (res, _e, id) => [{ type: 'Booking', id }]
-    }),
-
-    // Create booking (legacy)
-    createBookingLegacy: builder.mutation<Booking, Omit<Booking, 'id'>>({
-      query: (data) => ({
-        url: '/bookings/',
-        method: 'POST',
-        body: data
-      }),
-      invalidatesTags: ['Booking', 'Property']
-    }),
-
-    // Update booking (legacy)
-    updateBookingById: builder.mutation<Booking, { id: number; data: Partial<Booking> }>({
-      query: ({ id, data }) => ({
-        url: `/bookings/${id}`,
-        method: 'PUT',
-        body: data
-      }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'Booking', id }]
-    }),
-
-    // Delete booking (legacy)
-    deleteBooking: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/bookings/${id}`,
-        method: 'DELETE'
-      }),
-      invalidatesTags: (res, _e, id) => [{ type: 'Booking', id }]
-    }),
   }),
 })
 
@@ -215,9 +160,4 @@ export const {
   useProcessPaymentMutation,
   useAddReviewMutation,
   useGetAllBookingsQuery,
-  useListBookingsQuery,
-  useGetBookingByIdQuery,
-  useCreateBookingLegacyMutation,
-  useUpdateBookingByIdMutation,
-  useDeleteBookingMutation,
 } = bookingsApi

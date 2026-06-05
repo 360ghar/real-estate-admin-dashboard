@@ -14,18 +14,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
+import { LoadingState } from '@/components/ui/loading-state'
 import { Input } from '@/components/ui/input'
 import Pagination from '@/components/ui/pagination'
 import type { User } from '@/types'
-
-const getOwnerLabel = (u: Pick<User, 'full_name' | 'phone' | 'email'>) =>
-  (u.full_name || u.phone || u.email || 'Unnamed owner').trim()
-
-const getKycStatus = (u: User): string => {
-  const prefs = u.preferences as unknown as Record<string, unknown> | undefined
-  const raw = prefs?.pm_kyc_status ?? prefs?.kyc_status
-  return typeof raw === 'string' && raw.trim() ? raw : 'unknown'
-}
+import { getOwnerLabel, getKycStatus } from '@/features/pm/utils'
 
 export default function PmOwnersPage() {
   const { role } = useUserRole()
@@ -148,7 +141,7 @@ export default function PmOwnersPage() {
           </div>
 
           {users.isLoading ? (
-            <div className="text-sm text-muted-foreground">Loading…</div>
+            <LoadingState type="spinner" />
           ) : owners.length ? (
             <>
               <DataTable columns={columns} data={owners} />

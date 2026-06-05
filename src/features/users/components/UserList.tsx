@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useUserRole } from '@/hooks/useUserRole'
-import { useListUsersQuery } from '@/features/users/api/usersApi'
+import { useGetUsersQuery } from '@/features/users/api/usersApi'
 import type { UsersQuery } from '@/features/users/api/usersApi'
 import type { User } from '@/types/api'
 import { Input } from '@/components/ui/input'
@@ -48,7 +48,7 @@ const UserList = () => {
 
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching, refetch } = useListUsersQuery({ ...params, page, limit: pageSize })
+  const { data, isFetching, refetch } = useGetUsersQuery({ ...params, page, limit: pageSize })
   const agents = useListAgentsQuery(
     { include_inactive: false },
     { skip: role !== 'admin' }
@@ -106,7 +106,7 @@ const UserList = () => {
           </Select>
         </div>
       </div>
-      {(!isFetching && (!data?.results || data.results.length === 0)) ? (
+      {(!isFetching && (!data?.items || data.items.length === 0)) ? (
         <EmptyState
           title="No users found"
           description={q || agentId ? 'Try adjusting search or filters.' : 'Users will appear here once available.'}
@@ -114,8 +114,8 @@ const UserList = () => {
         />
       ) : (
         <>
-          <DataTable columns={columns} data={data?.results || []} />
-          <Pagination page={page} pageSize={pageSize} total={data?.count} onChange={setPage} />
+          <DataTable columns={columns} data={data?.items || []} />
+          <Pagination page={page} pageSize={pageSize} total={data?.total} onChange={setPage} />
         </>
       )}
     </Card>

@@ -1,9 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { Building2, FileText, Settings2 } from 'lucide-react'
+import type { ManagedPropertyStatus, ManagedPropertyUpdate } from '@/types/pm'
 import {
-  type ManagedPropertyStatus,
-  type ManagedPropertyUpdate,
   useGetPmPropertyDetailQuery,
   useUpdatePmPropertyMutation,
 } from '@/features/pm/api/pmApi'
@@ -16,6 +15,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
+import { EmptyState } from '@/components/ui/empty-state'
+import { MANAGED_PROPERTY_STATUSES } from '@/features/pm/constants'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
 
@@ -107,7 +108,7 @@ export default function PmPropertyDetailPage() {
   }
 
   if (!propertyIdNum || Number.isNaN(propertyIdNum)) {
-    return <div className="text-sm text-muted-foreground">Invalid property id.</div>
+    return <EmptyState title="Invalid property id" />
   }
 
   return (
@@ -143,9 +144,9 @@ export default function PmPropertyDetailPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="draft">draft</SelectItem>
-                      <SelectItem value="active">active</SelectItem>
-                      <SelectItem value="archived">archived</SelectItem>
+                      {MANAGED_PROPERTY_STATUSES.map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -215,7 +216,7 @@ export default function PmPropertyDetailPage() {
                 </div>
               </>
             ) : (
-              <div className="text-muted-foreground">Not found.</div>
+              <EmptyState title="Property not found" />
             )}
           </CardContent>
         </Card>
@@ -252,7 +253,7 @@ export default function PmPropertyDetailPage() {
                 </div>
               </>
             ) : (
-              <div className="text-muted-foreground">No active lease.</div>
+              <EmptyState title="No active lease" />
             )}
           </CardContent>
         </Card>

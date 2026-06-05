@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default function PmAuditLogPage() {
   const [ownerIdRaw, setOwnerIdRaw] = useState('')
@@ -68,7 +69,10 @@ export default function PmAuditLogPage() {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">No activity found.</div>
+            <EmptyState
+              icon={<Activity className="h-12 w-12" />}
+              title="No activity found"
+            />
           )}
         </CardContent>
       </Card>

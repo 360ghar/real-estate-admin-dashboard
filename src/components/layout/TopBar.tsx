@@ -8,8 +8,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { SidebarContent } from './SidebarContent'
-import { User, Settings, LogOut, Menu } from 'lucide-react'
+import { User, Settings, LogOut, Menu, Search } from 'lucide-react'
 import { ModeToggle } from '@/components/common/mode-toggle'
+import { CommandPalette } from '@/components/common/CommandPalette'
+import { supabase } from '@/lib/supabase'
+import { useEffect, useState } from 'react'
 
 const TopBar = () => {
   const user = useAppSelector(selectCurrentUser)
@@ -17,10 +20,26 @@ const TopBar = () => {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
   const location = useLocation()
+  const [paletteOpen, setPaletteOpen] = useState(false)
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.repeat) return
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPaletteOpen((prev) => !prev)
+      }
+    }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [])
 
   const showOwnerSelector = location.pathname.startsWith('/pm') && (role === 'admin' || role === 'agent')
 
-  const logout = () => {
+  const logout = async () => {
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
     dispatch(clearCredentials())
     navigate('/login', { replace: true })
   }
@@ -53,7 +72,27 @@ const TopBar = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          onClick={() => setPaletteOpen(true)}
+          className="hidden items-center gap-2 rounded-cohere-pill text-muted-foreground sm:flex"
+          aria-label="Search (Command-K)"
+        >
+          <Search className="h-4 w-4" />
+          <span>Search</span>
+          <kbd className="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">⌘K</kbd>
+        </Button>
+        <Button
+          variant="ghost"
+          size="touch-icon"
+          onClick={() => setPaletteOpen(true)}
+          className="sm:hidden"
+          aria-label="Search"
+        >
+          <Search className="h-5 w-5" />
+        </Button>
+        <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
         <ModeToggle />
         {/* User Menu */}
         <DropdownMenu>
@@ -95,7 +134,7 @@ const TopBar = () => {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout} className="flex items-center gap-2 text-red-600 focus:text-red-600">
+            <DropdownMenuItem onClick={() => void logout()} className="flex items-center gap-2 text-red-600 focus:text-red-600">
               <LogOut className="h-4 w-4" />
               Logout
             </DropdownMenuItem>

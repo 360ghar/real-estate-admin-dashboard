@@ -1,57 +1,23 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, Loader2, Shield, Building2 } from 'lucide-react'
+import { Eye, EyeOff, Shield, Building2 } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 import { supabase } from '@/lib/supabase'
 import { mapSupabaseAuthError } from '@/lib/authErrors'
+import { fetchUserProfileWithToken } from '@/lib/auth'
 import { useAppDispatch } from '@/hooks/redux'
 import { setCredentials } from '@/features/auth/slices/authSlice'
-import type { User } from '@/types'
+import { signupSchema, type SignupFormValues } from '@/features/auth/validations'
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-
-const schema = z
-  .object({
-    full_name: z.string().min(2, 'Full name is required'),
-    email: z.string().email('Please enter a valid email'),
-    phone: z
-      .string()
-      .min(8, 'Phone number is required')
-      .regex(/^[0-9+\-()\s]+$/, 'Enter a valid phone number'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirm_password: z.string().min(6, 'Please confirm your password'),
-  })
-  .refine((data) => data.password === data.confirm_password, {
-    message: 'Passwords do not match',
-    path: ['confirm_password'],
-  })
-
-type FormValues = z.infer<typeof schema>
-
-const API_BASE_URL =
-  (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api/v1'
-
-async function fetchUserProfileWithToken(token: string): Promise<User | null> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/users/profile/`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    if (!res.ok) return null
-    const user = (await res.json()) as User
-    return user
-  } catch {
-    return null
-  }
-}
 
 export default function SignupPage() {
   const navigate = useNavigate()
@@ -61,9 +27,12 @@ export default function SignupPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const form = useForm<SignupFormValues>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { terms_accepted: false },
+  })
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: SignupFormValues) => {
     if (!supabase) {
       setErrorMessage('Supabase is not configured. Please set environment variables.')
       return
@@ -250,11 +219,51 @@ export default function SignupPage() {
                   )}
                 />
 
+                <FormField
+                  control={form.control}
+                  name="terms_accepted"
+                  render={({ field }) => (
+                    <FormItem className="space-y-2">
+                      <div className="flex items-start gap-2">
+                        <FormControl>
+                          <Checkbox
+                            id="terms_accepted"
+                            className="mt-0.5"
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <FormLabel htmlFor="terms_accepted" className="text-sm font-normal text-muted-foreground leading-snug">
+                          I agree to the{' '}
+                          <a
+                            href="https://360ghar.com/policies/terms-of-service"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Terms &amp; Conditions
+                          </a>{' '}
+                          and{' '}
+                          <a
+                            href="https://360ghar.com/policies/privacy-policy"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            Privacy Policy
+                          </a>
+                        </FormLabel>
+                      </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <div className="pt-2">
                   <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <LoadingSpinner size="sm" className="mr-2" />
                         Creating account...
                       </>
                     ) : (

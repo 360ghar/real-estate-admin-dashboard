@@ -38,25 +38,6 @@ export const usersApi = api.injectEndpoints({
           : [{ type: 'User' as const, id: 'LIST' }],
     }),
 
-    // Legacy list users (for backward compatibility)
-    listUsers: builder.query<{ results: User[]; count?: number }, UsersQuery | void>({
-      query: (params) => ({
-        url: '/users/',
-        params: { page: 1, limit: 20, ...params } as Record<string, unknown>
-      }),
-      transformResponse: (response: PaginatedResponse<User>) => ({
-        results: response.items,
-        count: response.total
-      }),
-      providesTags: (res) =>
-        res?.results
-          ? [
-              ...res.results.map((u) => ({ type: 'User' as const, id: u.id })),
-              { type: 'User' as const, id: 'LIST' },
-            ]
-          : [{ type: 'User' as const, id: 'LIST' }],
-    }),
-
     // Get user details
     getUser: builder.query<User, number>({
       query: (id) => `/users/${id}/`,
@@ -86,7 +67,7 @@ export const usersApi = api.injectEndpoints({
     // Get current user's profile
     getProfile: builder.query<User, void>({
       query: () => '/users/profile/',
-      providesTags: ['User'],
+      providesTags: [{type: 'User' as const, id: 'PROFILE'}],
     }),
 
     // Update current user's profile
@@ -96,7 +77,7 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: [{type: 'User', id: 'PROFILE'}, {type: 'User', id: 'LIST'}],
     }),
 
     // Update user preferences
@@ -106,7 +87,7 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: [{type: 'User', id: 'LIST'}],
     }),
 
     // Update user location
@@ -116,12 +97,13 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: [{type: 'User', id: 'LIST'}],
     }),
 
     // Notification settings
     getNotificationSettings: builder.query<UserNotificationSettings, void>({
       query: () => '/users/notification-settings',
+      providesTags: [{type: 'User', id: 'NOTIFICATION_SETTINGS'}],
     }),
 
     updateNotificationSettings: builder.mutation<void, UserNotificationSettings>({
@@ -130,6 +112,7 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
+      invalidatesTags: [{type: 'User', id: 'NOTIFICATION_SETTINGS'}],
     }),
 
     updateNotificationsCompat: builder.mutation<void, Record<string, unknown>>({
@@ -138,11 +121,13 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
+      invalidatesTags: [{type: 'User', id: 'NOTIFICATION_SETTINGS'}],
     }),
 
     // Privacy settings
     getPrivacySettings: builder.query<UserPrivacySettings, void>({
       query: () => '/users/privacy-settings',
+      providesTags: [{type: 'User', id: 'PRIVACY_SETTINGS'}],
     }),
 
     updatePrivacySettings: builder.mutation<void, UserPrivacySettings>({
@@ -151,6 +136,7 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
+      invalidatesTags: [{type: 'User', id: 'PRIVACY_SETTINGS'}],
     }),
 
     updatePrivacyCompat: builder.mutation<void, Record<string, unknown>>({
@@ -159,6 +145,7 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
+      invalidatesTags: [{type: 'User', id: 'PRIVACY_SETTINGS'}],
     }),
 
     // Send a typed notification to a user (multi-channel, backend-controlled)
@@ -175,13 +162,13 @@ export const usersApi = api.injectEndpoints({
           deep_link,
         },
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
   }),
 })
 
 export const {
   useGetUsersQuery,
-  useListUsersQuery,
   useGetUserQuery,
   useUpdateUserMutation,
   useAssignAgentMutation,

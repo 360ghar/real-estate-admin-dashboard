@@ -6,7 +6,7 @@ export const amenitiesApi = api.injectEndpoints({
     // Get all amenities
     getAmenities: builder.query<Amenity[], void>({
       query: () => '/amenities/',
-      providesTags: ['Amenity']
+      providesTags: [{type: 'Amenity' as const, id: 'LIST'}]
     }),
   }),
 })

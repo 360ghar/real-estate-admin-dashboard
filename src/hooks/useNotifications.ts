@@ -1,109 +1,265 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useToast } from '@/hooks/use-toast'
+import { selectCurrentUser } from '@/features/auth/slices/authSlice'
+import { useAppSelector } from '@/hooks/redux'
+import {
+  useGetUserNotificationsQuery,
+  useMarkDeliveryOpenedMutation,
+  type UserNotificationLogEntry,
+} from '@/features/core/api/notificationsApi'
 
-export interface Notification {
-  id: number
-  user_id: number
-  type: 'visit_reminder' | 'booking_update' | 'payment_received' | 'property_available' | 'system_message'
+// ---------------------------------------------------------------------------
+// Unified notification type that normalises server + local notifications
+// ---------------------------------------------------------------------------
+
+export type NotificationSource = 'server' | 'local'
+
+export type NotificationType =
+  | 'visit_reminder'
+  | 'booking_update'
+  | 'payment_received'
+  | 'property_available'
+  | 'system_message'
+  | 'marketing'
+  | 'general'
+
+export interface NotificationItem {
+  /** Unique composite key: "server:<id>" or "local:<uuid>" */
+  id: string
+  /** Underlying ID for API calls (server delivery ID or local UUID) */
+  rawId: string
+  /** Where this notification originated */
+  source: NotificationSource
+  /** Normalised notification category */
+  type: NotificationType
+  /** Short heading */
   title: string
+  /** Body / description */
   message: string
+  /** Arbitrary payload from server or local */
   data?: Record<string, unknown>
-  is_read: boolean
-  created_at: string
-  expires_at?: string
+  /** Whether the user has already read/opened it */
+  isRead: boolean
+  /** ISO timestamp */
+  createdAt: string
+  /** Optional expiry — only local notifications use this today */
+  expiresAt?: string
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+const LOCAL_STORAGE_KEY = 'notifications_local'
+
+function loadLocalNotifications(): NotificationItem[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed as NotificationItem[]
+  } catch {
+    localStorage.removeItem(LOCAL_STORAGE_KEY)
+    return []
+  }
+}
+
+function saveLocalNotifications(items: NotificationItem[]) {
+  localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(items))
+}
+
+/** Map audience_type / topic from the server entry to a local NotificationType. */
+function inferType(entry: UserNotificationLogEntry): NotificationType {
+  const topic = entry.topic?.toLowerCase() ?? ''
+  const audience = entry.audience_type?.toLowerCase() ?? ''
+  if (topic.includes('visit') || audience.includes('visit')) return 'visit_reminder'
+  if (topic.includes('booking') || audience.includes('booking')) return 'booking_update'
+  if (topic.includes('payment') || audience.includes('payment')) return 'payment_received'
+  if (topic.includes('property') || audience.includes('property')) return 'property_available'
+  if (topic.includes('market') || audience.includes('market')) return 'marketing'
+  if (topic.includes('system')) return 'system_message'
+  return 'general'
+}
+
+/** Convert a server UserNotificationLogEntry into a NotificationItem. */
+function toNotificationItem(entry: UserNotificationLogEntry): NotificationItem {
+  return {
+    id: `server:${entry.id}`,
+    rawId: entry.id,
+    source: 'server',
+    type: inferType(entry),
+    title: entry.title,
+    message: entry.body,
+    data: entry.data,
+    isRead: entry.opened === true || entry.is_read === true,
+    createdAt: entry.created_at ?? new Date().toISOString(),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
+
 interface UseNotificationsReturn {
-  notifications: Notification[]
+  notifications: NotificationItem[]
   unreadCount: number
-  markAsRead: (id: number) => void
+  isFetching: boolean
+  markAsRead: (id: string) => void
   markAllAsRead: () => void
-  addNotification: (notification: Omit<Notification, 'id' | 'user_id' | 'created_at' | 'is_read'>) => void
-  removeNotification: (id: number) => void
+  addNotification: (
+    notification: Omit<NotificationItem, 'id' | 'rawId' | 'source' | 'isRead' | 'createdAt'>,
+  ) => void
+  removeNotification: (id: string) => void
 }
 
 export const useNotifications = (): UseNotificationsReturn => {
-  const [notifications, setNotifications] = useState<Notification[]>([])
+  const currentUser = useAppSelector(selectCurrentUser)
   const { toast } = useToast()
 
-  // Load notifications from localStorage on mount
-  useEffect(() => {
-    const savedNotifications = localStorage.getItem('notifications')
-    if (savedNotifications) {
-      try {
-        const parsed = JSON.parse(savedNotifications) as unknown
-        if (Array.isArray(parsed)) {
-          setNotifications(parsed as Notification[])
-        }
-      } catch (error) {
-        console.error('Failed to parse notifications:', error)
-      }
-    }
-  }, [])
+  // ---- Local-only notifications (persisted in localStorage) ----
+  const [localNotifications, setLocalNotifications] = useState<NotificationItem[]>(loadLocalNotifications)
 
-  // Save notifications to localStorage whenever they change
+  // Persist local notifications whenever they change
   useEffect(() => {
-    localStorage.setItem('notifications', JSON.stringify(notifications))
-  }, [notifications])
+    saveLocalNotifications(localNotifications)
+  }, [localNotifications])
 
-  // Auto-remove expired notifications
+  // Auto-remove expired local notifications every minute
   useEffect(() => {
     const interval = setInterval(() => {
       const now = new Date()
-      setNotifications(prev =>
-        prev.filter(notification => {
-          if (!notification.expires_at) return true
-          return new Date(notification.expires_at) > now
-        })
+      setLocalNotifications((prev) =>
+        prev.filter((n) => {
+          if (!n.expiresAt) return true
+          return new Date(n.expiresAt) > now
+        }),
       )
-    }, 60000) // Check every minute
-
+    }, 60000)
     return () => clearInterval(interval)
   }, [])
 
-  const unreadCount = notifications.filter(n => !n.is_read).length
+  // ---- Server notifications via RTK Query ----
+  const userId = currentUser?.id
 
-  const markAsRead = (id: number) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, is_read: true } : notification
-      )
-    )
-  }
+  const {
+    data: serverNotifications,
+    isFetching,
+  } = useGetUserNotificationsQuery(
+    { userId: userId!, limit: 50, offset: 0 },
+    { skip: !userId },
+  )
 
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, is_read: true }))
-    )
-  }
+  // Track which server notification IDs we have already marked as opened
+  // so we can reflect that locally without waiting for a refetch.
+  const [openedServerIds, setOpenedServerIds] = useState<Set<string>>(new Set())
 
-  const addNotification = (notification: Omit<Notification, 'id' | 'user_id' | 'created_at' | 'is_read'>) => {
-    const newNotification: Notification = {
-      ...notification,
-      id: Date.now(), // Simple ID generation
-      user_id: 1, // This should come from auth context
-      created_at: new Date().toISOString(),
-      is_read: false,
-    }
+  const [markDeliveryOpened] = useMarkDeliveryOpenedMutation()
 
-    setNotifications(prev => [newNotification, ...prev])
+  // ---- Merge server + local into a unified list ----
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const serverItems: NotificationItem[] = (serverNotifications ?? []).map((entry) => {
+      const item = toNotificationItem(entry)
+      // If we've locally marked this as opened, reflect it immediately
+      if (openedServerIds.has(entry.id)) {
+        item.isRead = true
+      }
+      return item
+    })
 
-    // Show toast notification for important types
-    if (notification.type !== 'system_message') {
-      toast({
-        title: notification.title,
-        description: notification.message,
+    // Server items first (newest first), then local items
+    const merged = [...serverItems, ...localNotifications]
+
+    // Sort by createdAt descending (newest first)
+    merged.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    return merged
+  }, [serverNotifications, localNotifications, openedServerIds])
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications])
+
+  // ---- Actions ----
+
+  const markAsRead = useCallback(
+    (id: string) => {
+      // Optimistically mark local state for local notifications
+      if (id.startsWith('local:')) {
+        setLocalNotifications((prev) =>
+          prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)),
+        )
+        return
+      }
+
+      // Server notification — extract rawId and call the mutation
+      if (id.startsWith('server:')) {
+        const rawId = id.replace('server:', '')
+        // Optimistically mark as read
+        setOpenedServerIds((prev) => new Set(prev).add(rawId))
+        markDeliveryOpened({ deliveryId: rawId }).catch((err) => {
+          console.error('Failed to mark notification as opened:', err)
+        })
+      }
+    },
+    [markDeliveryOpened],
+  )
+
+  const markAllAsRead = useCallback(() => {
+    // Mark all local notifications as read
+    setLocalNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
+
+    // Mark all unread server notifications as opened
+    const serverUnread = notifications.filter((n) => n.source === 'server' && !n.isRead)
+    const newOpened = new Set(openedServerIds)
+    for (const n of serverUnread) {
+      const rawId = n.rawId
+      newOpened.add(rawId)
+      markDeliveryOpened({ deliveryId: rawId }).catch((err) => {
+        console.error('Failed to mark notification as opened:', err)
       })
     }
-  }
+    setOpenedServerIds(newOpened)
+  }, [notifications, openedServerIds, markDeliveryOpened])
 
-  const removeNotification = (id: number) => {
-    setNotifications(prev => prev.filter(n => n.id !== id))
-  }
+  const addNotification = useCallback(
+    (notification: Omit<NotificationItem, 'id' | 'rawId' | 'source' | 'isRead' | 'createdAt'>) => {
+      const rawId = crypto.randomUUID()
+      const newNotification: NotificationItem = {
+        ...notification,
+        id: `local:${rawId}`,
+        rawId,
+        source: 'local',
+        isRead: false,
+        createdAt: new Date().toISOString(),
+      }
+
+      setLocalNotifications((prev) => [newNotification, ...prev])
+
+      // Show toast for important types
+      if (notification.type !== 'system_message') {
+        toast({
+          title: notification.title,
+          description: notification.message,
+        })
+      }
+    },
+    [toast],
+  )
+
+  const removeNotification = useCallback(
+    (id: string) => {
+      // Only allow removing local notifications via this method;
+      // server notifications are managed by the server and cache invalidation.
+      if (id.startsWith('local:')) {
+        setLocalNotifications((prev) => prev.filter((n) => n.id !== id))
+      }
+    },
+    [],
+  )
 
   return {
     notifications,
     unreadCount,
+    isFetching,
     markAsRead,
     markAllAsRead,
     addNotification,

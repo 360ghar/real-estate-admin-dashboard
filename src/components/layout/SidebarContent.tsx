@@ -23,6 +23,7 @@ import {
     FileBarChart,
     Briefcase,
     HardHat,
+    HelpCircle,
 } from 'lucide-react'
 import { NavItem, type NavChild } from './NavItem'
 import { Separator } from '@/components/ui/separator'
@@ -92,6 +93,12 @@ export const SidebarContent = () => {
         { name: 'Visits', href: '/visits', icon: Calendar },
         { name: 'Bookings', href: '/bookings', icon: BookOpen },
         { name: 'Discover', href: '/swipes', icon: Heart },
+        ...(role === 'admin'
+            ? [
+                { name: 'Flatmates Moderation', href: '/flatmates/moderation', icon: ClipboardCheck },
+                { name: 'Flatmates Reports', href: '/flatmates/reports', icon: AlertCircle },
+            ]
+            : []),
     ]
 
     const adminToolsNav: NavItemConfig = {
@@ -112,6 +119,7 @@ export const SidebarContent = () => {
                 ]
             },
             { name: 'Pages', href: '/pages', icon: FileText },
+            { name: 'FAQs', href: '/faqs', icon: HelpCircle },
             { name: 'App Updates', href: '/app-updates', icon: Smartphone },
         ]
     }

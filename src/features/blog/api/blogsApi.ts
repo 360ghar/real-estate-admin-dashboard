@@ -33,15 +33,14 @@ export const blogsApi = api.injectEndpoints({
     getBlogPosts: builder.query<BlogPostListResponse, BlogPostFilters | void>({
       query: (params) => {
         const p = params || {}
-        const qp: Record<string, unknown> = {
-          page: 1,
-          limit: 20,
-          ...p,
-        }
-        if (Array.isArray(p?.categories)) qp.categories = p.categories.join(',')
-        if (Array.isArray(p?.tags)) qp.tags = p.tags.join(',')
-        if (Array.isArray(p?.keywords)) qp.keywords = p.keywords.join(',')
-        return { url: '/blog/posts', params: qp }
+        const search = new URLSearchParams()
+        search.set('page', String(p.page || 1))
+        search.set('limit', String(p.limit || 20))
+        if (p.q) search.set('q', p.q)
+        if (Array.isArray(p.categories)) p.categories.forEach((c) => search.append('categories', c))
+        if (Array.isArray(p.tags)) p.tags.forEach((t) => search.append('tags', t))
+        if (Array.isArray(p.keywords)) p.keywords.forEach((k) => search.append('keywords', k))
+        return { url: '/blog/posts', params: search }
       },
       providesTags: (res) =>
         res?.items
@@ -63,7 +62,7 @@ export const blogsApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (_res, _e, { identifier }) => [{ type: 'BlogPost', id: identifier }],
+      invalidatesTags: (_res, _e, { identifier }) => [{ type: 'BlogPost', id: identifier }, { type: 'BlogPost', id: 'LIST' }],
     }),
 
     deleteBlogPost: builder.mutation<void, string | number>({
@@ -130,7 +129,7 @@ export const blogsApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (_res, _e, { identifier }) => [{ type: 'BlogCategory', id: identifier }],
+      invalidatesTags: (_res, _e, { identifier }) => [{ type: 'BlogCategory', id: identifier }, { type: 'BlogCategory', id: 'LIST' }],
     }),
 
     deleteBlogCategory: builder.mutation<void, string | number>({
@@ -179,7 +178,7 @@ export const blogsApi = api.injectEndpoints({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (_res, _e, { identifier }) => [{ type: 'BlogTag', id: identifier }],
+      invalidatesTags: (_res, _e, { identifier }) => [{ type: 'BlogTag', id: identifier }, { type: 'BlogTag', id: 'LIST' }],
     }),
 
     deleteBlogTag: builder.mutation<void, string | number>({

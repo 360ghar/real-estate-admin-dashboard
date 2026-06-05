@@ -1,30 +1,23 @@
 import { useScheduleVisitMutation } from '@/features/visits/api/visitsApi'
-import { useListUsersQuery } from '@/features/users/api/usersApi'
-import { useListPropertiesQuery } from '@/features/properties/api/propertiesApi'
+import { useGetUsersQuery } from '@/features/users/api/usersApi'
+import { useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useToast } from '@/hooks/use-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { getErrorMessage } from '@/lib/errors'
-
-const schema = z.object({
-  // user_id kept for UI selection but not sent to API
-  user_id: z.coerce.number().optional(),
-  property_id: z.coerce.number().min(1, 'Property is required'),
-  scheduled_date: z.string().min(1, 'Date is required'),
-})
-
-type FormValues = z.infer<typeof schema>
+import { applyServerValidation } from '@/lib/formErrors'
+import { localInputToServerTimestamp } from '@/lib/dateTime'
+import { visitFormSchema, type VisitFormValues } from '@/features/visits/validations'
 
 const VisitForm = () => {
-  const form = useForm<FormValues>({
-    resolver: zodResolver(schema),
+  const form = useForm<VisitFormValues>({
+    resolver: zodResolver(visitFormSchema),
     defaultValues: {
       property_id: 0,
       scheduled_date: '',
@@ -32,19 +25,26 @@ const VisitForm = () => {
   })
   const { toast } = useToast()
   const [scheduleVisit, createState] = useScheduleVisitMutation()
-  const users = useListUsersQuery({})
-  const properties = useListPropertiesQuery({})
+  const users = useGetUsersQuery({})
+  const properties = useSearchPropertiesQuery({})
   const { control, handleSubmit } = form
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: VisitFormValues) => {
+    form.clearErrors()
     try {
+      const scheduledDate = localInputToServerTimestamp(values.scheduled_date)
+      if (!scheduledDate) {
+        form.setError('scheduled_date', { message: 'Enter a valid date and time' })
+        return
+      }
       await scheduleVisit({
         property_id: values.property_id,
-        scheduled_date: new Date(values.scheduled_date).toISOString(),
+        scheduled_date: scheduledDate,
       }).unwrap()
       toast({ title: 'Scheduled', description: 'Visit scheduled' })
       form.reset()
     } catch (err: unknown) {
+      applyServerValidation(err, form.setError)
       toast({ title: 'Failed', description: getErrorMessage(err, 'Please try again'), variant: 'destructive' })
     }
   }
@@ -80,7 +80,7 @@ const VisitForm = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {users.data?.results?.map((u) => (
+                        {users.data?.items?.map((u) => (
                           <SelectItem key={u.id} value={String(u.id)}>
                             {u.full_name || u.phone || `User ${u.id}`}
                           </SelectItem>
@@ -104,7 +104,7 @@ const VisitForm = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {properties.data?.results?.map((p) => (
+                        {properties.data?.properties?.map((p) => (
                           <SelectItem key={p.id} value={String(p.id)}>
                             {p.title}
                           </SelectItem>

@@ -1,9 +1,8 @@
 import { api } from '@/store/api'
 import type {
   Agent,
+  AgentWithStats,
   AgentCreate,
-  AgentWorkload,
-  AgentSystemStats,
   PaginatedResponse,
   Visit
 } from '@/types/api'
@@ -11,40 +10,16 @@ import type {
 export interface AgentSummary {
   id: number
   name: string
-  email?: string
-  phone?: string
-  is_active?: boolean
-  is_available?: boolean
-  users_assigned?: number
-}
-
-export interface AgentProfile {
-  id: number
-  user_id: number
-  employee_id: string
-  specialization: string
+  contact_number?: string
+  languages?: string[]
   agent_type: 'general' | 'specialist' | 'senior'
-  experience_level: string
-  years_of_experience: number
-  bio?: string
-  languages: string[]
-  working_hours?: Record<string, string>
-  commission_rate: number
-  service_areas: string[]
-  max_clients: number
+  experience_level: 'beginner' | 'intermediate' | 'expert'
+  is_active: boolean
   is_available: boolean
-  performance_metrics?: {
-    active_clients: number
-    properties_sold: number
-    total_revenue: number
-    average_rating: number
-  }
-  user?: {
-    id: number
-    email: string
-    full_name: string
-    phone: string
-  }
+  total_users_assigned: number
+  user_satisfaction_rating: number
+  created_at: string
+  updated_at?: string
 }
 
 export const agentsApi = api.injectEndpoints({
@@ -69,9 +44,9 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get agent by ID
-    getAgent: builder.query<AgentSummary & Record<string, unknown>, number>({
+    getAgent: builder.query<Agent, number>({
       query: (id) => `/agents/${id}`,
-      providesTags: (res, _e, id) => [{ type: 'Agent', id }],
+      providesTags: (_result, _error, arg) => [{type: 'Agent' as const, id: arg}],
     }),
 
     // Create agent (admin only)
@@ -97,7 +72,7 @@ export const agentsApi = api.injectEndpoints({
       query: ({ agentId, isAvailable }) => ({
         url: `/agents/${agentId}/availability/`,
         method: 'PATCH',
-        body: { is_available: isAvailable }
+        params: { is_available: isAvailable }
       }),
       invalidatesTags: (_res, _e, { agentId }) => [{ type: 'Agent', id: agentId }],
     }),
@@ -105,13 +80,13 @@ export const agentsApi = api.injectEndpoints({
     // Get agent profile (current user)
     getAgentProfile: builder.query<Agent, void>({
       query: () => '/agents/me/',
-      providesTags: ['Agent']
+      providesTags: [{type: 'Agent' as const, id: 'LIST'}]
     }),
 
     // Get assigned agent (current user)
     getAssignedAgent: builder.query<Agent | null, void>({
       query: () => '/agents/assigned/',
-      providesTags: ['Agent']
+      providesTags: [{type: 'Agent' as const, id: 'LIST'}]
     }),
 
     // Assign agent to current user
@@ -121,7 +96,7 @@ export const agentsApi = api.injectEndpoints({
         method: 'POST',
         params: params?.agentId ? { agent_id: params.agentId } : undefined
       }),
-      invalidatesTags: ['Agent']
+      invalidatesTags: [{type: 'Agent', id: 'LIST'}]
     }),
 
     // Get available agents
@@ -130,19 +105,15 @@ export const agentsApi = api.injectEndpoints({
         url: '/agents/available/',
         params: { page: 1, limit: 20, ...(params || {}) }
       }),
-      providesTags: ['Agent']
-    }),
-
-    // Get agent details (public)
-    getAgentDetails: builder.query<Agent, number>({
-      query: (id) => `/agents/${id}`,
-      providesTags: (res, _e, id) => [{ type: 'Agent', id }]
+      providesTags: (result) => result?.items
+        ? [...result.items.map((a) => ({type: 'Agent' as const, id: a.id})), {type: 'Agent' as const, id: 'LIST'}]
+        : [{type: 'Agent' as const, id: 'LIST'}]
     }),
 
     // Get agent with stats
-    getAgentStats: builder.query<Agent, number>({
+    getAgentStats: builder.query<AgentWithStats, number>({
       query: (id) => `/agents/${id}/stats/`,
-      providesTags: (res, _e, id) => [{ type: 'Agent', id }]
+      providesTags: (_result, _error, arg) => [{type: 'Agent' as const, id: arg}]
     }),
 
     // Get visits handled by agent
@@ -151,7 +122,7 @@ export const agentsApi = api.injectEndpoints({
         url: `/agents/${agentId}/visits/`,
         params: { page: 1, limit: 20, ...params }
       }),
-      providesTags: ['Agent', 'Visit']
+      providesTags: [{type: 'Agent' as const, id: 'LIST'}, {type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get agents by type
@@ -160,7 +131,9 @@ export const agentsApi = api.injectEndpoints({
         url: `/agents/types/${agentType}`,
         params: { page: 1, limit: 20, ...params }
       }),
-      providesTags: ['Agent']
+      providesTags: (result) => result?.items
+        ? [...result.items.map((a) => ({type: 'Agent' as const, id: a.id})), {type: 'Agent' as const, id: 'LIST'}]
+        : [{type: 'Agent' as const, id: 'LIST'}]
     }),
 
     // Get agents by specialization
@@ -169,20 +142,11 @@ export const agentsApi = api.injectEndpoints({
         url: `/agents/specializations/${specialization}`,
         params: { page: 1, limit: 20, ...params }
       }),
-      providesTags: ['Agent']
+      providesTags: (result) => result?.items
+        ? [...result.items.map((a) => ({type: 'Agent' as const, id: a.id})), {type: 'Agent' as const, id: 'LIST'}]
+        : [{type: 'Agent' as const, id: 'LIST'}]
     }),
 
-    // Get system workload (admin only)
-    getSystemWorkload: builder.query<AgentWorkload[], void>({
-      query: () => '/agents/system/workload/',
-      providesTags: ['Agent']
-    }),
-
-    // Get system stats (admin only)
-    getSystemStats: builder.query<AgentSystemStats, void>({
-      query: () => '/agents/system/stats/',
-      providesTags: ['Agent']
-    }),
   }),
 })
 
@@ -197,11 +161,8 @@ export const {
   useGetAssignedAgentQuery,
   useAssignAgentToUserMutation,
   useGetAvailableAgentsQuery,
-  useGetAgentDetailsQuery,
   useGetAgentStatsQuery,
   useGetAgentVisitsQuery,
   useGetAgentsByTypeQuery,
   useGetAgentsBySpecializationQuery,
-  useGetSystemWorkloadQuery,
-  useGetSystemStatsQuery
 } = agentsApi

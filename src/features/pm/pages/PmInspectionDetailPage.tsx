@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default function PmInspectionDetailPage() {
   const { inspectionId } = useParams()
@@ -23,7 +24,7 @@ export default function PmInspectionDetailPage() {
   }, [inspection.data?.rooms_data])
 
   if (!inspectionIdNum || Number.isNaN(inspectionIdNum)) {
-    return <div className="text-sm text-muted-foreground">Invalid inspection id.</div>
+    return <EmptyState title="Invalid inspection id" />
   }
 
   return (
@@ -60,7 +61,7 @@ export default function PmInspectionDetailPage() {
                 {roomsJson}
               </pre>
             ) : (
-              <div className="text-sm text-muted-foreground">No rooms data.</div>
+              <EmptyState title="No rooms data" />
             )}
           </CardContent>
         </Card>
@@ -108,7 +109,7 @@ export default function PmInspectionDetailPage() {
                 </div>
               </>
             ) : (
-              <div className="text-sm text-muted-foreground">Not found.</div>
+              <EmptyState title="Inspection not found" />
             )}
           </CardContent>
         </Card>

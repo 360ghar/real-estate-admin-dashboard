@@ -1,43 +1,44 @@
 import { renderHook, act } from '@testing-library/react'
 import { useDebounce } from '../useDebounce'
-import { useEffect, useState } from 'react'
-
-const DebounceWrapper = ({ delay, onDebounced }: { delay?: number; onDebounced: (value: string) => void }) => {
-  const [value, setValue] = useState('')
-  const debouncedValue = useDebounce(value, delay)
-
-  useEffect(() => {
-    onDebounced(debouncedValue)
-  }, [debouncedValue, onDebounced])
-
-  return (
-    <input
-      value={value}
-      onChange={(e) => setValue(e.target.value)}
-      data-testid="input"
-    />
-  )
-}
 
 describe('useDebounce', () => {
-  it('debounces value changes', async () => {
-    const onDebounced = jest.fn()
-    const { getByTestId } = renderHook(() => <DebounceWrapper delay={100} onDebounced={onDebounced} />).result
+  beforeEach(() => {
+    jest.useFakeTimers()
+  })
+  afterEach(() => {
+    jest.useRealTimers()
+  })
 
-    const input = getByTestId('input')
+  it('returns the initial value immediately', () => {
+    const { result } = renderHook(() => useDebounce('a', 100))
+    expect(result.current).toBe('a')
+  })
+
+  it('debounces value changes', () => {
+    const { result, rerender } = renderHook(({ value, delay }) => useDebounce(value, delay), {
+      initialProps: { value: 'a', delay: 100 },
+    })
+
+    rerender({ value: 'b', delay: 100 })
+    // Not updated until the delay elapses.
+    expect(result.current).toBe('a')
 
     act(() => {
-      input.focus()
-      input.value = 'test'
-      input.dispatchEvent(new Event('input', { bubbles: true }))
+      jest.advanceTimersByTime(100)
+    })
+    expect(result.current).toBe('b')
+  })
+
+  it('only emits the latest value within a debounce window', () => {
+    const { result, rerender } = renderHook(({ value }) => useDebounce(value, 100), {
+      initialProps: { value: 'a' },
     })
 
-    expect(onDebounced).toHaveBeenCalledTimes(0)
-
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 150))
+    rerender({ value: 'b' })
+    rerender({ value: 'c' })
+    act(() => {
+      jest.advanceTimersByTime(100)
     })
-
-    expect(onDebounced).toHaveBeenCalledWith('test')
+    expect(result.current).toBe('c')
   })
 })

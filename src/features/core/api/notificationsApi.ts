@@ -8,6 +8,8 @@ export interface UserNotificationLogEntry {
   audience_type?: string
   target_user_id?: string
   topic?: string
+  opened?: boolean
+  is_read?: boolean
   created_at?: string
 }
 
@@ -74,6 +76,7 @@ export const notificationsApi = api.injectEndpoints({
           params: queryParams,
         }
       },
+      providesTags: (res) => res ? [...res.map((n) => ({type: 'Notification' as const, id: n.id})), {type: 'Notification', id: 'LIST'}] : [{type: 'Notification', id: 'LIST'}],
     }),
 
     registerDeviceToken: builder.mutation<void, DeviceRegistrationPayload>({
@@ -82,6 +85,7 @@ export const notificationsApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     sendToToken: builder.mutation<void, NotificationSendToTokenPayload>({
@@ -90,6 +94,7 @@ export const notificationsApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     sendToUser: builder.mutation<void, NotificationSendToUserPayload>({
@@ -98,6 +103,7 @@ export const notificationsApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     sendToTopic: builder.mutation<void, NotificationSendToTopicPayload>({
@@ -106,6 +112,7 @@ export const notificationsApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     sendBulkTokens: builder.mutation<void, NotificationSendBulkPayload>({
@@ -114,6 +121,7 @@ export const notificationsApi = api.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     markDeliveryOpened: builder.mutation<void, { deliveryId: string | number }>({
@@ -121,6 +129,7 @@ export const notificationsApi = api.injectEndpoints({
         url: `/notifications/deliveries/${deliveryId}/opened`,
         method: 'POST',
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     sendMarketingBroadcast: builder.mutation<
@@ -138,6 +147,7 @@ export const notificationsApi = api.injectEndpoints({
           deep_link,
         },
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
 
     sendMarketingToSegment: builder.mutation<
@@ -156,6 +166,7 @@ export const notificationsApi = api.injectEndpoints({
           filter,
         },
       }),
+      invalidatesTags: [{type: 'Notification', id: 'LIST'}],
     }),
   }),
 })

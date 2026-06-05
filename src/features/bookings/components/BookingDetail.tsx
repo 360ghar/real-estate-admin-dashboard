@@ -42,7 +42,7 @@ const BookingDetail = ({ id }: { id: number }) => {
       const [ratingStr, ...rest] = text.split(' ')
       const rating = Number(ratingStr) || 5
       const reviewText = rest.join(' ') || 'Great stay.'
-      const reviewData: BookingReview = { rating, review_text: reviewText }
+      const reviewData: BookingReview = { guest_rating: rating, guest_review: reviewText }
       await review({ bookingId: id, reviewData }).unwrap()
       toast({ title: 'Review added', description: 'Thank you' })
       setOpen(null)
@@ -63,19 +63,19 @@ const BookingDetail = ({ id }: { id: number }) => {
             <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
             <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
             <div><span className="text-muted-foreground">Stay:</span> {data ? `${new Date(data.check_in_date).toLocaleDateString()} – ${new Date(data.check_out_date).toLocaleDateString()}` : '-'}</div>
-            <div><span className="text-muted-foreground">Nights:</span> {data?.total_nights}</div>
+            <div><span className="text-muted-foreground">Nights:</span> {data?.nights}</div>
             <div><span className="text-muted-foreground">Amount:</span> ₹{data?.total_amount}</div>
-            <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
+            <div><span className="text-muted-foreground">Status:</span> {data?.booking_status}</div>
             <div><span className="text-muted-foreground">Payment:</span> {data?.payment_status || '-'}</div>
           </div>
           <div className="mt-4 flex gap-2">
-            {(data?.status === 'pending' || data?.status === 'confirmed') && (
+            {(data?.booking_status === 'pending' || data?.booking_status === 'confirmed') && (
               <>
                 <Button onClick={() => setOpen('cancel')}>Cancel</Button>
                 <Button variant="outline" onClick={() => setOpen('payment')}>Process Payment</Button>
               </>
             )}
-            {data?.status === 'completed' && <Button onClick={() => setOpen('review')}>Add Review</Button>}
+            {data?.booking_status === 'completed' && <Button onClick={() => setOpen('review')}>Add Review</Button>}
           </div>
         </CardContent>
       </Card>

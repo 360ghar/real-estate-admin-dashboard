@@ -1,254 +1,290 @@
-import React, { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import type { ComponentType } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Megaphone, Radio, Send, Users2 } from 'lucide-react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormRootError } from '@/components/ui/form-root-error'
 import { useToast } from '@/hooks/use-toast'
-import { useSendMarketingBroadcastMutation, useSendMarketingToSegmentMutation } from '@/features/core/api/notificationsApi'
+import {
+  useSendMarketingBroadcastMutation,
+  useSendMarketingToSegmentMutation,
+  useSendToTopicMutation,
+} from '@/features/core/api/notificationsApi'
 import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
+import { applyServerValidation } from '@/lib/formErrors'
 import { getErrorMessage } from '@/lib/errors'
+import { formatNumber } from '@/lib/format'
+import { cn } from '@/lib/utils'
+import {
+  MARKETING_TYPES,
+  NOTIFICATION_CHANNELS,
+  SEGMENT_ROLES,
+  notificationComposerDefaults,
+  notificationComposerSchema,
+  type NotificationChannel,
+  type NotificationComposerValues,
+  type SegmentRole,
+} from '@/features/core/notificationsValidation'
 
-const NotificationsPage: React.FC = () => {
+const CHANNEL_META: Record<NotificationChannel, { label: string; icon: ComponentType<{ className?: string }>; description: string }> = {
+  broadcast: { label: 'Broadcast', icon: Megaphone, description: 'Send to all active users (respects each user’s marketing opt-in).' },
+  segment: { label: 'Segment', icon: Users2, description: 'Send to a filtered audience by role and/or assigned agent.' },
+  topic: { label: 'Topic', icon: Radio, description: 'Send to all devices subscribed to a push topic.' },
+}
+
+const ROLE_LABELS: Record<SegmentRole, string> = {
+  all: 'All roles',
+  user: 'Users',
+  agent: 'Agents',
+  admin: 'Admins',
+}
+
+const NotificationsPage = () => {
   const { toast } = useToast()
-
-  const segmentRoles = ['user', 'agent', 'admin', 'all'] as const
-  type SegmentRole = typeof segmentRoles[number]
-  const isSegmentRole = (value: string): value is SegmentRole => segmentRoles.includes(value as SegmentRole)
-
-  const [broadcastType, setBroadcastType] = useState<string>('promotion_generic')
-  const [broadcastTitle, setBroadcastTitle] = useState<string>('Latest offers from 360 Ghar')
-  const [broadcastBody, setBroadcastBody] = useState<string>('')
-
-  const [segmentType, setSegmentType] = useState<string>('promotion_generic')
-  const [segmentTitle, setSegmentTitle] = useState<string>('Personalised update from 360 Ghar')
-  const [segmentBody, setSegmentBody] = useState<string>('')
-  const [segmentRole, setSegmentRole] = useState<SegmentRole>('user')
-  const [segmentAgentId, setSegmentAgentId] = useState<number | 'all'>('all')
-
-  const [sendBroadcast, sendBroadcastState] = useSendMarketingBroadcastMutation()
-  const [sendSegment, sendSegmentState] = useSendMarketingToSegmentMutation()
-
+  const form = useForm<NotificationComposerValues>({
+    resolver: zodResolver(notificationComposerSchema),
+    defaultValues: notificationComposerDefaults,
+  })
+  const channel = form.watch('channel')
   const agents = useListAgentsQuery({ include_inactive: false })
 
-  const marketingTypes = [
-    { value: 'promotion_generic', label: 'Promotion (generic)' },
-    { value: 'discount_offer', label: 'Discount offer' },
-    { value: 'win_back', label: 'Win-back' },
-    { value: 'upsell_suggestion', label: 'Upsell suggestion' },
-    { value: 'onboarding_nudge', label: 'Onboarding nudge' },
-    { value: 'property_recommendation', label: 'Property recommendation' },
-    { value: 'daily_digest', label: 'Daily digest' },
-  ]
+  const [sendBroadcast, broadcastState] = useSendMarketingBroadcastMutation()
+  const [sendSegment, segmentState] = useSendMarketingToSegmentMutation()
+  const [sendTopic, topicState] = useSendToTopicMutation()
+  const isSending = broadcastState.isLoading || segmentState.isLoading || topicState.isLoading
 
-  const handleSendBroadcast = async () => {
-    if (!broadcastBody.trim()) {
-      toast({
-        title: 'Message required',
-        description: 'Please enter a message body for the broadcast.',
-        variant: 'destructive',
-      })
-      return
-    }
+  const onSubmit = async (values: NotificationComposerValues) => {
+    form.clearErrors()
+    const deepLink = values.deepLink?.trim() || undefined
     try {
-      const res = await sendBroadcast({
-        typeKey: broadcastType,
-        title: broadcastTitle,
-        body: broadcastBody,
-      }).unwrap()
-      toast({
-        title: 'Broadcast queued',
-        description: `Requested: ${res.requested}, processed: ${res.processed}.`,
-      })
-      setBroadcastBody('')
-    } catch (e: unknown) {
-      toast({
-        title: 'Failed to send broadcast',
-        description: getErrorMessage(e, 'Please try again.'),
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleSendSegment = async () => {
-    if (!segmentBody.trim()) {
-      toast({
-        title: 'Message required',
-        description: 'Please enter a message body for the segment notification.',
-        variant: 'destructive',
-      })
-      return
-    }
-    try {
-      const res = await sendSegment({
-        typeKey: segmentType,
-        title: segmentTitle,
-        body: segmentBody,
-        filter: {
-          role: segmentRole === 'all' ? undefined : segmentRole,
-          agent_id: segmentAgentId === 'all' ? undefined : segmentAgentId,
-          is_active: true,
-        },
-      }).unwrap()
-      toast({
-        title: 'Segment notification queued',
-        description: `Requested: ${res.requested}, processed: ${res.processed}.`,
-      })
-      setSegmentBody('')
-    } catch (e: unknown) {
-      toast({
-        title: 'Failed to send to segment',
-        description: getErrorMessage(e, 'Please try again.'),
-        variant: 'destructive',
-      })
+      if (values.channel === 'broadcast') {
+        const res = await sendBroadcast({ typeKey: values.typeKey, title: values.title, body: values.body, deep_link: deepLink }).unwrap()
+        toast({ title: 'Broadcast queued', description: `Queued for ${formatNumber(res.requested)} users (${formatNumber(res.processed)} processed).` })
+      } else if (values.channel === 'segment') {
+        const res = await sendSegment({
+          typeKey: values.typeKey,
+          title: values.title,
+          body: values.body,
+          deep_link: deepLink,
+          filter: {
+            role: values.role && values.role !== 'all' ? values.role : undefined,
+            agent_id: values.agentId && values.agentId !== 'all' ? Number(values.agentId) : undefined,
+            is_active: true,
+          },
+        }).unwrap()
+        toast({ title: 'Segment notification queued', description: `Queued for ${formatNumber(res.requested)} users (${formatNumber(res.processed)} processed).` })
+      } else {
+        await sendTopic({ topic: values.topic ?? '', title: values.title, body: values.body, deep_link: deepLink }).unwrap()
+        toast({ title: 'Topic notification sent', description: `Pushed to topic “${values.topic ?? ''}”.` })
+      }
+      form.reset({ ...notificationComposerDefaults, channel: values.channel })
+    } catch (error) {
+      applyServerValidation(error, form.setError, { knownFields: ['title', 'body', 'topic', 'typeKey'] })
+      toast({ title: 'Failed to send notification', description: getErrorMessage(error, 'Please try again.'), variant: 'destructive' })
     }
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Marketing Notifications</h1>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-semibold tracking-tight md:text-3xl">Notifications</h1>
         <p className="text-muted-foreground">
-          Send targeted or broadcast marketing messages to app users, respecting their
-          notification preferences.
+          Compose push notifications and marketing messages for app users.
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Broadcast to all users</CardTitle>
-          <CardDescription>
-            Send a single marketing notification to all active users. This will respect each
-            user&apos;s marketing opt-in settings.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <Label>Notification type</Label>
-              <Select value={broadcastType} onValueChange={setBroadcastType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {marketingTypes.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Title</Label>
-              <Input value={broadcastTitle} onChange={(e) => setBroadcastTitle(e.target.value)} />
-            </div>
-          </div>
-          <div>
-            <Label>Message</Label>
-            <Textarea
-              rows={4}
-              value={broadcastBody}
-              onChange={(e) => setBroadcastBody(e.target.value)}
-              placeholder="Write the broadcast message to send to all users…"
-            />
-          </div>
-          <div className="flex justify-end">
-            <Button
+      <div
+        role="tablist"
+        aria-label="Notification channel"
+        className="inline-flex rounded-cohere-pill border border-cohere-hairline p-1"
+      >
+        {NOTIFICATION_CHANNELS.map((value) => {
+          const meta = CHANNEL_META[value]
+          const Icon = meta.icon
+          const active = channel === value
+          return (
+            <button
+              key={value}
               type="button"
-              onClick={() => { void handleSendBroadcast() }}
-              disabled={sendBroadcastState.isLoading}
+              role="tab"
+              aria-selected={active}
+              onClick={() => {
+                form.setValue('channel', value)
+                form.clearErrors()
+              }}
+              className={cn(
+                'flex items-center gap-2 rounded-cohere-pill px-4 py-1.5 text-sm font-medium transition-colors',
+                active ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
             >
-              {sendBroadcastState.isLoading ? 'Sending…' : 'Send broadcast'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+              <Icon className="h-4 w-4" />
+              {meta.label}
+            </button>
+          )
+        })}
+      </div>
 
-      <Card>
+      <Card className="rounded-cohere-md border-cohere-card-border">
         <CardHeader>
-          <CardTitle>Targeted segment</CardTitle>
-          <CardDescription>
-            Send marketing notifications to a filtered audience (by role and/or assigned agent).
-          </CardDescription>
+          <CardTitle>{CHANNEL_META[channel].label}</CardTitle>
+          <CardDescription>{CHANNEL_META[channel].description}</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Label>User role</Label>
-              <Select
-                value={segmentRole}
-                onValueChange={(v) => { if (isSegmentRole(v)) setSegmentRole(v) }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All roles</SelectItem>
-                  <SelectItem value="user">Users</SelectItem>
-                  <SelectItem value="agent">Agents</SelectItem>
-                  <SelectItem value="admin">Admins</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Assigned agent (optional)</Label>
-              <Select
-                value={segmentAgentId === 'all' ? 'all' : String(segmentAgentId)}
-                onValueChange={(v) => setSegmentAgentId(v === 'all' ? 'all' : Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All agents" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All agents</SelectItem>
-                  {(agents.data?.results || []).map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>
-                      {a.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label>Notification type</Label>
-              <Select value={segmentType} onValueChange={setSegmentType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {marketingTypes.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div>
-            <Label>Title</Label>
-            <Input value={segmentTitle} onChange={(e) => setSegmentTitle(e.target.value)} />
-          </div>
-          <div>
-            <Label>Message</Label>
-            <Textarea
-              rows={4}
-              value={segmentBody}
-              onChange={(e) => setSegmentBody(e.target.value)}
-              placeholder="Describe the offer or message for this segment…"
-            />
-          </div>
-          <div className="flex justify-end">
-            <Button
-              type="button"
-              onClick={() => { void handleSendSegment() }}
-              disabled={sendSegmentState.isLoading}
-            >
-              {sendSegmentState.isLoading ? 'Sending…' : 'Send to segment'}
-            </Button>
-          </div>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+              <FormRootError form={form} />
+
+              {channel === 'segment' && (
+                <div className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Audience role</FormLabel>
+                        <Select value={field.value ?? 'all'} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {SEGMENT_ROLES.map((role) => (
+                              <SelectItem key={role} value={role}>
+                                {ROLE_LABELS[role]}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="agentId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Assigned agent (optional)</FormLabel>
+                        <Select value={field.value ?? 'all'} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="All agents" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="all">All agents</SelectItem>
+                            {(agents.data?.results ?? []).map((agent) => (
+                              <SelectItem key={agent.id} value={String(agent.id)}>
+                                {agent.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              )}
+
+              {channel === 'topic' ? (
+                <FormField
+                  control={form.control}
+                  name="topic"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Topic</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. new_listings_delhi" {...field} value={field.value ?? ''} />
+                      </FormControl>
+                      <FormDescription>The FCM topic devices are subscribed to.</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="typeKey"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Notification type</FormLabel>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {MARKETING_TYPES.map((type) => (
+                            <SelectItem key={type.value} value={type.value}>
+                              {type.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Notification title" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="body"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Message</FormLabel>
+                    <FormControl>
+                      <Textarea rows={4} placeholder="Write the message users will see…" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="deepLink"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deep link (optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. ghar360://properties/123" {...field} value={field.value ?? ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isSending} className="rounded-cohere-pill">
+                  <Send className="h-4 w-4" />
+                  {isSending ? 'Sending…' : `Send ${CHANNEL_META[channel].label.toLowerCase()}`}
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
     </div>

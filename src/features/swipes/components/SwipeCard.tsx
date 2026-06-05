@@ -86,7 +86,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         <div className="flex flex-wrap gap-2">
                             {property.amenities?.slice(0, 3).map((amenity, i) => (
                                 <Badge key={i} variant="secondary" className="text-xs">
-                                    {amenity}
+                                    {amenity.title}
                                 </Badge>
                             ))}
                             {property.amenities?.length > 3 && (

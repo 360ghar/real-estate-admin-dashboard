@@ -16,6 +16,8 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { EmptyState } from '@/components/ui/empty-state'
+import { LoadingState } from '@/components/ui/loading-state'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/hooks/use-toast'
@@ -161,7 +163,7 @@ export default function PmReportsPage() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             {rentRoll.isLoading ? (
-              <div className="text-muted-foreground">Loading…</div>
+              <LoadingState type="spinner" />
             ) : rentRoll.data?.length ? (
               <div className="space-y-2">
                 {rentRoll.data.slice(0, 15).map((r) => (
@@ -185,7 +187,7 @@ export default function PmReportsPage() {
                 ) : null}
               </div>
             ) : (
-              <div className="text-muted-foreground">No rent roll data.</div>
+              <EmptyState title="No rent roll data" />
             )}
           </CardContent>
         </Card>

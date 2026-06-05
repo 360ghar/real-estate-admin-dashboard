@@ -7,10 +7,8 @@ import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
 import { selectSelectedOwnerId } from '@/features/pm/slices/pmSlice'
+import type { InspectionChecklist, InspectionChecklistCreate, InspectionType } from '@/types/pm'
 import {
-  type InspectionChecklist,
-  type InspectionChecklistCreate,
-  type InspectionType,
   useCreatePmInspectionMutation,
   useListPmInspectionsQuery,
   useListPmLeasesQuery,
@@ -21,12 +19,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DataTable } from '@/components/ui/data-table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
+import { LoadingState } from '@/components/ui/loading-state'
+import { getErrorMessage } from '@/lib/errors'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { getErrorMessage } from '@/lib/errors'
 import { localInputToServerTimestamp, parseServerTimestamp } from '@/lib/dateTime'
 
 export default function PmInspectionsPage() {
@@ -261,7 +260,7 @@ export default function PmInspectionsPage() {
               <div className="flex flex-col items-center gap-2 py-8 text-center">
                 <AlertCircle className="h-8 w-8 text-destructive" />
                 <p className="text-sm text-muted-foreground">
-                  Failed to load inspections
+                  {getErrorMessage(inspections.error, 'Failed to load inspections')}
                 </p>
                 <Button
                   variant="outline"
@@ -272,7 +271,7 @@ export default function PmInspectionsPage() {
                 </Button>
               </div>
             ) : inspections.isLoading ? (
-              <div className="text-sm text-muted-foreground">Loading…</div>
+              <LoadingState type="spinner" />
             ) : inspections.data?.length ? (
               <>
                 <DataTable columns={columns} data={inspections.data} />

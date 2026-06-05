@@ -1,11 +1,12 @@
-import { useGetAgentProfileQuery } from '@/features/agents/api/agentsApi'
+import { useGetAgentProfileQuery, useGetAgentStatsQuery } from '@/features/agents/api/agentsApi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MapPin, Phone, Mail, Users, TrendingUp, Star } from 'lucide-react'
+import { Phone, Users, TrendingUp, Star } from 'lucide-react'
 
 const AgentProfilePage = () => {
   const { data: agentProfile, isLoading } = useGetAgentProfileQuery()
+  const { data: agentWithStats } = useGetAgentStatsQuery(agentProfile?.id || 0, { skip: !agentProfile?.id })
 
   if (isLoading) {
     return (
@@ -47,17 +48,18 @@ const AgentProfilePage = () => {
     )
   }
 
+  const stats = agentWithStats?.stats
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">My Profile</h1>
         <p className="text-muted-foreground">
-          Manage your agent profile and view your performance metrics.
+          View your agent profile and interaction metrics.
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        {/* Profile Info */}
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Profile Information</CardTitle>
@@ -66,12 +68,12 @@ const AgentProfilePage = () => {
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center">
                 <span className="text-xl font-semibold text-primary">
-                  {agentProfile.user?.full_name?.charAt(0)?.toUpperCase() || 'A'}
+                  {agentProfile.name?.charAt(0)?.toUpperCase() || 'A'}
                 </span>
               </div>
               <div>
-                <h3 className="text-lg font-semibold">{agentProfile.user?.full_name}</h3>
-                <p className="text-muted-foreground">Agent ID: {agentProfile.employee_id}</p>
+                <h3 className="text-lg font-semibold">{agentProfile.name}</h3>
+                <p className="text-muted-foreground capitalize">{agentProfile.agent_type}</p>
                 <Badge variant={agentProfile.is_available ? 'default' : 'secondary'}>
                   {agentProfile.is_available ? 'Available' : 'Unavailable'}
                 </Badge>
@@ -81,41 +83,35 @@ const AgentProfilePage = () => {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Mail className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{agentProfile.user?.email}</span>
-                </div>
-                <div className="flex items-center space-x-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{agentProfile.user?.phone}</span>
+                  <span className="text-sm">{agentProfile.contact_number || 'Not provided'}</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <MapPin className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">
-                    {agentProfile.service_areas?.join(', ') || 'No service areas specified'}
-                  </span>
+                  <Star className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Experience: {agentProfile.experience_level}</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">Total Users Assigned: {agentProfile.total_users_assigned}</span>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
-                  <Star className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Specialization: {agentProfile.specialization}</span>
-                </div>
-                <div className="flex items-center space-x-2">
                   <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Experience: {agentProfile.years_of_experience} years</span>
+                  <span className="text-sm">Satisfaction: {agentProfile.user_satisfaction_rating}</span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Max Clients: {agentProfile.max_clients}</span>
+                  <span className="text-sm text-muted-foreground">Created:</span>
+                  <span className="text-sm">{new Date(agentProfile.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
             </div>
 
-            {agentProfile.bio && (
+            {agentProfile.description && (
               <div>
-                <h4 className="font-medium mb-2">Bio</h4>
-                <p className="text-sm text-muted-foreground">{agentProfile.bio}</p>
+                <h4 className="font-medium mb-2">Description</h4>
+                <p className="text-sm text-muted-foreground">{agentProfile.description}</p>
               </div>
             )}
 
@@ -132,7 +128,6 @@ const AgentProfilePage = () => {
           </CardContent>
         </Card>
 
-        {/* Performance Stats */}
         <Card>
           <CardHeader>
             <CardTitle>Performance Metrics</CardTitle>
@@ -140,50 +135,40 @@ const AgentProfilePage = () => {
           <CardContent className="space-y-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-primary">
-                {agentProfile.performance_metrics?.client_satisfaction_score || 'N/A'}
+                {stats?.efficiency_score || 0}
               </div>
-              <p className="text-sm text-muted-foreground">Average Rating</p>
+              <p className="text-sm text-muted-foreground">Efficiency Score</p>
             </div>
 
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm">Properties Handled</span>
-                <span className="font-medium">{agentProfile.performance_metrics?.properties_handled || 0}</span>
+                <span className="text-sm">Active Conversations</span>
+                <span className="font-medium">{stats?.active_conversations || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Properties Sold</span>
-                <span className="font-medium">{agentProfile.performance_metrics?.total_properties_sold || 0}</span>
+                <span className="text-sm">Daily Interactions</span>
+                <span className="font-medium">{stats?.daily_interactions || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Total Commission Earned</span>
-                <span className="font-medium">
-                  ₹{agentProfile.performance_metrics?.total_commission_earned?.toLocaleString() || '0'}
-                </span>
+                <span className="text-sm">Weekly Interactions</span>
+                <span className="font-medium">{stats?.weekly_interactions || 0}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm">Commission Rate</span>
-                <span className="font-medium">{agentProfile.commission_rate}%</span>
+                <span className="text-sm">Assigned Users</span>
+                <span className="font-medium">{stats?.total_users_assigned || agentProfile.total_users_assigned}</span>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Working Hours */}
       {agentProfile.working_hours && (
         <Card>
           <CardHeader>
             <CardTitle>Working Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-2 md:grid-cols-2">
-              {Object.entries(agentProfile.working_hours).map(([day, hours]) => (
-                <div key={day} className="flex justify-between">
-                  <span className="capitalize">{day}</span>
-                  <span className="text-muted-foreground">{String(hours)}</span>
-                </div>
-              ))}
-            </div>
+            <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(agentProfile.working_hours, null, 2)}</pre>
           </CardContent>
         </Card>
       )}

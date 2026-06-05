@@ -1,26 +1,24 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { useGetAgentProfileQuery, useGetSystemWorkloadQuery, useGetSystemStatsQuery } from '@/features/agents/api/agentsApi'
+import { useGetAgentProfileQuery, useGetAgentStatsQuery } from '@/features/agents/api/agentsApi'
+import { useGetWorkloadQuery, useGetSystemStatsQuery } from '@/features/core/api/systemApi'
 import { useGetUserVisitsQuery } from '@/features/visits/api/visitsApi'
 import { useGetUserBookingsQuery } from '@/features/bookings/api/bookingsApi'
 import { useAuth } from '@/hooks/useAuth'
-import { Loader2, Users, Calendar, DollarSign, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
+import { Users, Calendar, DollarSign, AlertCircle, CheckCircle } from 'lucide-react'
+import { LoadingState } from '@/components/ui/loading-state'
 
 interface StatCardProps {
   title: string
   value: string | number
   description?: string
   icon: React.ReactNode
-  trend?: {
-    value: number
-    isPositive: boolean
-  }
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, description, icon, trend }) => (
+const StatCard: React.FC<StatCardProps> = ({ title, value, description, icon }) => (
   <Card>
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
       <CardTitle className="text-sm font-medium">{title}</CardTitle>
@@ -28,15 +26,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, icon, tr
     </CardHeader>
     <CardContent>
       <div className="text-2xl font-bold">{value}</div>
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-      {trend && (
-        <div className={`flex items-center text-xs ${trend.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-          <TrendingUp className={`h-3 w-3 mr-1 ${trend.isPositive ? 'rotate-0' : 'rotate-180'}`} />
-          {trend.value}% from last month
-        </div>
-      )}
+      {description && <p className="text-xs text-muted-foreground">{description}</p>}
     </CardContent>
   </Card>
 )
@@ -44,74 +34,47 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, icon, tr
 const AgentDashboardPage: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const [timeRange, setTimeRange] = useState<'week' | 'month' | 'year'>('month')
 
-  // Fetch agent profile
   const { data: agentProfile, isLoading: profileLoading } = useGetAgentProfileQuery()
+  const { data: agentStats } = useGetAgentStatsQuery(agentProfile?.id || 0, { skip: !agentProfile?.id })
 
-  // Fetch system workload and stats (admin only)
-  const { data: systemWorkload } = useGetSystemWorkloadQuery(undefined, {
+  const { data: systemWorkload } = useGetWorkloadQuery(undefined, {
     skip: user?.role !== 'admin'
   })
   const { data: systemStats } = useGetSystemStatsQuery(undefined, {
     skip: user?.role !== 'admin'
   })
 
-  // Fetch agent's visits and bookings
   const { data: visitsData } = useGetUserVisitsQuery()
   const { data: bookingsData } = useGetUserBookingsQuery()
 
   if (profileLoading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <LoadingState type="spinner" />
       </div>
     )
   }
 
-  const agentWorkload = systemWorkload?.find(w => w.agent_id === agentProfile?.id)
+  const stats = agentStats?.stats
+  const agentWorkload = systemWorkload?.find((w) => w.agent_id === agentProfile?.id)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Agent Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {agentProfile?.user?.full_name || 'Agent'}
+            Welcome back, {agentProfile?.name || 'Agent'}
           </p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant={timeRange === 'week' ? 'default' : 'outline'}
-            onClick={() => setTimeRange('week')}
-            size="sm"
-          >
-            Week
-          </Button>
-          <Button
-            variant={timeRange === 'month' ? 'default' : 'outline'}
-            onClick={() => setTimeRange('month')}
-            size="sm"
-          >
-            Month
-          </Button>
-          <Button
-            variant={timeRange === 'year' ? 'default' : 'outline'}
-            onClick={() => setTimeRange('year')}
-            size="sm"
-          >
-            Year
-          </Button>
         </div>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
-          title="Active Clients"
-          value={agentWorkload?.active_clients || 0}
-          description="Currently assigned clients"
+          title="Assigned Users"
+          value={stats?.total_users_assigned ?? agentProfile?.total_users_assigned ?? 0}
+          description="Users mapped to this agent"
           icon={<Users className="h-4 w-4 text-muted-foreground" />}
         />
         <StatCard
@@ -121,38 +84,33 @@ const AgentDashboardPage: React.FC = () => {
           icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
         />
         <StatCard
-          title="Active Bookings"
-          value={agentWorkload?.active_bookings || bookingsData?.upcoming || 0}
-          description="Ongoing property bookings"
+          title="Upcoming Bookings"
+          value={bookingsData?.upcoming || 0}
+          description="Bookings in progress"
           icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
         />
         <StatCard
-          title="Completion Rate"
-          value={`${agentProfile?.performance_metrics?.client_satisfaction_score || 0}%`}
-          description="Client satisfaction"
+          title="Satisfaction"
+          value={agentProfile?.user_satisfaction_rating ?? 0}
+          description="Current rating"
           icon={<CheckCircle className="h-4 w-4 text-muted-foreground" />}
-          trend={{
-            value: 12,
-            isPositive: true
-          }}
         />
       </div>
 
-      {/* Agent Profile Card */}
       <Card>
         <CardHeader>
           <CardTitle>Agent Profile</CardTitle>
-          <CardDescription>Your professional information and performance metrics</CardDescription>
+          <CardDescription>Your profile information and availability</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Employee ID</p>
-              <p className="text-lg">{agentProfile?.employee_id}</p>
+              <p className="text-sm font-medium text-muted-foreground">Name</p>
+              <p className="text-lg">{agentProfile?.name || '-'}</p>
             </div>
             <div>
-              <p className="text-sm font-medium text-muted-foreground">Specialization</p>
-              <p className="text-lg capitalize">{agentProfile?.specialization}</p>
+              <p className="text-sm font-medium text-muted-foreground">Contact</p>
+              <p className="text-lg">{agentProfile?.contact_number || '-'}</p>
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Agent Type</p>
@@ -162,98 +120,75 @@ const AgentDashboardPage: React.FC = () => {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Experience</p>
-              <p className="text-lg">{agentProfile?.years_of_experience} years</p>
+              <p className="text-lg capitalize">{agentProfile?.experience_level || '-'}</p>
             </div>
           </div>
 
           <div>
             <p className="text-sm font-medium text-muted-foreground mb-2">Availability</p>
-            <Badge variant={agentProfile?.is_available ? "default" : "secondary"}>
-              {agentProfile?.is_available ? "Available" : "Unavailable"}
+            <Badge variant={agentProfile?.is_available ? 'default' : 'secondary'}>
+              {agentProfile?.is_available ? 'Available' : 'Unavailable'}
             </Badge>
           </div>
 
-          <div>
-            <p className="text-sm font-medium text-muted-foreground mb-2">Service Areas</p>
-            <div className="flex flex-wrap gap-2">
-              {agentProfile?.service_areas?.map((area, index) => (
-                <Badge key={index} variant="outline">
-                  {area}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-sm font-medium text-muted-foreground mb-2">Languages</p>
-            <div className="flex flex-wrap gap-2">
-              {agentProfile?.languages?.map((lang, index) => (
-                <Badge key={index} variant="outline">
-                  {lang}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          {agentProfile?.bio && (
+          {agentProfile?.languages && agentProfile.languages.length > 0 && (
             <div>
-              <p className="text-sm font-medium text-muted-foreground mb-2">Bio</p>
-              <p className="text-sm">{agentProfile.bio}</p>
+              <p className="text-sm font-medium text-muted-foreground mb-2">Languages</p>
+              <div className="flex flex-wrap gap-2">
+                {agentProfile.languages.map((lang, index) => (
+                  <Badge key={index} variant="outline">
+                    {lang}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {agentProfile?.description && (
+            <div>
+              <p className="text-sm font-medium text-muted-foreground mb-2">Description</p>
+              <p className="text-sm">{agentProfile.description}</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Performance Metrics */}
       <Card>
         <CardHeader>
           <CardTitle>Performance Metrics</CardTitle>
-          <CardDescription>Your performance statistics and achievements</CardDescription>
+          <CardDescription>Service-level interaction stats</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">
-                {agentProfile?.performance_metrics?.total_properties_sold || 0}
-              </p>
-              <p className="text-sm text-muted-foreground">Properties Sold</p>
+              <p className="text-2xl font-bold text-primary">{stats?.active_conversations || 0}</p>
+              <p className="text-sm text-muted-foreground">Active Conversations</p>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">
-                {agentProfile?.performance_metrics?.total_properties_rented || 0}
-              </p>
-              <p className="text-sm text-muted-foreground">Properties Rented</p>
+              <p className="text-2xl font-bold text-primary">{stats?.daily_interactions || 0}</p>
+              <p className="text-sm text-muted-foreground">Daily Interactions</p>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">
-                {agentProfile?.performance_metrics?.visits_completed || 0}
-              </p>
-              <p className="text-sm text-muted-foreground">Visits Completed</p>
+              <p className="text-2xl font-bold text-primary">{stats?.weekly_interactions || 0}</p>
+              <p className="text-sm text-muted-foreground">Weekly Interactions</p>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">
-                {agentProfile?.performance_metrics?.bookings_converted || 0}
-              </p>
-              <p className="text-sm text-muted-foreground">Bookings Converted</p>
+              <p className="text-2xl font-bold text-primary">{stats?.efficiency_score || 0}</p>
+              <p className="text-sm text-muted-foreground">Efficiency Score</p>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">
-                {agentProfile?.commission_rate}%
-              </p>
-              <p className="text-sm text-muted-foreground">Commission Rate</p>
+              <p className="text-2xl font-bold text-primary">{agentProfile?.total_users_assigned || 0}</p>
+              <p className="text-sm text-muted-foreground">Total Users Assigned</p>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">
-                {agentWorkload?.utilization_rate ? Math.round(agentWorkload.utilization_rate * 100) : 0}%
-              </p>
-              <p className="text-sm text-muted-foreground">Utilization Rate</p>
+              <p className="text-2xl font-bold text-primary">{agentWorkload ? Math.round(agentWorkload.utilization_percentage) : 0}%</p>
+              <p className="text-sm text-muted-foreground">Utilization</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Workload Alert */}
-      {agentWorkload && agentWorkload.utilization_rate > 0.8 && (
+      {agentWorkload && agentWorkload.utilization_percentage > 80 && (
         <Card className="border-orange-200 bg-orange-50">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-orange-800">
@@ -261,13 +196,12 @@ const AgentDashboardPage: React.FC = () => {
               <p className="font-medium">High Workload Alert</p>
             </div>
             <p className="text-sm text-orange-700 mt-1">
-              Your current workload is at {Math.round(agentWorkload.utilization_rate * 100)}%. Consider managing your schedule effectively.
+              Your current workload is at {Math.round(agentWorkload.utilization_percentage)}%.
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Quick Actions */}
       <Card>
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
@@ -300,7 +234,6 @@ const AgentDashboardPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* System Stats (Admin Only) */}
       {user?.role === 'admin' && systemStats && (
         <Card>
           <CardHeader>
@@ -318,14 +251,12 @@ const AgentDashboardPage: React.FC = () => {
                 <p className="text-sm text-muted-foreground">Active Agents</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
-                <p className="text-2xl font-bold text-primary">
-                  {systemStats.average_clients_per_agent.toFixed(1)}
-                </p>
-                <p className="text-sm text-muted-foreground">Avg Clients/Agent</p>
+                <p className="text-2xl font-bold text-primary">{systemStats.total_users_served}</p>
+                <p className="text-sm text-muted-foreground">Total Users Served</p>
               </div>
               <div className="text-center p-4 border rounded-lg">
-                <p className="text-2xl font-bold text-primary">{systemStats.total_clients_assigned}</p>
-                <p className="text-sm text-muted-foreground">Total Clients</p>
+                <p className="text-2xl font-bold text-primary">{systemStats.system_satisfaction_score.toFixed(2)}</p>
+                <p className="text-sm text-muted-foreground">System Satisfaction</p>
               </div>
             </div>
           </CardContent>

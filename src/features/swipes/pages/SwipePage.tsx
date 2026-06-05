@@ -3,8 +3,9 @@ import { useGetRecommendationsQuery } from '@/features/properties/api/properties
 import { useSwipePropertyMutation } from '@/features/swipes/api/swipesApi'
 import SwipeCard from '../components/SwipeCard'
 import { Button } from '@/components/ui/button'
-import { RotateCcw, Loader2 } from 'lucide-react'
+import { RotateCcw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { LoadingState } from '@/components/ui/loading-state'
 import { AnimatePresence } from 'framer-motion'
 
 const SwipePage = () => {
@@ -49,7 +50,7 @@ const SwipePage = () => {
     if (isLoading) {
         return (
             <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <LoadingState type="spinner" />
             </div>
         )
     }

@@ -1,610 +1,55 @@
 import { api } from '@/store/api'
-
-export type ManagedPropertyStatus = 'draft' | 'active' | 'archived'
-
-export type TenantStatus = 'applicant' | 'approved' | 'active' | 'notice_period' | 'vacated' | 'rejected'
-
-export type LeaseStatus =
-  | 'draft'
-  | 'pending_signature'
-  | 'active'
-  | 'expiring_soon'
-  | 'expired'
-  | 'terminated'
-  | 'renewed'
-
-export type RentChargeStatus = 'pending' | 'partial' | 'paid' | 'overdue' | 'waived'
-
-export type ExpenseCategory =
-  | 'maintenance'
-  | 'repairs'
-  | 'insurance'
-  | 'property_tax'
-  | 'hoa'
-  | 'utilities'
-  | 'marketing'
-  | 'legal'
-  | 'other'
-
-export type MaintenanceUrgency = 'emergency' | 'high' | 'medium' | 'low'
-
-export type MaintenanceCategory =
-  | 'plumbing'
-  | 'electrical'
-  | 'hvac'
-  | 'appliance'
-  | 'structural'
-  | 'pest_control'
-  | 'cleaning'
-  | 'other'
-
-export type MaintenanceRequestStatus = 'open' | 'in_review' | 'work_order_created' | 'resolved' | 'closed'
-
-export type WorkOrderStatus = 'created' | 'assigned' | 'in_progress' | 'completed' | 'closed' | 'cancelled'
-
-export type DocumentType =
-  | 'lease_agreement'
-  | 'id_proof'
-  | 'address_proof'
-  | 'income_proof'
-  | 'inspection_report'
-  | 'receipt'
-  | 'invoice'
-  | 'property_deed'
-  | 'insurance_policy'
-  | 'other'
-
-export type InspectionType = 'move_in' | 'move_out' | 'routine'
-
-export interface DashboardOverview {
-  total_properties: number
-  occupied_properties: number
-  vacant_properties: number
-  under_maintenance_properties: number
-  monthly_revenue_current: number
-  monthly_revenue_previous: number
-  outstanding_rent_total: number
-  upcoming_expenses_total: number
-}
-
-export interface ActivityItem {
-  type: string
-  at: string
-  id?: number | null
-  property_id?: number | null
-  lease_id?: number | null
-  amount?: number | null
-  status?: string | null
-}
-
-export type PropertyPurpose = 'buy' | 'rent' | 'short_stay'
-export type PropertyType = 'house' | 'apartment' | 'builder_floor' | 'room'
-export type PropertyStatus = 'available' | 'sold' | 'rented' | 'under_offer' | 'maintenance'
-
-export interface PmPropertyImage {
-  id: number
-  property_id: number
-  image_url: string
-  caption?: string | null
-  image_category?: string | null
-  display_order?: number | null
-  is_main_image?: boolean | null
-}
-
-export interface PmPropertyAmenity {
-  id: number
-  amenity_id: number
-  title?: string | null
-  icon?: string | null
-  category?: string | null
-  is_active?: boolean | null
-}
-
-export interface PmProperty {
-  id: number
-  title: string
-  description?: string | null
-  property_type: PropertyType
-  purpose: PropertyPurpose
-  status: PropertyStatus
-
-  latitude?: number | null
-  longitude?: number | null
-  city?: string | null
-  state?: string | null
-  country?: string | null
-  pincode?: string | null
-  locality?: string | null
-  sub_locality?: string | null
-  landmark?: string | null
-  full_address?: string | null
-
-  base_price: number
-  monthly_rent?: number | null
-  security_deposit?: number | null
-  maintenance_charges?: number | null
-
-  area_sqft?: number | null
-  bedrooms?: number | null
-  bathrooms?: number | null
-
-  owner_id: number
-  owner_name?: string | null
-  owner_contact?: string | null
-
-  is_managed: boolean
-  management_status?: ManagedPropertyStatus | null
-  payment_due_day?: number | null
-  grace_period_days?: number | null
-  late_fee_policy?: Record<string, unknown> | null
-  current_lease_id?: number | null
-  current_tenant_id?: number | null
-
-  images?: PmPropertyImage[] | null
-  amenities?: PmPropertyAmenity[] | null
-
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface PropertyCreate {
-  title: string
-  description?: string
-  property_type: PropertyType
-  purpose: PropertyPurpose
-  base_price: number
-  latitude?: number
-  longitude?: number
-  city?: string
-  state?: string
-  country?: string
-  pincode?: string
-  locality?: string
-  sub_locality?: string
-  landmark?: string
-  full_address?: string
-  area_type?: string
-  area_sqft?: number
-  bedrooms?: number
-  bathrooms?: number
-  balconies?: number
-  parking_spaces?: number
-  video_urls?: string[]
-  google_street_view_url?: string
-  floor_plan_url?: string
-  video_tour_url?: string
-  price_per_sqft?: number
-  monthly_rent?: number
-  daily_rate?: number
-  security_deposit?: number
-  maintenance_charges?: number
-  floor_number?: number
-  total_floors?: number
-  age_of_property?: number
-  max_occupancy?: number
-  minimum_stay_days?: number
-  amenity_ids?: number[]
-  features?: string[]
-  main_image_url?: string
-  virtual_tour_url?: string
-  available_from?: string
-  calendar_data?: Record<string, unknown>
-  tags?: string[]
-  owner_name?: string
-  owner_contact?: string
-  builder_name?: string
-  search_keywords?: string
-}
-
-export interface ManagedPropertyUpdate {
-  management_status?: ManagedPropertyStatus | null
-  payment_due_day?: number | null
-  grace_period_days?: number | null
-  late_fee_policy?: Record<string, unknown> | null
-}
-
-export interface Lease {
-  id: number
-  property_id: number
-  owner_id: number
-  tenant_user_id?: number | null
-  tenant_name?: string | null
-  tenant_phone?: string | null
-  tenant_email?: string | null
-  status: LeaseStatus
-  start_date: string
-  end_date: string
-  monthly_rent: number
-  security_deposit: number
-  late_fee_amount?: number | null
-  late_fee_percentage?: number | null
-  grace_period_days: number
-  payment_due_day: number
-  lease_terms?: Record<string, unknown> | null
-  special_clauses?: string | null
-  signed_by_tenant_at?: string | null
-  signed_by_owner_at?: string | null
-  lease_document_id?: number | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface LeaseCreate {
-  owner_id?: number | null
-  property_id: number
-  tenant_user_id?: number | null
-  tenant_name?: string | null
-  tenant_phone?: string | null
-  tenant_email?: string | null
-  status?: LeaseStatus
-  start_date: string
-  end_date: string
-  monthly_rent: number
-  security_deposit: number
-  late_fee_amount?: number | null
-  late_fee_percentage?: number | null
-  grace_period_days?: number
-  payment_due_day?: number
-  lease_terms?: Record<string, unknown> | null
-  special_clauses?: string | null
-  lease_document_id?: number | null
-}
-
-export interface LeaseUploadSigned {
-  lease_document_id: number
-  signed_by_owner?: boolean
-  signed_by_tenant?: boolean
-}
-
-export interface LeaseRenew {
-  start_date: string
-  end_date: string
-  monthly_rent?: number | null
-  security_deposit?: number | null
-  make_active?: boolean
-}
-
-export interface RentCharge {
-  id: number
-  lease_id: number
-  property_id: number
-  owner_id: number
-  tenant_user_id?: number | null
-  billing_month: string
-  period_start: string
-  period_end: string
-  due_date: string
-  amount_due: number
-  late_fee_assessed: number
-  status: RentChargeStatus
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface RentChargeWithTotals {
-  charge: RentCharge
-  amount_paid_total: number
-  amount_due_total: number
-  outstanding: number
-}
-
-export interface RentChargeGenerateRequest {
-  owner_id?: number | null
-  lease_id?: number | null
-  start_month?: string | null
-  months?: number
-}
-
-export interface RentPayment {
-  id: number
-  charge_id: number
-  lease_id: number
-  property_id: number
-  owner_id: number
-  tenant_user_id?: number | null
-  paid_at: string
-  amount_paid: number
-  payment_method?: string | null
-  reference?: string | null
-  notes?: string | null
-  receipt_document_id?: number | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface RentPaymentCreate {
-  charge_id: number
-  amount_paid: number
-  paid_at?: string | null
-  payment_method?: string | null
-  reference?: string | null
-  notes?: string | null
-  receipt_document_id?: number | null
-}
-
-export interface Expense {
-  id: number
-  property_id: number
-  owner_id: number
-  category: ExpenseCategory
-  amount: number
-  expense_date: string
-  description?: string | null
-  notes?: string | null
-  receipt_document_id?: number | null
-  is_recurring: boolean
-  recurrence_rule?: Record<string, unknown> | null
-  next_due_date?: string | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface ExpenseCreate {
-  owner_id?: number | null
-  property_id: number
-  category: ExpenseCategory
-  amount: number
-  expense_date: string
-  description?: string | null
-  notes?: string | null
-  receipt_document_id?: number | null
-  is_recurring?: boolean
-  recurrence_rule?: Record<string, unknown> | null
-  next_due_date?: string | null
-}
-
-export interface ExpenseUpdate {
-  property_id?: number | null
-  category?: ExpenseCategory | null
-  amount?: number | null
-  expense_date?: string | null
-  description?: string | null
-  notes?: string | null
-  receipt_document_id?: number | null
-  is_recurring?: boolean | null
-  recurrence_rule?: Record<string, unknown> | null
-  next_due_date?: string | null
-}
-
-export interface MaintenanceRequest {
-  id: number
-  property_id: number
-  lease_id?: number | null
-  owner_id: number
-  tenant_user_id?: number | null
-  category: MaintenanceCategory
-  urgency: MaintenanceUrgency
-  title: string
-  description?: string | null
-  preferred_contact_method?: string | null
-  availability_notes?: string | null
-  request_status: MaintenanceRequestStatus
-  assigned_agent_id?: number | null
-  work_order_status?: WorkOrderStatus | null
-  priority?: string | null
-  estimated_cost?: number | null
-  actual_cost?: number | null
-  scheduled_for?: string | null
-  completed_at?: string | null
-  closed_at?: string | null
-  completion_notes?: string | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface MaintenanceRequestCreate {
-  property_id: number
-  category: MaintenanceCategory
-  urgency: MaintenanceUrgency
-  title: string
-  description?: string | null
-  preferred_contact_method?: string | null
-  availability_notes?: string | null
-}
-
-export interface MaintenanceRequestUpdate {
-  request_status?: MaintenanceRequestStatus | null
-  assigned_agent_id?: number | null
-  work_order_status?: WorkOrderStatus | null
-  priority?: string | null
-  estimated_cost?: number | null
-  actual_cost?: number | null
-  scheduled_for?: string | null
-  completed_at?: string | null
-  closed_at?: string | null
-  completion_notes?: string | null
-}
-
-export interface Document {
-  id: number
-  owner_id: number
-  user_id?: number | null
-  property_id?: number | null
-  lease_id?: number | null
-  maintenance_request_id?: number | null
-  rental_application_id?: number | null
-  document_type: DocumentType
-  title: string
-  file_url: string
-  file_path?: string | null
-  mime_type?: string | null
-  file_size?: number | null
-  shared_with_tenant: boolean
-  shared_with_agent: boolean
-  version: number
-  replaces_document_id?: number | null
-  created_by_user_id?: number | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface DocumentUpdate {
-  title?: string | null
-  shared_with_tenant?: boolean | null
-  shared_with_agent?: boolean | null
-}
-
-export interface DocumentDownload {
-  url: string
-}
-
-export interface InspectionChecklist {
-  id: number
-  property_id: number
-  lease_id: number
-  owner_id: number
-  inspection_type: InspectionType
-  conducted_by_user_id: number
-  conducted_at: string
-  rooms_data?: Record<string, unknown> | null
-  overall_notes?: string | null
-  tenant_signature_document_id?: number | null
-  owner_signature_document_id?: number | null
-  signed_by_tenant_at?: string | null
-  signed_by_owner_at?: string | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface InspectionChecklistCreate {
-  owner_id?: number | null
-  lease_id: number
-  inspection_type: InspectionType
-  rooms_data?: Record<string, unknown> | null
-  overall_notes?: string | null
-  conducted_at?: string | null
-}
-
-export interface InspectionSign {
-  tenant_signature_document_id?: number | null
-  owner_signature_document_id?: number | null
-}
-
-export interface RentRollItem {
-  property_id: number
-  title: string
-  occupancy: string
-  tenant_user_id?: number | null
-  monthly_rent?: number | null
-  lease_end_date?: string | null
-}
-
-export interface IncomeReport {
-  total_income: number
-  start?: string | null
-  end?: string | null
-}
-
-export interface ExpenseReport {
-  total_expenses: number
-  start?: string | null
-  end?: string | null
-}
-
-export interface PnLReport {
-  total_income: number
-  total_expenses: number
-  net_income: number
-  start?: string | null
-  end?: string | null
-}
-
-export interface OccupancyReport {
-  total: number
-  occupied: number
-  vacant: number
-}
-
-export interface MaintenanceReport {
-  total_requests: number
-}
-
-export interface TenantSummary {
-  user_id: number
-  full_name?: string | null
-  phone?: string | null
-  email?: string | null
-  active_leases_count: number
-}
-
-export interface TenantDetail {
-  user_id: number
-  full_name?: string | null
-  phone?: string | null
-  email?: string | null
-  leases: Lease[]
-}
-
-export interface OwnerRMAssignmentCreate {
-  owner_user_id?: number | null
-  agent_id?: number | null
-}
-
-export interface OwnerRMAssignmentUpdate {
-  agent_id?: number | null
-}
-
-export interface OwnerRMAssignmentResponse {
-  owner_user_id: number
-  agent_id?: number | null
-  agent?: Record<string, unknown> | null
-}
-
-export interface RentalApplicationForm {
-  id: number
-  owner_id: number
-  property_id?: number | null
-  title: string
-  description?: string | null
-  slug: string
-  is_active: boolean
-  application_fee_amount?: number | null
-  required_document_types?: Record<string, unknown> | null
-  questions?: Record<string, unknown> | null
-  config?: Record<string, unknown> | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface RentalApplicationFormCreate {
-  owner_id?: number | null
-  property_id?: number | null
-  title: string
-  description?: string | null
-  application_fee_amount?: number | null
-  required_document_types?: Record<string, unknown> | null
-  questions?: Record<string, unknown> | null
-  config?: Record<string, unknown> | null
-}
-
-export interface RentalApplicationDecision {
-  decision: TenantStatus
-}
-
-export interface RentalApplication {
-  id: number
-  form_id: number
-  property_id: number
-  owner_id: number
-  status: TenantStatus
-  applicant_user_id?: number | null
-  applicant_full_name?: string | null
-  applicant_phone?: string | null
-  applicant_email?: string | null
-  answers?: Record<string, unknown> | null
-  application_data?: Record<string, unknown> | null
-  emergency_contacts?: Record<string, unknown> | null
-  submitted_at?: string | null
-  decision_at?: string | null
-  decided_by_user_id?: number | null
-  created_at: string
-  updated_at?: string | null
-}
-
-export interface ManagedPropertyDetail {
-  property: PmProperty
-  active_lease?: Lease | null
-}
+import type {
+  ManagedPropertyStatus,
+  TenantStatus,
+  LeaseStatus,
+  RentChargeStatus,
+  ExpenseCategory,
+  MaintenanceRequestStatus,
+  WorkOrderStatus,
+  DocumentType,
+  DashboardOverview,
+  ActivityItem,
+  PmProperty,
+  PmPropertyCreate,
+  ManagedPropertyUpdate,
+  Lease,
+  LeaseCreate,
+  LeaseUploadSigned,
+  LeaseRenew,
+  RentChargeWithTotals,
+  RentChargeGenerateRequest,
+  RentPayment,
+  RentPaymentCreate,
+  Expense,
+  ExpenseCreate,
+  ExpenseUpdate,
+  MaintenanceRequest,
+  MaintenanceRequestCreate,
+  MaintenanceRequestUpdate,
+  Document,
+  DocumentUpdate,
+  DocumentDownload,
+  InspectionChecklist,
+  InspectionChecklistCreate,
+  InspectionSign,
+  RentRollItem,
+  IncomeReport,
+  ExpenseReport,
+  PnLReport,
+  OccupancyReport,
+  MaintenanceReport,
+  TenantSummary,
+  TenantDetail,
+  OwnerRMAssignmentCreate,
+  OwnerRMAssignmentUpdate,
+  OwnerRMAssignmentResponse,
+  RentalApplicationForm,
+  RentalApplicationFormCreate,
+  RentalApplicationDecision,
+  RentalApplication,
+  ManagedPropertyDetail,
+} from '@/types/pm'
 
 export const pmApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -613,7 +58,8 @@ export const pmApi = api.injectEndpoints({
         url: '/pm/dashboard/overview',
         params: owner_id ? { owner_id } : undefined,
       }),
-      providesTags: ['PmDashboard'],
+      providesTags: [{type: 'PmDashboard' as const, id: 'LIST'}],
+      keepUnusedDataFor: 300,
     }),
 
     getPmDashboardActivity: builder.query<ActivityItem[], { owner_id?: number | null; limit?: number }>({
@@ -621,7 +67,8 @@ export const pmApi = api.injectEndpoints({
         url: '/pm/dashboard/activity',
         params: { owner_id: owner_id || undefined, limit: limit ?? 20 },
       }),
-      providesTags: ['PmDashboard'],
+      providesTags: [{type: 'PmDashboard' as const, id: 'LIST'}],
+      keepUnusedDataFor: 300,
     }),
 
     listPmProperties: builder.query<
@@ -647,7 +94,7 @@ export const pmApi = api.injectEndpoints({
     createPmProperty: builder.mutation<
       PmProperty,
       {
-        data: PropertyCreate
+        data: PmPropertyCreate
         owner_id?: number | null
         management_status?: ManagedPropertyStatus
         payment_due_day?: number
@@ -665,7 +112,7 @@ export const pmApi = api.injectEndpoints({
         },
         body: data,
       }),
-      invalidatesTags: [{ type: 'PmProperty', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmProperty', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     getPmPropertyDetail: builder.query<ManagedPropertyDetail, number>({
@@ -679,7 +126,46 @@ export const pmApi = api.injectEndpoints({
         method: 'PATCH',
         body: payload,
       }),
-      invalidatesTags: (_res, _e, { property_id }) => [{ type: 'PmProperty', id: property_id }, { type: 'PmProperty', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: (_res, _e, { property_id }) => [{ type: 'PmProperty', id: property_id }, { type: 'PmProperty', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
+      onQueryStarted: async ({ property_id, payload }, lifecycle) => {
+        const { dispatch, queryFulfilled } = lifecycle
+        // Patch every cached list entry (any filter combination) — not just a
+        // single hard-coded arg key that no subscriber actually uses.
+        const listPatches = pmApi.util
+          .selectInvalidatedBy(lifecycle.getState(), [{ type: 'PmProperty', id: 'LIST' }])
+          .filter((entry) => entry.endpointName === 'listPmProperties')
+          .map((entry) =>
+            dispatch(
+              pmApi.util.updateQueryData(
+                'listPmProperties',
+                entry.originalArgs as Parameters<typeof pmApi.endpoints.listPmProperties.initiate>[0],
+                (draft) => {
+                  const item = draft.find((p) => p.id === property_id)
+                  if (item) {
+                    if (payload.management_status !== undefined && payload.management_status !== null) item.management_status = payload.management_status
+                    if (payload.payment_due_day !== undefined && payload.payment_due_day !== null) item.payment_due_day = payload.payment_due_day
+                    if (payload.grace_period_days !== undefined && payload.grace_period_days !== null) item.grace_period_days = payload.grace_period_days
+                    if (payload.late_fee_policy !== undefined && payload.late_fee_policy !== null) item.late_fee_policy = payload.late_fee_policy
+                  }
+                },
+              ),
+            ),
+          )
+        const detailPatch = dispatch(
+          pmApi.util.updateQueryData('getPmPropertyDetail', property_id, (draft) => {
+            if (payload.management_status !== undefined && payload.management_status !== null) draft.property.management_status = payload.management_status
+            if (payload.payment_due_day !== undefined && payload.payment_due_day !== null) draft.property.payment_due_day = payload.payment_due_day
+            if (payload.grace_period_days !== undefined && payload.grace_period_days !== null) draft.property.grace_period_days = payload.grace_period_days
+            if (payload.late_fee_policy !== undefined && payload.late_fee_policy !== null) draft.property.late_fee_policy = payload.late_fee_policy
+          })
+        )
+        try {
+          await queryFulfilled
+        } catch {
+          listPatches.forEach((p) => p.undo())
+          detailPatch.undo()
+        }
+      },
     }),
 
     listPmLeases: builder.query<
@@ -714,7 +200,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: [{ type: 'PmLease', id: 'LIST' }, { type: 'PmProperty', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmLease', id: 'LIST' }, { type: 'PmProperty', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     uploadSignedPmLease: builder.mutation<Lease, { lease_id: number; payload: LeaseUploadSigned }>({
@@ -732,7 +218,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: (_res, _e, { lease_id }) => [{ type: 'PmLease', id: lease_id }, { type: 'PmLease', id: 'LIST' }, { type: 'PmProperty', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: (_res, _e, { lease_id }) => [{ type: 'PmLease', id: lease_id }, { type: 'PmLease', id: 'LIST' }, { type: 'PmProperty', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     terminatePmLease: builder.mutation<Lease, number>({
@@ -740,7 +226,21 @@ export const pmApi = api.injectEndpoints({
         url: `/pm/leases/${lease_id}/terminate`,
         method: 'POST',
       }),
-      invalidatesTags: (_res, _e, lease_id) => [{ type: 'PmLease', id: lease_id }, { type: 'PmLease', id: 'LIST' }, { type: 'PmProperty', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: (_res, _e, lease_id) => [{ type: 'PmLease', id: lease_id }, { type: 'PmLease', id: 'LIST' }, { type: 'PmProperty', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}, {type: 'PmTenant', id: 'LIST'}],
+      onQueryStarted: async (lease_id, { dispatch, queryFulfilled }) => {
+        // Optimistically reflect termination on the lease detail (keyed by the
+        // id we have). The list refreshes via the PmLease LIST invalidation.
+        const patchResult = dispatch(
+          pmApi.util.updateQueryData('getPmLease', lease_id, (draft) => {
+            draft.status = 'terminated'
+          })
+        )
+        try {
+          await queryFulfilled
+        } catch {
+          patchResult.undo()
+        }
+      },
     }),
 
     generateRentCharges: builder.mutation<{ created: number; skipped: number }, RentChargeGenerateRequest>({
@@ -749,7 +249,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: [{ type: 'PmRentCharge', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmRentCharge', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     listRentCharges: builder.query<
@@ -783,7 +283,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: [{ type: 'PmRentPayment', id: 'LIST' }, { type: 'PmRentCharge', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmRentPayment', id: 'LIST' }, { type: 'PmRentCharge', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     listRentPayments: builder.query<
@@ -816,7 +316,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: [{ type: 'PmExpense', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmExpense', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     listPmExpenses: builder.query<
@@ -847,7 +347,7 @@ export const pmApi = api.injectEndpoints({
         method: 'PATCH',
         body: payload,
       }),
-      invalidatesTags: (_res, _e, { expense_id }) => [{ type: 'PmExpense', id: expense_id }, { type: 'PmExpense', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: (_res, _e, { expense_id }) => [{ type: 'PmExpense', id: expense_id }, { type: 'PmExpense', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     createMaintenanceRequest: builder.mutation<MaintenanceRequest, MaintenanceRequestCreate>({
@@ -856,7 +356,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: [{ type: 'PmMaintenanceRequest', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmMaintenanceRequest', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     listMaintenanceRequests: builder.query<
@@ -901,7 +401,39 @@ export const pmApi = api.injectEndpoints({
         method: 'PATCH',
         body: payload,
       }),
-      invalidatesTags: (_res, _e, { request_id }) => [{ type: 'PmMaintenanceRequest', id: request_id }, { type: 'PmMaintenanceRequest', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: (_res, _e, { request_id }) => [{ type: 'PmMaintenanceRequest', id: request_id }, { type: 'PmMaintenanceRequest', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
+      onQueryStarted: async ({ request_id, payload }, lifecycle) => {
+        const { dispatch, queryFulfilled } = lifecycle
+        const patches = pmApi.util
+          .selectInvalidatedBy(lifecycle.getState(), [{ type: 'PmMaintenanceRequest', id: 'LIST' }])
+          .filter((entry) => entry.endpointName === 'listMaintenanceRequests')
+          .map((entry) =>
+            dispatch(
+              pmApi.util.updateQueryData(
+                'listMaintenanceRequests',
+                entry.originalArgs as Parameters<typeof pmApi.endpoints.listMaintenanceRequests.initiate>[0],
+                (draft) => {
+                  const item = draft.find((r) => r.id === request_id)
+                  if (item) {
+                    if (payload.request_status !== undefined && payload.request_status !== null) item.request_status = payload.request_status
+                    if (payload.work_order_status !== undefined && payload.work_order_status !== null) item.work_order_status = payload.work_order_status
+                    if (payload.priority !== undefined && payload.priority !== null) item.priority = payload.priority
+                    if (payload.assigned_agent_id !== undefined && payload.assigned_agent_id !== null) item.assigned_agent_id = payload.assigned_agent_id
+                    if (payload.estimated_cost !== undefined && payload.estimated_cost !== null) item.estimated_cost = payload.estimated_cost
+                    if (payload.actual_cost !== undefined && payload.actual_cost !== null) item.actual_cost = payload.actual_cost
+                    if (payload.scheduled_for !== undefined && payload.scheduled_for !== null) item.scheduled_for = payload.scheduled_for
+                    if (payload.completion_notes !== undefined && payload.completion_notes !== null) item.completion_notes = payload.completion_notes
+                  }
+                },
+              ),
+            ),
+          )
+        try {
+          await queryFulfilled
+        } catch {
+          patches.forEach((p) => p.undo())
+        }
+      },
     }),
 
     uploadPmDocument: builder.mutation<Document, FormData>({
@@ -910,7 +442,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: formData,
       }),
-      invalidatesTags: [{ type: 'PmDocument', id: 'LIST' }, 'PmDashboard'],
+      invalidatesTags: [{ type: 'PmDocument', id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     listPmDocuments: builder.query<
@@ -1008,6 +540,7 @@ export const pmApi = api.injectEndpoints({
         url: '/pm/reports/rent-roll',
         params: owner_id ? { owner_id } : undefined,
       }),
+      providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
     getIncomeReport: builder.query<IncomeReport, { owner_id?: number | null; start?: string; end?: string }>({
@@ -1019,6 +552,7 @@ export const pmApi = api.injectEndpoints({
           end,
         },
       }),
+      providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
     getExpenseReport: builder.query<ExpenseReport, { owner_id?: number | null; start?: string; end?: string }>({
@@ -1030,6 +564,7 @@ export const pmApi = api.injectEndpoints({
           end,
         },
       }),
+      providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
     getPnLReport: builder.query<PnLReport, { owner_id?: number | null; start?: string; end?: string }>({
@@ -1041,6 +576,7 @@ export const pmApi = api.injectEndpoints({
           end,
         },
       }),
+      providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
     getOccupancyReport: builder.query<OccupancyReport, { owner_id?: number | null }>({
@@ -1048,6 +584,7 @@ export const pmApi = api.injectEndpoints({
         url: '/pm/reports/occupancy',
         params: owner_id ? { owner_id } : undefined,
       }),
+      providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
     getMaintenanceReport: builder.query<MaintenanceReport, { owner_id?: number | null }>({
@@ -1055,6 +592,7 @@ export const pmApi = api.injectEndpoints({
         url: '/pm/reports/maintenance',
         params: owner_id ? { owner_id } : undefined,
       }),
+      providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
     listPmTenants: builder.query<TenantSummary[], { owner_id?: number | null; limit?: number; offset?: number }>({
@@ -1066,6 +604,7 @@ export const pmApi = api.injectEndpoints({
           offset,
         },
       }),
+      providesTags: [{type: 'PmProperty', id: 'TENANTS'}],
     }),
 
     getPmTenantDetail: builder.query<TenantDetail, { tenant_user_id: number; owner_id?: number | null }>({
@@ -1073,6 +612,7 @@ export const pmApi = api.injectEndpoints({
         url: `/pm/tenants/${tenant_user_id}`,
         params: { owner_id: owner_id || undefined },
       }),
+      providesTags: (_result, _error, arg) => [{type: 'PmProperty', id: 'TENANTS'}, {type: 'PmProperty', id: `TENANT-${arg.tenant_user_id}`}],
     }),
 
     createRMAssignment: builder.mutation<OwnerRMAssignmentResponse, OwnerRMAssignmentCreate>({
@@ -1081,7 +621,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: ['PmAssignment', { type: 'User', id: 'LIST' }],
+      invalidatesTags: [{type: 'PmAssignment', id: 'LIST'}, { type: 'User', id: 'LIST' }],
     }),
 
     listRMAssignments: builder.query<OwnerRMAssignmentResponse[], { owner_id?: number | null }>({
@@ -1089,7 +629,7 @@ export const pmApi = api.injectEndpoints({
         url: '/pm/assignments/',
         params: owner_id ? { owner_id } : undefined,
       }),
-      providesTags: ['PmAssignment'],
+      providesTags: [{type: 'PmAssignment' as const, id: 'LIST'}],
     }),
 
     updateRMAssignment: builder.mutation<
@@ -1102,7 +642,7 @@ export const pmApi = api.injectEndpoints({
         body: payload,
       }),
       invalidatesTags: (_res, _e, { owner_user_id }) => [
-        'PmAssignment',
+        {type: 'PmAssignment', id: 'LIST'},
         { type: 'User', id: owner_user_id },
         { type: 'User', id: 'LIST' },
       ],
@@ -1114,7 +654,7 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: ['PmApplicationForm'],
+      invalidatesTags: [{type: 'PmApplicationForm', id: 'LIST'}],
     }),
 
     listApplicationForms: builder.query<
@@ -1131,7 +671,7 @@ export const pmApi = api.injectEndpoints({
           offset,
         },
       }),
-      providesTags: ['PmApplicationForm'],
+      providesTags: [{type: 'PmApplicationForm' as const, id: 'LIST'}],
     }),
 
     getApplicationForm: builder.query<RentalApplicationForm, number>({
@@ -1163,7 +703,7 @@ export const pmApi = api.injectEndpoints({
           offset,
         },
       }),
-      providesTags: ['PmApplication'],
+      providesTags: [{type: 'PmApplication' as const, id: 'LIST'}],
     }),
 
     getApplication: builder.query<RentalApplication, number>({
@@ -1177,7 +717,33 @@ export const pmApi = api.injectEndpoints({
         method: 'POST',
         body: payload,
       }),
-      invalidatesTags: ['PmApplication'],
+      invalidatesTags: [{type: 'PmApplication', id: 'LIST'}],
+      onQueryStarted: async ({ application_id, payload }, lifecycle) => {
+        const { dispatch, queryFulfilled } = lifecycle
+        const patches = pmApi.util
+          .selectInvalidatedBy(lifecycle.getState(), [{ type: 'PmApplication', id: 'LIST' }])
+          .filter((entry) => entry.endpointName === 'listApplications')
+          .map((entry) =>
+            dispatch(
+              pmApi.util.updateQueryData(
+                'listApplications',
+                entry.originalArgs as Parameters<typeof pmApi.endpoints.listApplications.initiate>[0],
+                (draft) => {
+                  const item = draft.find((a) => a.id === application_id)
+                  if (item) {
+                    item.status = payload.decision
+                    item.decision_at = new Date().toISOString()
+                  }
+                },
+              ),
+            ),
+          )
+        try {
+          await queryFulfilled
+        } catch {
+          patches.forEach((p) => p.undo())
+        }
+      },
     }),
   }),
 })

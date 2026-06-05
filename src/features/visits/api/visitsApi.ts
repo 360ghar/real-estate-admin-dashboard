@@ -26,31 +26,31 @@ export const visitsApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: ['Visit', 'Property']
+      invalidatesTags: [{type: 'Visit', id: 'LIST'}, {type: 'Property', id: 'LIST'}]
     }),
 
     // Get current user's visits
     getUserVisits: builder.query<VisitList, void>({
       query: () => '/visits/',
-      providesTags: ['Visit']
+      providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get upcoming visits for current user
     getUpcomingVisits: builder.query<{ visits: Visit[]; total: number }, void>({
       query: () => '/visits/upcoming/',
-      providesTags: ['Visit']
+      providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get past visits for current user
     getPastVisits: builder.query<{ visits: Visit[]; total: number }, void>({
       query: () => '/visits/past/',
-      providesTags: ['Visit']
+      providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get visit details
     getVisit: builder.query<Visit, number>({
       query: (id) => `/visits/${id}`,
-      providesTags: (res, _e, id) => [{ type: 'Visit', id }]
+      providesTags: (_result, _error, arg) => [{type: 'Visit' as const, id: arg}]
     }),
 
     // Update visit details
@@ -99,6 +99,7 @@ export const visitsApi = api.injectEndpoints({
               { type: 'Visit' as const, id: 'LIST' },
             ]
           : [{ type: 'Visit' as const, id: 'LIST' }],
+      extraOptions: { refetchOnFocus: true },
     }),
 
     // Complete visit (admin/agent)
@@ -111,59 +112,6 @@ export const visitsApi = api.injectEndpoints({
       invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }]
     }),
 
-    // Legacy list visits (for backward compatibility)
-    listVisits: builder.query<{ results: Visit[]; count?: number }, VisitsQuery>({
-      query: (params) => ({
-        url: '/visits/all/',
-        params: { page: 1, limit: 20, ...params }
-      }),
-      transformResponse: (response: PaginatedResponse<Visit>) => ({
-        results: response.items,
-        count: response.total
-      }),
-      providesTags: (res) =>
-        res?.results
-          ? [
-              ...res.results.map((v) => ({ type: 'Visit' as const, id: v.id })),
-              { type: 'Visit' as const, id: 'LIST' },
-            ]
-          : [{ type: 'Visit' as const, id: 'LIST' }],
-    }),
-
-    // Get visit by ID (legacy)
-    getVisitById: builder.query<Visit, number>({
-      query: (id) => `/visits/${id}`,
-      providesTags: (res, _e, id) => [{ type: 'Visit', id }]
-    }),
-
-    // Create visit (legacy)
-    createVisit: builder.mutation<Visit, Omit<Visit, 'id'>>({
-      query: (data) => ({
-        url: '/visits/',
-        method: 'POST',
-        body: data
-      }),
-      invalidatesTags: ['Visit', 'Property']
-    }),
-
-    // Update visit (legacy)
-    updateVisitById: builder.mutation<Visit, { id: number; data: Partial<Visit> }>({
-      query: ({ id, data }) => ({
-        url: `/visits/${id}`,
-        method: 'PUT',
-        body: data
-      }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'Visit', id }]
-    }),
-
-    // Delete visit (legacy)
-    deleteVisit: builder.mutation<void, number>({
-      query: (id) => ({
-        url: `/visits/${id}`,
-        method: 'DELETE'
-      }),
-      invalidatesTags: (res, _e, id) => [{ type: 'Visit', id }]
-    }),
   }),
 })
 
@@ -178,9 +126,4 @@ export const {
   useCancelVisitMutation,
   useGetAllVisitsQuery,
   useCompleteVisitMutation,
-  useListVisitsQuery,
-  useGetVisitByIdQuery,
-  useCreateVisitMutation,
-  useUpdateVisitByIdMutation,
-  useDeleteVisitMutation,
 } = visitsApi

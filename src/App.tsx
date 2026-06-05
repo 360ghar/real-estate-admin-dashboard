@@ -1,10 +1,15 @@
-import { Suspense, lazy } from 'react'
+import { Suspense, lazy, useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import PrivateRoute from '@/features/auth/components/PrivateRoute'
 import RoleBasedRoute from '@/features/auth/components/RoleBasedRoute'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
 import { PageLoading } from '@/components/common/PageLoading'
+import { useAppDispatch } from '@/hooks/redux'
+import { clearCredentials, loadUserFromStorage, setCredentials, setInitialized } from '@/features/auth/slices/authSlice'
+import { supabase } from '@/lib/supabase'
+import { store } from '@/store'
+import { fetchUserProfileWithToken } from '@/lib/auth'
 
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const SignupPage = lazy(() => import('@/features/auth/pages/SignupPage'))
@@ -24,15 +29,19 @@ const UserPreferencesPage = lazy(() => import('@/features/core/pages/UserPrefere
 const AgentDashboardPage = lazy(() => import('@/features/agents/pages/AgentDashboardPage'))
 const UserProfilePage = lazy(() => import('@/features/users/pages/UserProfilePage'))
 const VisitManagementPage = lazy(() => import('@/features/visits/pages/VisitManagementPage'))
+const ModerationQueuePage = lazy(() => import('@/features/flatmates/pages/ModerationQueuePage'))
+const ReportsReviewPage = lazy(() => import('@/features/flatmates/pages/ReportsReviewPage'))
 const BookingManagementPage = lazy(() => import('@/features/bookings/pages/BookingManagementPage'))
 const BugReportsPage = lazy(() => import('@/features/core/pages/BugReportsPage'))
 const PagesManagementPage = lazy(() => import('@/features/core/pages/PagesManagementPage'))
+const FaqsManagementPage = lazy(() => import('@/features/core/pages/FaqsManagementPage'))
 const AppUpdatesPage = lazy(() => import('@/features/core/pages/AppUpdatesPage'))
 const BlogsPage = lazy(() => import('@/features/blog/pages/BlogsPage'))
 const CategoriesPage = lazy(() => import('@/features/blog/pages/categories/CategoriesPage'))
 const TagsPage = lazy(() => import('@/features/blog/pages/tags/TagsPage'))
 const NotificationsPage = lazy(() => import('@/features/core/pages/NotificationsPage'))
 const SwipePage = lazy(() => import('@/features/swipes/pages/SwipePage'))
+const NotFoundPage = lazy(() => import('@/features/core/pages/NotFoundPage'))
 
 // Property Management (PM)
 const PmDashboardPage = lazy(() => import('@/features/pm/pages/PmDashboardPage'))
@@ -53,7 +62,79 @@ const PmInspectionDetailPage = lazy(() => import('@/features/pm/pages/PmInspecti
 const PmReportsPage = lazy(() => import('@/features/pm/pages/PmReportsPage'))
 const PmAuditLogPage = lazy(() => import('@/features/pm/pages/PmAuditLogPage'))
 const PmSettingsPage = lazy(() => import('@/features/pm/pages/PmSettingsPage'))
+
 function App() {
+  const dispatch = useAppDispatch()
+
+  useEffect(() => {
+    if (!supabase) {
+      dispatch(clearCredentials())
+      dispatch(setInitialized(true))
+      return
+    }
+
+    let isMounted = true
+    const client = supabase
+
+    const { data: { subscription } } = client.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!isMounted) return
+
+        // TOKEN_REFRESHED: prepareHeaders already reads the fresh token from
+        // supabase.auth.getSession() on every API call — no Redux update needed.
+        if (event === 'TOKEN_REFRESHED') return
+
+        if (event === 'SIGNED_OUT') {
+          dispatch(clearCredentials())
+          return
+        }
+
+        if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
+          if (!session?.access_token) {
+            dispatch(clearCredentials())
+            if (event === 'INITIAL_SESSION') {
+              dispatch(setInitialized(true))
+            }
+            return
+          }
+
+          // SIGNED_IN fires after LoginPage already set credentials in Redux.
+          // Skip the redundant profile fetch.
+          if (event === 'SIGNED_IN') {
+            const { auth } = store.getState()
+            if (auth.token && auth.user) return
+          }
+
+          const user = await fetchUserProfileWithToken(session.access_token)
+          if (!isMounted) return
+
+          if (user) {
+            dispatch(setCredentials({ token: session.access_token, user }))
+          } else {
+            // Profile fetch failed — do NOT sign out of Supabase.
+            // The session is still valid; the backend may be temporarily down.
+            // Fall back to the cached user so the session survives a refresh.
+            const cachedUser = loadUserFromStorage()
+            if (cachedUser) {
+              dispatch(setCredentials({ token: session.access_token, user: cachedUser }))
+            } else {
+              dispatch(clearCredentials())
+            }
+          }
+
+          if (event === 'INITIAL_SESSION') {
+            dispatch(setInitialized(true))
+          }
+        }
+      }
+    )
+
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
+  }, [dispatch])
+
   return (
     <ErrorBoundary>
       <Suspense fallback={<PageLoading />}>
@@ -119,6 +200,8 @@ function App() {
                   <Route path="/agents/:id" element={<AgentsPage mode="edit" />} />
                   <Route path="/agents/:id/stats" element={<AgentsPage mode="stats" />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
+                  <Route path="/flatmates/moderation" element={<ModerationQueuePage />} />
+                  <Route path="/flatmates/reports" element={<ReportsReviewPage />} />
                   <Route path="/bug-reports" element={<BugReportsPage />} />
                   <Route path="/blogs" element={<BlogsPage />} />
                   <Route path="/blogs/new" element={<BlogsPage mode="create" />} />
@@ -127,6 +210,7 @@ function App() {
                   <Route path="/blogs/categories" element={<CategoriesPage />} />
                   <Route path="/blogs/tags" element={<TagsPage />} />
                   <Route path="/pages" element={<PagesManagementPage />} />
+                  <Route path="/faqs" element={<FaqsManagementPage />} />
                   <Route path="/app-updates" element={<AppUpdatesPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   {/* Reviews module removed */}
@@ -139,7 +223,7 @@ function App() {
             </Route>
           </Route>
 
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Suspense>
     </ErrorBoundary>

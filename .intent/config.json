@@ -1,0 +1,46 @@
+{
+  "scripts": [
+    {
+      "name": "dev",
+      "command": "npm run dev",
+      "mode": "service",
+      "category": "dev"
+    },
+    {
+      "name": "build",
+      "command": "npm run build",
+      "mode": "command",
+      "category": "build"
+    },
+    {
+      "name": "preview",
+      "command": "npm run preview",
+      "mode": "service",
+      "category": "dev"
+    },
+    {
+      "name": "typecheck",
+      "command": "npm run typecheck",
+      "mode": "command",
+      "category": "typecheck"
+    },
+    {
+      "name": "lint",
+      "command": "npm run lint",
+      "mode": "command",
+      "category": "lint"
+    },
+    {
+      "name": "lint:fix",
+      "command": "npm run lint:fix",
+      "mode": "command",
+      "category": "lint"
+    },
+    {
+      "name": "prepare",
+      "command": "npm run prepare",
+      "mode": "command",
+      "category": "other"
+    }
+  ]
+}

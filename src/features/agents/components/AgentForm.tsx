@@ -1,31 +1,18 @@
 import { useEffect } from 'react'
 import { useCreateAgentMutation, useGetAgentQuery, useUpdateAgentMutation } from '@/features/agents/api/agentsApi'
-import type { AgentSummary } from '@/features/agents/api/agentsApi'
-import type { Agent } from '@/types/api'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useToast } from '@/hooks/use-toast'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { FormRootError } from '@/components/ui/form-root-error'
 import { getErrorMessage } from '@/lib/errors'
-
-const toBool = (v: unknown) => (v === 'true' ? true : v === 'false' ? false : v)
-const schema = z.object({
-  name: z.string().min(2),
-  email: z.string().email().optional().or(z.literal('')),
-  phone: z.string().optional(),
-  user_id: z.coerce.number().min(1, 'Linked user is required'),
-  employee_id: z.string().min(1, 'Employee ID is required'),
-  specialization: z.string().min(1, 'Specialization is required'),
-  agent_type: z.enum(['general', 'specialist', 'senior']),
-  is_active: z.preprocess(toBool, z.boolean().optional()),
-  is_available: z.preprocess(toBool, z.boolean().optional()),
-})
-type FormValues = z.infer<typeof schema>
+import { applyServerValidation } from '@/lib/formErrors'
+import { agentFormSchema, type AgentFormValues } from '@/features/agents/validations'
 
 const AgentForm = ({ id }: { id?: number }) => {
   const { data } = useGetAgentQuery(id!, { skip: !id })
@@ -33,41 +20,72 @@ const AgentForm = ({ id }: { id?: number }) => {
   const [update, updateState] = useUpdateAgentMutation()
   const { toast } = useToast()
   const isEdit = !!id
-  const form = useForm<FormValues>({ resolver: zodResolver(schema), defaultValues: { is_active: true, is_available: true, agent_type: 'general' } })
+  const form = useForm<AgentFormValues>({
+    resolver: zodResolver(agentFormSchema),
+    defaultValues: {
+      name: '',
+      contact_number: '',
+      description: '',
+      languages: '',
+      agent_type: 'general',
+      experience_level: 'intermediate',
+      is_active: true,
+      is_available: true,
+    },
+  })
 
   useEffect(() => {
     if (data) {
-      const agent = data as AgentSummary & Partial<Agent> & { is_active?: boolean }
+      const agent = data
       form.reset({
-        name: agent.name || agent.user?.full_name || '',
-        email: agent.user?.email || '',
-        phone: agent.user?.phone || '',
-        user_id: agent.user_id,
-        employee_id: agent.employee_id,
-        specialization: agent.specialization,
+        name: agent.name,
+        contact_number: agent.contact_number || '',
+        description: agent.description || '',
+        languages: (agent.languages || []).join(', '),
         agent_type: agent.agent_type,
-        is_active: agent.is_active ?? true,
+        experience_level: agent.experience_level,
+        is_active: agent.is_active,
         is_available: agent.is_available,
       })
     }
   }, [data, form])
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: AgentFormValues) => {
+    form.clearErrors()
+    const parsedLanguages = values.languages
+      ?.split(',')
+      .map((value) => value.trim())
+      .filter(Boolean)
+
     try {
       if (isEdit && id) {
-        await update({ id, data: values as Partial<Agent> }).unwrap()
+        await update({
+          id,
+          data: {
+            name: values.name,
+            contact_number: values.contact_number || undefined,
+            description: values.description || undefined,
+            languages: parsedLanguages,
+            agent_type: values.agent_type,
+            experience_level: values.experience_level,
+            is_active: values.is_active,
+            is_available: values.is_available,
+          },
+        }).unwrap()
         toast({ title: 'Saved', description: 'Agent updated' })
       } else {
         await create({
-          user_id: values.user_id,
-          employee_id: values.employee_id,
-          specialization: values.specialization,
+          name: values.name,
+          contact_number: values.contact_number || undefined,
+          description: values.description || undefined,
+          languages: parsedLanguages,
           agent_type: values.agent_type,
-          is_available: values.is_available,
+          experience_level: values.experience_level,
         }).unwrap()
         toast({ title: 'Created', description: 'Agent created' })
       }
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError)
       toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
   }
@@ -82,6 +100,7 @@ const AgentForm = ({ id }: { id?: number }) => {
         <CardContent>
           <Form {...form}>
             <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+              <FormRootError form={form} className="md:col-span-2" />
               <FormField
                 control={form.control}
                 name="name"
@@ -97,23 +116,10 @@ const AgentForm = ({ id }: { id?: number }) => {
               />
               <FormField
                 control={form.control}
-                name="user_id"
+                name="contact_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Linked User ID</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="employee_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Employee ID</FormLabel>
+                    <FormLabel>Contact Number</FormLabel>
                     <FormControl>
                       <Input {...field} />
                     </FormControl>
@@ -123,38 +129,12 @@ const AgentForm = ({ id }: { id?: number }) => {
               />
               <FormField
                 control={form.control}
-                name="email"
+                name="languages"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Languages</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="phone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Phone</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="specialization"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Specialization</FormLabel>
-                    <FormControl>
-                      <Input {...field} />
+                      <Input {...field} placeholder="english, hindi" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -184,11 +164,46 @@ const AgentForm = ({ id }: { id?: number }) => {
               />
               <FormField
                 control={form.control}
+                name="experience_level"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Experience</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="beginner">Beginner</SelectItem>
+                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="expert">Expert</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea rows={4} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="is_active"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Active</FormLabel>
-                    <Select onValueChange={(v) => field.onChange(v === 'true')} defaultValue={field.value ? 'true' : 'false'}>
+                    <Select onValueChange={(v) => field.onChange(v === 'true')} value={field.value ? 'true' : 'false'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />
@@ -209,7 +224,7 @@ const AgentForm = ({ id }: { id?: number }) => {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Available</FormLabel>
-                    <Select onValueChange={(v) => field.onChange(v === 'true')} defaultValue={field.value ? 'true' : 'false'}>
+                    <Select onValueChange={(v) => field.onChange(v === 'true')} value={field.value ? 'true' : 'false'}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select" />

@@ -1,30 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { z } from 'zod'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Loader2, ShieldCheck } from 'lucide-react'
+import { ShieldCheck } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 import { supabase } from '@/lib/supabase'
 import { mapSupabaseAuthError } from '@/lib/authErrors'
+import { resetPasswordSchema, type ResetPasswordFormValues } from '@/features/auth/validations'
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { LoadingState } from '@/components/ui/loading-state'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-
-const schema = z
-  .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
-    confirm_password: z.string().min(6, 'Please confirm your password'),
-  })
-  .refine((d) => d.password === d.confirm_password, {
-    message: 'Passwords do not match',
-    path: ['confirm_password'],
-  })
-
-type FormValues = z.infer<typeof schema>
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
@@ -33,7 +23,7 @@ export default function ResetPasswordPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const form = useForm<ResetPasswordFormValues>({ resolver: zodResolver(resetPasswordSchema) })
 
   useEffect(() => {
     if (!supabase) return
@@ -80,7 +70,7 @@ export default function ResetPasswordPage() {
     void init()
   }, [])
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: ResetPasswordFormValues) => {
     if (!supabase) return
     setErrorMessage(null)
     setSuccessMessage(null)
@@ -123,7 +113,7 @@ export default function ResetPasswordPage() {
 
           {!isReady ? (
             <div className="flex items-center justify-center py-6 text-muted-foreground">
-              <Loader2 className="h-5 w-5 mr-2 animate-spin" /> Preparing reset form...
+              <LoadingState type="spinner" text="Preparing reset form..." />
             </div>
           ) : (
             <Form {...form}>
@@ -160,7 +150,7 @@ export default function ResetPasswordPage() {
                   <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <LoadingSpinner size="sm" className="mr-2" />
                         Updating password...
                       </>
                     ) : (

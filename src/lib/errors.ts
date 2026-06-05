@@ -34,10 +34,13 @@
    if (isApiError(error)) {
      if (error.data?.detail) return error.data.detail
      if (error.data?.message) return error.data.message
+     if (error.status === 400) return 'Bad request. Please check your input.'
      if (error.status === 401) return 'Please log in to continue'
      if (error.status === 403) return 'You do not have permission to perform this action'
      if (error.status === 404) return 'The requested resource was not found'
-     if (error.status === 500) return 'Server error. Please try again later'
+     if (error.status === 422) return 'Validation error. Please check your inputs and try again.'
+     if (error.status === 500) return 'Server error. Please try again later.'
+     if (error.status === 502 || error.status === 503 || error.status === 504) return 'Service temporarily unavailable. Please try again later.'
    }
    
    if (error instanceof Error) {

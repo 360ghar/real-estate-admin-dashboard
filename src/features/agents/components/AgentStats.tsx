@@ -20,10 +20,10 @@ const AgentStats = ({ id }: { id: number }) => {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Properties Handled" value={stats.data?.performance_metrics?.properties_handled} />
-            <Stat label="Visits Completed" value={stats.data?.performance_metrics?.visits_completed} />
-            <Stat label="Bookings Converted" value={stats.data?.performance_metrics?.bookings_converted} />
-            <Stat label="Satisfaction" value={stats.data?.performance_metrics?.client_satisfaction_score} />
+            <Stat label="Assigned Users" value={stats.data?.stats?.total_users_assigned} />
+            <Stat label="Active Conversations" value={stats.data?.stats?.active_conversations} />
+            <Stat label="Daily Interactions" value={stats.data?.stats?.daily_interactions} />
+            <Stat label="Efficiency" value={stats.data?.stats?.efficiency_score} />
           </div>
         </CardContent>
       </Card>

@@ -10,6 +10,8 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { useToast } from '@/hooks/use-toast'
 import { useDeleteBlogPostMutation, useGetBlogPostQuery, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
 import { getErrorMessage } from '@/lib/errors'
+import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
+import { SanitizedHtml } from '@/components/ui/sanitized-html'
 
 const getErrorStatus = (error: unknown) => {
   if (!error || typeof error !== 'object') return undefined
@@ -70,24 +72,11 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
 
   const handleDelete = async () => {
     if (!post) return
-    if (!confirm(`Are you sure you want to delete "${post.title}"? This action cannot be undone.`)) {
-      return
-    }
-
     try {
       await deleteBlogPost(post.id).unwrap()
-      toast({
-        title: 'Deleted',
-        description: 'Blog post deleted successfully',
-      })
+      toast({ title: 'Deleted', description: 'Blog post deleted successfully' })
       navigate('/blogs')
-    } catch (e: unknown) {
-      toast({
-        title: 'Delete failed',
-        description: getErrorMessage(e, 'Failed to delete blog post'),
-        variant: 'destructive',
-      })
-    }
+    } catch (e: unknown) { toast({ title: 'Delete failed', description: getErrorMessage(e, 'Failed to delete blog post'), variant: 'destructive' }) }
   }
 
   if (isFetching) {
@@ -209,15 +198,19 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
               </>
             )}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => { void handleDelete() }}
-            disabled={isDeleting}
+          <ConfirmAlertDialog
+            title="Delete Blog Post"
+            description={`Are you sure you want to delete "${post.title}"? This action cannot be undone.`}
+            confirmLabel="Delete"
+            variant="destructive"
+            onConfirm={handleDelete}
           >
-            <Trash2 className="mr-2 h-4 w-4" />
-            Delete
-          </Button>
+            {(openDialog) => (
+              <Button variant="outline" size="sm" onClick={openDialog} disabled={isDeleting}>
+                <Trash2 className="mr-2 h-4 w-4" />Delete
+              </Button>
+            )}
+          </ConfirmAlertDialog>
         </div>
       </div>
 
@@ -275,10 +268,7 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
             ))}
           </div>
           {contentIsHtml ? (
-            <div
-              className="prose max-w-none"
-              dangerouslySetInnerHTML={{ __html: post.content }}
-            />
+            <SanitizedHtml html={post.content} className="prose max-w-none" />
           ) : (
             <ReactMarkdown className="prose max-w-none">
               {post.content}

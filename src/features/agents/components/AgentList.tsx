@@ -20,12 +20,8 @@ const agentColumns: ColumnDef<Agent>[] = [
     header: 'Name',
   },
   {
-    accessorKey: 'email',
-    header: 'Email',
-  },
-  {
-    accessorKey: 'phone',
-    header: 'Phone',
+    accessorKey: 'contact_number',
+    header: 'Contact',
   },
   {
     accessorKey: 'is_active',
@@ -36,8 +32,12 @@ const agentColumns: ColumnDef<Agent>[] = [
     },
   },
   {
-    accessorKey: 'users_assigned',
+    accessorKey: 'total_users_assigned',
     header: 'Users Assigned',
+  },
+  {
+    accessorKey: 'user_satisfaction_rating',
+    header: 'Satisfaction',
   },
   {
     id: 'actions',

@@ -1,23 +1,17 @@
 import { api } from '@/store/api'
-
-export interface SystemStats {
-  active_agents?: number
-  active_users?: number
-  properties_listed?: number
-  occupancy_rate?: number
-  [key: string]: number | string | undefined
-}
-
-export type WorkloadDatum = { name: string; value: number }
-export type WorkloadResponse = Record<string, number> | WorkloadDatum[]
+import type { AgentSystemStats, AgentWorkload } from '@/types/api'
 
 export const systemApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    getSystemStats: builder.query<SystemStats, void>({
+    getSystemStats: builder.query<AgentSystemStats, void>({
       query: () => '/agents/system/stats/',
+      providesTags: [{type: 'Agent' as const, id: 'LIST'}, {type: 'PmDashboard' as const, id: 'SYSTEM_STATS'}],
+      keepUnusedDataFor: 300,
     }),
-    getWorkload: builder.query<WorkloadResponse, void>({
+    getWorkload: builder.query<AgentWorkload[], void>({
       query: () => '/agents/system/workload/',
+      providesTags: [{type: 'Agent' as const, id: 'LIST'}, {type: 'PmDashboard' as const, id: 'SYSTEM_WORKLOAD'}],
+      keepUnusedDataFor: 300,
     }),
   }),
 })

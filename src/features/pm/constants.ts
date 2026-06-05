@@ -15,7 +15,7 @@ import type {
   DocumentType,
   ManagedPropertyStatus,
   TenantStatus,
-} from './api/pmApi'
+} from '@/types/pm'
 
 // ============================================================================
 // Lease Status

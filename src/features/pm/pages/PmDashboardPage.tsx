@@ -4,18 +4,14 @@ import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
 import { selectSelectedOwner } from '@/features/pm/slices/pmSlice'
 import { useGetPmDashboardActivityQuery, useGetPmDashboardOverviewQuery } from '@/features/pm/api/pmApi'
+import { formatINR } from '@/features/pm/utils'
+import { getErrorMessage } from '@/lib/errors'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-
-const formatINR = (value: number) =>
-  new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(value)
 
 export default function PmDashboardPage() {
   const { role } = useUserRole()
@@ -45,7 +41,7 @@ export default function PmDashboardPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription className="flex items-center justify-between">
-            Failed to load dashboard overview.
+            {getErrorMessage(overview.error, 'Failed to load dashboard overview.')}
             <Button variant="outline" size="sm" onClick={() => void overview.refetch()}>Retry</Button>
           </AlertDescription>
         </Alert>
@@ -149,7 +145,7 @@ export default function PmDashboardPage() {
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
               <AlertDescription className="flex items-center justify-between">
-                Failed to load activity.
+                {getErrorMessage(activity.error, 'Failed to load activity.')}
                 <Button variant="outline" size="sm" onClick={() => void activity.refetch()}>Retry</Button>
               </AlertDescription>
             </Alert>
@@ -175,7 +171,7 @@ export default function PmDashboardPage() {
               ))}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">No recent activity.</div>
+            <EmptyState title="No recent activity" />
           )}
         </CardContent>
       </Card>

@@ -3,13 +3,15 @@ import { retry } from '@reduxjs/toolkit/query'
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query'
 import { clearCredentials } from '@/features/auth/slices/authSlice'
 import { supabase } from '@/lib/supabase'
+import { API_BASE_URL } from '@/lib/config'
+import { toast } from '@/hooks/use-toast'
 
 interface AuthState {
   token: string | null
 }
 
 const rawBaseQuery = fetchBaseQuery({
-  baseUrl: (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? 'http://localhost:8000/api/v1',
+  baseUrl: API_BASE_URL,
   prepareHeaders: async (headers, { getState }) => {
     let token = (getState() as { auth: AuthState }).auth.token
     if (supabase) {
@@ -44,10 +46,26 @@ const baseQueryWithAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQuery
 ) => {
   const result = await baseQueryWithRetries(args, api, extraOptions)
   if (result.error && result.error.status === 401) {
+    // Only notify if the user actually had a session (an expired/revoked
+    // token) — stay silent for anonymous requests that 401 by design. The
+    // Redux token isn't refreshed on Supabase TOKEN_REFRESHED, so also consult
+    // the live Supabase session before deciding.
+    let hadSession = Boolean((api.getState() as { auth: AuthState }).auth.token)
     if (supabase) {
+      if (!hadSession) {
+        const { data } = await supabase.auth.getSession()
+        hadSession = Boolean(data.session)
+      }
       await supabase.auth.signOut()
     }
     api.dispatch(clearCredentials())
+    if (hadSession) {
+      toast({
+        title: 'Session expired',
+        description: 'Please sign in again to continue.',
+        variant: 'destructive',
+      })
+    }
   }
   return result
 }
@@ -55,6 +73,7 @@ const baseQueryWithAuth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQuery
 export const api = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithAuth,
+  refetchOnReconnect: true,
   tagTypes: [
     'Property',
     'User',
@@ -65,10 +84,13 @@ export const api = createApi({
     'BugReport',
     'Page',
     'AppUpdate',
+    'Faq',
     'BlogPost',
     'BlogCategory',
     'BlogTag',
     'Swipe',
+    'FlatmatesListing',
+    'FlatmatesReport',
     // Property Management (PM)
     'PmDashboard',
     'PmProperty',
@@ -82,6 +104,8 @@ export const api = createApi({
     'PmAssignment',
     'PmApplicationForm',
     'PmApplication',
+    'PmTenant',
+    'Notification',
   ],
   endpoints: () => ({}),
 })

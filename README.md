@@ -7,18 +7,19 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 
 ## Tech Stack & Project Setup
 
-**Framework**: React 18+ (using Vite for faster setup)  
-**UI Library**: Shadcn/ui (built on Radix UI and Tailwind CSS)  
-**State Management**: Redux Toolkit (RTK) with RTK Query for efficient data fetching, caching, and state management  
-**Routing**: React Router DOM v6+  
-**Styling**: Tailwind CSS for utility-first, responsive design  
-**HTTP Client**: Axios + RTK Query (primary for data fetching)  
-**Authentication**: Supabase Auth (JWT via Bearer token)  
-**Type Safety**: TypeScript  
-**Form Handling**: React Hook Form + Zod for validation  
-**Icons**: Lucide React  
-**Charts**: Recharts or Chart.js (optional for analytics)  
-**Map Integration**: Leaflet or Mapbox GL JS (for property locations)
+**Framework**: React 18+ (using Vite for faster setup)
+**UI Library**: Shadcn/ui (built on Radix UI and Tailwind CSS)
+**Design System**: Cohere design tokens mapped via CSS custom properties
+**State Management**: Redux Toolkit (RTK) with RTK Query for efficient data fetching, caching, and state management
+**Routing**: React Router DOM v6+
+**Styling**: Tailwind CSS for utility-first, responsive design
+**HTTP Client**: RTK Query (`fetchBaseQuery`) — the only HTTP client
+**Authentication**: Supabase Auth (JWT via Bearer token)
+**Type Safety**: TypeScript
+**Form Handling**: React Hook Form + Zod for validation
+**Icons**: Lucide React
+**Charts**: Recharts for data visualization
+**Map Integration**: Leaflet for property locations
 
 ### Installation & Setup
 
@@ -33,42 +34,36 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
    # Edit .env with your values:
    # VITE_API_BASE_URL=https://api.360ghar.com/api/v1
    # VITE_SUPABASE_URL=your-supabase-url
-   # VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+   # VITE_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
    ```
 
-3. **Initialize Shadcn/ui**:
+3. **Install Cohere Design Specification**:
    ```bash
-   npx shadcn-ui@latest init
-   # Follow prompts to configure paths (src/components/ui, src/lib/utils, etc.)
+   npx getdesign@latest add cohere
    ```
 
-4. **Install Shadcn Components** (as needed):
-   ```bash
-   npx shadcn-ui@latest add button card table form dialog input select label checkbox avatar dropdown-menu navigation-menu toast alert skeleton pagination combobox command popover sheet badge alert-dialog
-   ```
-
-5. **Run Development Server**:
+4. **Run Development Server**:
    ```bash
    npm run dev
    ```
 
 ### Project Structure
-- `src/components/layout/`: Sidebar, TopBar, DashboardLayout
-- `src/components/auth/`: PrivateRoute, RoleBasedRoute
-- `src/components/ui/`: Shadcn UI components
-- `src/pages/`: Route pages (dashboard, properties, users, agents, visits, bookings, analytics)
-- `src/store/`: Redux store, slices, and RTK Query APIs
-- `src/types/`: TypeScript interfaces
-- `src/lib/`: Utilities, Supabase client
+- `src/features/<domain>/`: Feature modules (api, components, pages, slices, validations)
+- `src/components/layout/`: Sidebar, TopBar, DashboardLayout, BottomNav
+- `src/components/ui/`: Shadcn UI components + EmptyState, LoadingState, DataTable
+- `src/store/api.ts`: Base RTK Query API with auth
+- `src/store/index.ts`: Store config (all 14 API modules registered)
+- `src/types/`: TypeScript interfaces (api.ts, blog.ts)
+- `src/lib/`: Utilities (config.ts, auth.ts, errors.ts, supabase.ts, utils.ts)
 - `src/hooks/`: Custom React hooks
 
 ## Authentication & Authorization
 
 ### Login Flow
 - User enters phone and password at `/login`
-- Frontend calls `POST /api/v1/auth/login/`
-- Backend returns JWT token and user object
-- Token stored in localStorage, user saved in Redux
+- Frontend signs in directly with Supabase Auth SDK
+- Backend receives `Authorization: Bearer <supabase_access_token>` on protected routes
+- User profile is loaded from backend `/users/profile/` after successful Supabase session
 - Role inferred from `user.agent_id` (null = Admin, present = Agent)
 - Redirect to dashboard on success
 
@@ -79,13 +74,14 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 
 ### API Integration
 - RTK Query handles authenticated requests with Bearer token headers
-- Auth slice manages token persistence and user state
-- Logout clears credentials and redirects to login
+- Supabase SDK manages session persistence and refresh
+- Auth slice manages user state derived from active Supabase session
+- Logout signs out Supabase session, clears credentials, and redirects to login
 
 ## Core Features
 
 ### Dashboard
-**Agent Dashboard**: Properties managed, active users, upcoming visits, pending bookings, satisfaction score  
+**Agent Dashboard**: Properties managed, active users, upcoming visits, pending bookings, satisfaction score
 **Admin Dashboard**: System health metrics, user growth, booking trends, agent workload distribution
 
 ### Property Management
@@ -93,6 +89,15 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 - **CRUD Operations**: Create/edit/delete properties
 - **Features**: Media uploads, location picker, amenities selection
 - **Role-Based**: Agents see only their assigned users' properties
+
+### PM Portal (Property Management)
+- **Dashboard**: Revenue, occupancy, activity feed
+- **Owners & Properties**: Manage owners, properties, management settings
+- **Leases & Rent**: Lease lifecycle, rent ledger, payment tracking
+- **Operations**: Expenses, maintenance requests, documents, inspections
+- **Applications**: Rental application forms and inbox
+- **Reports**: Rent roll, income, expense, P&L, occupancy, maintenance reports
+- **Settings**: Payment defaults, late fee policy, notification preferences
 
 ### User Management
 - **List View**: Search and filter users
@@ -115,6 +120,14 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 - **Performance Stats**: KPIs, satisfaction scores, workload metrics
 - **Assignment**: Manage user-agent relationships
 
+### Flatmates Moderation (Admin Only)
+- **Listing Queue**: Approve/reject/pause flatmate listings
+- **Report Queue**: Review and action user reports
+
+### Blog & Content (Admin Only)
+- **Posts**: Create/edit blog posts with categories and tags
+- **Categories & Tags**: Manage content taxonomy
+
 ### Analytics & Reporting (Admin Only)
 - **System Metrics**: User growth, property trends, revenue
 - **Agent Performance**: Leaderboards, completion rates
@@ -123,15 +136,21 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 ## Backend Integration
 
 ### Required Endpoints
-- **Auth**: `POST /auth/login/`
-- **Properties**: `GET/POST/PUT/DELETE /properties/`, `GET /properties/{id}/`
+- **Auth**: No backend login endpoint; clients authenticate directly with Supabase Auth SDK
+- **Properties**: `GET/POST/PUT/DELETE /properties/`, `GET /properties/{id}/`, `POST /properties/search/`
 - **Users**: `GET /users/`, `GET /users/{id}/`, `PUT /users/{id}/`, `POST /users/{id}/assign-agent/`
-- **Visits**: `GET /visits/`, `POST /visits/`, `GET /visits/{id}/`, `POST /visits/{id}/reschedule`, `POST /visits/{id}/cancel`, `POST /visits/{id}/complete`
-- **Bookings**: `GET /bookings/`, `GET /bookings/{id}/`, `POST /bookings/cancel/`, `POST /bookings/payment/`, `POST /bookings/review/`
+- **Visits**: `GET /visits/`, `POST /visits/schedule/`, `GET /visits/{id}/`, `POST /visits/{id}/reschedule`, `POST /visits/{id}/cancel`, `POST /visits/{id}/complete`
+- **Bookings**: `GET /bookings/`, `GET /bookings/{id}/`, `POST /bookings/`, `POST /bookings/cancel/`, `POST /bookings/payment/`, `POST /bookings/review/`
 - **Agents**: `GET /agents/`, `POST /agents/`, `GET/PUT /agents/{id}/`, `GET /agents/{id}/stats/`
 - **Analytics**: `GET /agents/system/stats/`, `GET /agents/system/workload/`
 - **Amenities**: `GET /amenities/`
-- **Storage**: File upload endpoint for Supabase Storage integration
+- **Upload**: `POST /upload/`
+- **Notifications**: `GET /notifications/`, `POST /notifications/{id}/opened/`, `POST /notifications/send/`
+- **PM**: `GET/POST /pm/properties/`, `GET/POST /pm/leases/`, `GET/POST /pm/expenses/`, `GET/POST /pm/maintenance/`, `GET/POST /pm/documents/`, `GET/POST /pm/inspections/`, `GET /pm/reports/*`, `GET/POST /pm/applications/`, `GET/POST /pm/owners/`
+- **Blog**: `GET/POST/PUT/DELETE /blog/posts/`, `GET/POST /blog/categories/`, `GET/POST /blog/tags/`
+- **Flatmates**: `GET/PUT /flatmates/listings/`, `GET/PUT /flatmates/reports/`
+- **Swipes**: `GET /swipes/`, `POST /swipes/`, `POST /swipes/undo/`
+- **Core**: `POST /bugs/`, `GET/POST /pages/`, `GET/POST /app-updates/`
 
 ### Assumptions
 - Backend enforces role-based access control
@@ -140,11 +159,22 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 - Supabase handles authentication and file storage
 - Row-level security (RLS) implemented in database
 
+## Design System
+
+The project uses the **Cohere design system** specification (installed via `npx getdesign@latest add cohere`). Key tokens are mapped in `src/index.css`:
+
+- **Colors**: `cohere-coral`, `cohere-action-blue`, `cohere-deep-green`, `cohere-dark-navy`, `cohere-form-focus`
+- **Radius**: `rounded-cohere-xs` (4px) through `rounded-cohere-pill` (32px)
+- **Typography**: Display uses `Space Grotesk`, body uses `Inter`
+- **Philosophy**: White canvas backgrounds, near-black pill CTAs, flat surfaces with thin borders, no heavy shadows
+
+See `DESIGN.md` for the full specification.
+
 ## Development Notes
-- All API calls use real backend endpoints (no mocks)
+- All API calls use RTK Query (no axios or direct fetch except in `lib/auth.ts`)
 - TypeScript for type safety across the application
 - Progressive enhancement with Shadcn UI components
 - Responsive design with Tailwind CSS
-- Form validation with Zod schemas
+- Form validation with Zod schemas (centralized per feature in `validations.ts`)
 - Toast notifications for user feedback
-
+- Empty/Loading states use `<EmptyState>` and `<LoadingState>` components

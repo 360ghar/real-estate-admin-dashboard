@@ -13,6 +13,10 @@ import '@/features/core/api/notificationsApi'
 import '@/features/core/api/systemApi'
 import '@/features/blog/api/blogsApi'
 import '@/features/pm/api/pmApi'
+import '@/features/core/api/coreApi'
+import '@/features/core/api/uploadApi'
+import '@/features/swipes/api/swipesApi'
+import '@/features/flatmates/api/flatmatesApi'
 // Reviews module removed
 
 export const store = configureStore({

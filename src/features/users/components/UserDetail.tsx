@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useForm } from 'react-hook-form'
-import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useToast } from '@/hooks/use-toast'
 import { useUserRole } from '@/hooks/useUserRole'
@@ -15,14 +14,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useGetUserNotificationsQuery } from '@/features/core/api/notificationsApi'
 import { Label } from '@/components/ui/label'
 import { getErrorMessage } from '@/lib/errors'
-
-const schema = z.object({
-  full_name: z.string().optional(),
-  phone: z.string().optional(),
-  email: z.string().email().optional().or(z.literal('')),
-  is_active: z.boolean().optional(),
-})
-type FormValues = z.infer<typeof schema>
+import { formatDateTime } from '@/lib/format'
+import { userDetailSchema, type UserDetailFormValues } from '@/features/users/validations'
 
 const UserDetail = ({ id }: { id: number }) => {
   const { data, isFetching } = useGetUserQuery(id)
@@ -41,7 +34,7 @@ const UserDetail = ({ id }: { id: number }) => {
   const [notifTitle, setNotifTitle] = useState<string>('Message from 360 Ghar')
   const [notifBody, setNotifBody] = useState<string>('')
 
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const form = useForm<UserDetailFormValues>({ resolver: zodResolver(userDetailSchema) })
   const { reset } = form
 
   useEffect(() => {
@@ -50,7 +43,7 @@ const UserDetail = ({ id }: { id: number }) => {
     }
   }, [data, reset])
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = async (values: UserDetailFormValues) => {
     try {
       await update({ id, data: values }).unwrap()
       toast({ title: 'Saved', description: 'User updated' })
@@ -238,7 +231,7 @@ const UserDetail = ({ id }: { id: number }) => {
                         <div className="font-medium">{n.title}</div>
                         {n.created_at && (
                           <span className="text-xs text-muted-foreground">
-                            {new Date(n.created_at).toLocaleString()}
+                            {formatDateTime(n.created_at)}
                           </span>
                         )}
                       </div>

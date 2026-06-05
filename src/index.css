@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Theme tokens (shadcn/ui) */
+/* Theme tokens — shadcn/ui mapped to Cohere design system */
 @layer base {
   :root {
     /* Safe area insets for notched devices (iPhone X+) */
@@ -13,65 +13,90 @@
     --safe-area-inset-left: env(safe-area-inset-left, 0px);
     --safe-area-inset-right: env(safe-area-inset-right, 0px);
 
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Cohere-inspired light theme */
+    --background: 0 0% 100%;            /* Canvas White #ffffff */
+    --foreground: 0 0% 13%;             /* Ink #212121 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;                  /* Canvas White */
+    --card-foreground: 0 0% 13%;        /* Ink */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 13%;     /* Ink */
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 240 5% 10%;              /* Near-Black #17171c */
+    --primary-foreground: 0 0% 100%;    /* On-primary white */
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 40 17% 93%;            /* Soft Stone #eeece7 */
+    --secondary-foreground: 0 0% 13%;   /* Ink */
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 40 17% 93%;                /* Soft Stone */
+    --muted-foreground: 240 5% 58%;     /* Muted Slate #93939f */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 40 17% 93%;              /* Soft Stone */
+    --accent-foreground: 0 0% 13%;      /* Ink */
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 35%;           /* Error Red #b30000 */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 240 3% 86%;               /* Border Light #e5e7eb */
+    --input: 240 3% 86%;
+    --ring: 222 76% 55%;                /* Focus Blue #4c6ee6 */
 
     --radius: 0.5rem;
+
+    /* Cohere semantic tokens */
+    --cohere-coral: 14 100% 64%;         /* #ff7759 */
+    --cohere-coral-soft: 14 100% 80%;   /* #ffad9b */
+    --cohere-action-blue: 218 77% 48%;   /* #1863dc */
+    --cohere-deep-green: 168 100% 12%;   /* #003c33 */
+    --cohere-dark-navy: 211 93% 9%;      /* #071829 */
+    --cohere-form-focus: 283 21% 51%;    /* #9b60aa */
+    --cohere-hairline: 240 3% 86%;       /* #d9d9dd */
+    --cohere-pale-green: 130 56% 96%;    /* #edfce9 */
+    --cohere-pale-blue: 220 100% 97%;    /* #f1f5ff */
+    --cohere-card-border: 0 0% 95%;      /* #f2f2f2 */
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 240 5% 10%;           /* Near-Black #17171c */
+    --foreground: 0 0% 98%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 240 5% 10%;
+    --card-foreground: 0 0% 98%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 240 5% 10%;
+    --popover-foreground: 0 0% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 0% 98%;                /* White on dark */
+    --primary-foreground: 240 5% 10%;   /* Near-Black */
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 240 5% 18%;
+    --secondary-foreground: 0 0% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 240 5% 18%;
+    --muted-foreground: 240 5% 65%;      /* Muted Slate inverted */
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 240 5% 18%;
+    --accent-foreground: 0 0% 98%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 62% 35%;
+    --destructive-foreground: 0 0% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 222 76% 55%;
+
+    /* Cohere dark-mode semantic tokens */
+    --cohere-coral: 14 100% 64%;
+    --cohere-coral-soft: 14 100% 80%;
+    --cohere-action-blue: 218 77% 55%;
+    --cohere-deep-green: 168 100% 18%;
+    --cohere-dark-navy: 211 93% 15%;
+    --cohere-form-focus: 283 21% 55%;
+    --cohere-hairline: 0 0% 25%;
+    --cohere-pale-green: 168 40% 15%;
+    --cohere-pale-blue: 218 40% 15%;
+    --cohere-card-border: 0 0% 20%;
   }
 
   * {

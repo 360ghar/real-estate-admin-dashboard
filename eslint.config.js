@@ -7,7 +7,7 @@ export default tseslint.config(
   js.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
   {
-    ignores: ['src/hooks/__tests__/**'],
+    ignores: ['src/**/__tests__/**'],
   },
   {
     languageOptions: {

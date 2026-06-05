@@ -1,0 +1,62 @@
+import { useState } from "react";
+import type { Document, DocumentUpdate } from "@/types/pm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+
+interface DocumentEditFormProps {
+  doc: Document;
+  onSubmit: (payload: DocumentUpdate) => Promise<void>;
+  isSubmitting: boolean;
+}
+
+export default function DocumentEditForm({
+  doc,
+  onSubmit,
+  isSubmitting,
+}: DocumentEditFormProps) {
+  const [title, setTitle] = useState(doc.title);
+  const [shareAgent, setShareAgent] = useState(doc.shared_with_agent);
+  const [shareTenant, setShareTenant] = useState(doc.shared_with_tenant);
+
+  return (
+    <div className="space-y-4">
+      <div className="space-y-2">
+        <Label>Title</Label>
+        <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Share with agent</Label>
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <span className="text-sm text-muted-foreground">Agent can access</span>
+            <Switch checked={shareAgent} onCheckedChange={setShareAgent} />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Share with tenant</Label>
+          <div className="flex items-center justify-between rounded-md border px-3 py-2">
+            <span className="text-sm text-muted-foreground">Tenant can access</span>
+            <Switch checked={shareTenant} onCheckedChange={setShareTenant} />
+          </div>
+        </div>
+      </div>
+      <div className="flex justify-end">
+        <Button
+          onClick={() => {
+            const payload: DocumentUpdate = {
+              title,
+              shared_with_agent: shareAgent,
+              shared_with_tenant: shareTenant,
+            };
+            void onSubmit(payload);
+          }}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Saving…" : "Save"}
+        </Button>
+      </div>
+    </div>
+  );
+}

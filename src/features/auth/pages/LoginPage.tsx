@@ -1,47 +1,68 @@
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
-import { useLoginMutation } from '@/store/api'
 import { useAppDispatch } from '@/hooks/redux'
-import { setCredentials, setError, setLoading } from '@/features/auth/slices/authSlice'
+import { setCredentials, setError } from '@/features/auth/slices/authSlice'
 import { useNavigate, Link } from 'react-router-dom'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, Shield, Eye, EyeOff, Building2 } from 'lucide-react'
+import { Shield, Eye, EyeOff, Building2 } from 'lucide-react'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { useState } from 'react'
-import { getErrorMessage } from '@/lib/errors'
+import { supabase } from '@/lib/supabase'
+import { mapSupabaseAuthError } from '@/lib/authErrors'
+import { fetchUserProfileWithToken } from '@/lib/auth'
+import { loginSchema, type LoginFormValues } from '@/features/auth/validations'
 
-const schema = z.object({
-  phone: z.string().min(8, 'Phone is required'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-})
-
-type FormValues = z.infer<typeof schema>
+function normalizePhone(phone: string): string {
+  const trimmed = phone.trim().replace(/\s+/g, '')
+  if (trimmed.startsWith('+')) return trimmed
+  return `+${trimmed}`
+}
 
 const LoginPage = () => {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
-  const [login, { isLoading }] = useLoginMutation()
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) })
+  const form = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
 
-  const onSubmit = async (values: FormValues) => {
-    dispatch(setLoading(true))
+  const onSubmit = async (values: LoginFormValues) => {
+    if (!supabase) {
+      const message = 'Supabase is not configured. Please set environment variables.'
+      dispatch(setError(message))
+      setErrorMessage(message)
+      return
+    }
+
+    setIsSubmitting(true)
     setErrorMessage(null)
     try {
-      const res = await login(values).unwrap()
-      dispatch(setCredentials({ token: res.access_token, user: res.user }))
+      const result = await supabase.auth.signInWithPassword({
+        phone: normalizePhone(values.phone),
+        password: values.password,
+      })
+      if (result.error || !result.data.session) {
+        throw result.error ?? new Error('Login failed. Please check your credentials.')
+      }
+
+      const accessToken = result.data.session.access_token
+      const user = await fetchUserProfileWithToken(accessToken)
+      if (!user) {
+        throw new Error('Login succeeded but user profile could not be loaded.')
+      }
+
+      dispatch(setCredentials({ token: accessToken, user }))
       navigate('/dashboard', { replace: true })
     } catch (err: unknown) {
-      const error = getErrorMessage(err, 'Login failed. Please check your credentials.')
+      const error = mapSupabaseAuthError(err)
       dispatch(setError(error))
       setErrorMessage(error)
     } finally {
-      dispatch(setLoading(false))
+      setIsSubmitting(false)
     }
   }
 
@@ -149,11 +170,11 @@ const LoginPage = () => {
                   <Button
                     type="submit"
                     className="w-full h-11 text-base font-medium"
-                    disabled={isLoading}
+                    disabled={isSubmitting}
                   >
-                    {isLoading ? (
+                    {isSubmitting ? (
                       <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                        <LoadingSpinner size="sm" className="mr-2" />
                         Signing in...
                       </>
                     ) : (
