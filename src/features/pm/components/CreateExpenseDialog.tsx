@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
-import type { DocumentType, ExpenseCategory, ExpenseCreate } from "@/types/pm";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { DocumentType, ExpenseCreate } from "@/types/pm";
 import {
   useCreatePmExpenseMutation,
   useListPmPropertiesQuery,
@@ -15,6 +17,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -27,6 +37,7 @@ import {
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { pmExpenseCreateSchema, type PmExpenseCreateForm } from "@/features/pm/validations";
 
 interface CreateExpenseDialogProps {
   ownerId: number | null;
@@ -44,49 +55,35 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
   );
 
   const [open, setOpen] = useState(false);
-  const [propertyId, setPropertyId] = useState("");
-  const [category, setCategory] = useState<ExpenseCategory>("maintenance");
-  const [amount, setAmount] = useState("");
-  const [expenseDate, setExpenseDate] = useState("");
-  const [description, setDescription] = useState("");
-  const [notes, setNotes] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
-  const resetForm = useCallback(() => {
-    setPropertyId("");
-    setCategory("maintenance");
-    setAmount("");
-    setExpenseDate("");
-    setDescription("");
-    setNotes("");
-    setReceiptFile(null);
-  }, []);
+  const form = useForm<PmExpenseCreateForm>({
+    resolver: zodResolver(pmExpenseCreateSchema),
+    defaultValues: {
+      property_id: "",
+      category: "maintenance",
+      amount: "",
+      expense_date: "",
+      description: "",
+      notes: "",
+    },
+  });
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
       if (!isOpen) {
-        resetForm();
+        form.reset();
+        setReceiptFile(null);
       }
     },
-    [resetForm],
+    [form],
   );
 
-  const submit = async () => {
-    if (!propertyId || !amount || !expenseDate) {
-      toast({ title: "Missing fields", description: "Property, amount, and date are required.", variant: "destructive" });
-      return;
-    }
-
-    const amountNum = Number(amount);
-    if (isNaN(amountNum) || amountNum <= 0) {
-      toast({ title: "Invalid amount", description: "Amount must be a positive number.", variant: "destructive" });
-      return;
-    }
-
+  const onSubmit = async (values: PmExpenseCreateForm) => {
     try {
       const selectedPropertyOwnerId = (properties.data || []).find(
-        (p) => String(p.id) === String(propertyId),
+        (p) => String(p.id) === values.property_id,
       )?.owner_id;
       const effectiveOwnerId = ownerId ?? selectedPropertyOwnerId ?? null;
 
@@ -95,9 +92,9 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
         const fd = new FormData();
         fd.append("file", receiptFile);
         fd.append("document_type", "receipt" satisfies DocumentType);
-        fd.append("title", description || `Expense receipt • ${expenseDate}`);
+        fd.append("title", values.description || `Expense receipt • ${values.expense_date}`);
         if (effectiveOwnerId) fd.append("owner_id", String(effectiveOwnerId));
-        fd.append("property_id", propertyId);
+        fd.append("property_id", values.property_id);
         fd.append("shared_with_agent", "true");
         const doc = await uploadDoc(fd).unwrap();
         receiptDocumentId = doc.id;
@@ -105,12 +102,12 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
 
       const payload: ExpenseCreate = {
         owner_id: effectiveOwnerId || undefined,
-        property_id: Number(propertyId),
-        category,
-        amount: amountNum,
-        expense_date: expenseDate,
-        description: description || undefined,
-        notes: notes || undefined,
+        property_id: Number(values.property_id),
+        category: values.category,
+        amount: Number(values.amount),
+        expense_date: values.expense_date,
+        description: values.description || undefined,
+        notes: values.notes || undefined,
         receipt_document_id: receiptDocumentId,
       };
       await createExpense(payload).unwrap();
@@ -133,64 +130,112 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
         <DialogHeader>
           <DialogTitle>Add expense</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Property</Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select property…" />
-              </SelectTrigger>
-              <SelectContent>
-                {(properties.data || []).map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    #{p.id} • {p.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Category</Label>
-            <Select value={category} onValueChange={(v) => setCategory(v as ExpenseCategory)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {EXPENSE_CATEGORIES.map((c) => (
-                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Expense date</Label>
-            <Input type="date" value={expenseDate} onChange={(e) => setExpenseDate(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Amount</Label>
-            <Input value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 1200" />
-          </div>
-          <div className="space-y-2">
-            <Label>Receipt (optional)</Label>
-            <Input type="file" onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Description (optional)</Label>
-            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Notes (optional)</Label>
-            <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={() => { void submit(); }} disabled={createState.isLoading || uploadDocState.isLoading}>
-            {createState.isLoading || uploadDocState.isLoading ? "Saving…" : "Save"}
-          </Button>
-        </div>
+        <Form {...form}>
+          <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="property_id"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Property</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select property…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(properties.data || []).map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          #{p.id} • {p.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {EXPENSE_CATEGORIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="expense_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Expense date</FormLabel>
+                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount</FormLabel>
+                  <FormControl><Input placeholder="e.g. 1200" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="space-y-2">
+              <Label>Receipt (optional)</Label>
+              <Input type="file" onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
+            </div>
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Description (optional)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="notes"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Notes (optional)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2 pt-2 md:col-span-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createState.isLoading || uploadDocState.isLoading}>
+                {createState.isLoading || uploadDocState.isLoading ? "Saving…" : "Save"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

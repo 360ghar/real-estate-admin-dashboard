@@ -1,4 +1,3 @@
-import React from 'react'
 import { Bell, X, CheckCheck, Settings, Trash2 } from 'lucide-react'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { Button } from '@/components/ui/button'

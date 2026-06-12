@@ -140,7 +140,7 @@ export default function PmExpensesPage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Expenses</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Expenses</h1>
             <p className="text-sm text-muted-foreground">Track expenses and attach receipts.</p>
           </div>
           <div className="flex items-center gap-2">

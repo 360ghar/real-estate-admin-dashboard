@@ -138,7 +138,7 @@ export default function PmMaintenancePage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Maintenance</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Maintenance</h1>
             <p className="text-sm text-muted-foreground">Triage requests and manage work orders (no vendors).</p>
           </div>
           <CreateRequestDialog ownerId={ownerId} />

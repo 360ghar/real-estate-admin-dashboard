@@ -91,7 +91,7 @@ export default function PmOwnerDetailPage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
               {owner.data?.full_name || owner.data?.phone || `Owner #${ownerUserId}`}
             </h1>
             <p className="text-sm text-muted-foreground">Owner portfolio overview and operations.</p>

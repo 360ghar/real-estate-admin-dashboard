@@ -125,19 +125,19 @@ export function ModerationActionDialog({
                 <SelectContent>
                   <SelectItem value="approve">
                     <span className="flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      <CheckCircle2 className="h-4 w-4 text-green-500 dark:text-green-400" />
                       Approve - Make listing live
                     </span>
                   </SelectItem>
                   <SelectItem value="request_edit">
                     <span className="flex items-center gap-2">
-                      <Edit2 className="h-4 w-4 text-yellow-500" />
+                      <Edit2 className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
                       Request Edit - Send back for changes
                     </span>
                   </SelectItem>
                   <SelectItem value="reject">
                     <span className="flex items-center gap-2">
-                      <XCircle className="h-4 w-4 text-red-500" />
+                      <XCircle className="h-4 w-4 text-red-500 dark:text-red-400" />
                       Reject - Remove listing
                     </span>
                   </SelectItem>

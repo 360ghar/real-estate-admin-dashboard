@@ -1,13 +1,12 @@
 import { Link } from 'react-router-dom'
-import { AlertCircle, ArrowRight, Building2, IndianRupee, Wrench } from 'lucide-react'
+import { ArrowRight, Building2, IndianRupee, Wrench } from 'lucide-react'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useAppSelector } from '@/hooks/redux'
 import { selectSelectedOwner } from '@/features/pm/slices/pmSlice'
 import { useGetPmDashboardActivityQuery, useGetPmDashboardOverviewQuery } from '@/features/pm/api/pmApi'
 import { formatINR } from '@/features/pm/utils'
-import { getErrorMessage } from '@/lib/errors'
 import { EmptyState } from '@/components/ui/empty-state'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ErrorState } from '@/components/ui/error-state'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -29,7 +28,7 @@ export default function PmDashboardPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">PM Dashboard</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">PM Dashboard</h1>
           <p className="text-sm text-muted-foreground">
             Operational overview for <span className="font-medium">{scopeLabel}</span>.
           </p>
@@ -38,13 +37,10 @@ export default function PmDashboardPage() {
       </div>
 
       {overview.isError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription className="flex items-center justify-between">
-            {getErrorMessage(overview.error, 'Failed to load dashboard overview.')}
-            <Button variant="outline" size="sm" onClick={() => void overview.refetch()}>Retry</Button>
-          </AlertDescription>
-        </Alert>
+        <ErrorState
+          error={overview.error}
+          onRetry={() => void overview.refetch()}
+        />
       )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -142,13 +138,10 @@ export default function PmDashboardPage() {
         </CardHeader>
         <CardContent>
           {activity.isError ? (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="flex items-center justify-between">
-                {getErrorMessage(activity.error, 'Failed to load activity.')}
-                <Button variant="outline" size="sm" onClick={() => void activity.refetch()}>Retry</Button>
-              </AlertDescription>
-            </Alert>
+            <ErrorState
+              error={activity.error}
+              onRetry={() => void activity.refetch()}
+            />
           ) : activity.isLoading ? (
             <div className="space-y-2">
               <Skeleton className="h-4 w-full" />

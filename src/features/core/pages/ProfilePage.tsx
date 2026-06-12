@@ -62,7 +62,7 @@ const ProfilePage = () => {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2"><h1 className="text-3xl font-bold tracking-tight">My Profile</h1><p className="text-muted-foreground">Manage your account information, security settings, and preferences.</p></div>
+      <div className="space-y-2"><h1 className="text-2xl md:text-3xl font-bold tracking-tight">My Profile</h1><p className="text-muted-foreground">Manage your account information, security settings, and preferences.</p></div>
       <div className="grid gap-8 lg:grid-cols-3">
         <Card className="lg:col-span-1">
           <CardHeader className="pb-4"><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Profile Overview</CardTitle></CardHeader>

@@ -14,12 +14,14 @@ export function mapSupabaseAuthError(error: unknown): string {
   switch (code) {
     case 'invalid_credentials':
     case 'invalid_grant':
-      return 'Invalid email or password.'
+      return 'Invalid email/phone or password.'
     case 'user_not_found':
-      return 'No account found for this email.'
+      return 'No account found for this email/phone.'
     case 'email_exists':
     case 'user_already_exists':
       return 'An account with this email already exists.'
+    case 'phone_exists':
+      return 'An account with this phone number already exists.'
     case 'over_email_send_rate_limit':
       return 'Too many requests. Please wait before trying again.'
     case 'otp_expired':
@@ -41,7 +43,7 @@ export function mapSupabaseAuthError(error: unknown): string {
 
   // Fallback heuristics based on message text
   if (message.includes('invalid login') || message.includes('invalid credentials')) {
-    return 'Invalid email or password.'
+    return 'Invalid email/phone or password.'
   }
   if (message.includes('rate limit')) {
     return 'Too many requests. Please wait and try again.'

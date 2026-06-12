@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -7,6 +7,7 @@ import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 import { format, parseISO } from 'date-fns'
 import { MapPin, Star, CreditCard } from 'lucide-react'
 import type { Booking, BookingReview } from '@/types/api'
+import { getBookingStatusColor, getBookingPaymentStatusColor } from '@/lib/statusColors'
 import { BookingReviewForm } from './BookingReviewForm'
 
 interface BookingCardProps {
@@ -17,40 +18,8 @@ interface BookingCardProps {
   showActions?: boolean
 }
 
-const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, onReview, showActions = true }) => {
+const BookingCard = ({ booking, onUpdate, onCancel, onReview, showActions = true }: BookingCardProps) => {
   const [showDetails, setShowDetails] = useState(false)
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed':
-        return 'default'
-      case 'pending':
-        return 'secondary'
-      case 'cancelled':
-        return 'destructive'
-      case 'completed':
-        return 'default'
-      case 'refunded':
-        return 'outline'
-      default:
-        return 'outline'
-    }
-  }
-
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'default'
-      case 'partial':
-        return 'secondary'
-      case 'unpaid':
-        return 'destructive'
-      case 'refunded':
-        return 'outline'
-      default:
-        return 'outline'
-    }
-  }
 
   return (
     <Card className={`transition-all ${booking.booking_status === 'cancelled' ? 'opacity-60' : ''}`}>
@@ -66,10 +35,10 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking, onUpdate, onCancel, 
                 </p>
               </div>
               <div className="flex gap-2">
-                <Badge variant={getStatusColor(booking.booking_status)}>
+                <Badge variant={getBookingStatusColor(booking.booking_status)}>
                   {booking.booking_status}
                 </Badge>
-                <Badge variant={getPaymentStatusColor(booking.payment_status)}>
+                <Badge variant={getBookingPaymentStatusColor(booking.payment_status)}>
                   {booking.payment_status}
                 </Badge>
               </div>

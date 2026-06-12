@@ -1,9 +1,17 @@
-import { useState } from "react";
-import type { MaintenanceRequest, MaintenanceRequestStatus, MaintenanceRequestUpdate, WorkOrderStatus } from "@/types/pm";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { MaintenanceRequest, MaintenanceRequestUpdate } from "@/types/pm";
 import { MAINTENANCE_REQUEST_STATUSES, WORK_ORDER_STATUSES } from "@/features/pm/constants";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { serverTimestampToLocalInput, localInputToServerTimestamp } from "@/lib/dateTime";
+import { pmMaintenanceUpdateSchema, type PmMaintenanceUpdateForm } from "@/features/pm/validations";
 
 interface MaintenanceUpdateFormProps {
   request: MaintenanceRequest;
@@ -27,98 +36,160 @@ export default function MaintenanceUpdateForm({
   onSubmit,
   isSubmitting,
 }: MaintenanceUpdateFormProps) {
-  const [reqStatus, setReqStatus] = useState<MaintenanceRequestStatus>(request.request_status);
-  const [woStatus, setWoStatus] = useState<WorkOrderStatus | "">(request.work_order_status || "");
-  const [priority, setPriority] = useState(request.priority || "");
-  const [estimatedCost, setEstimatedCost] = useState(request.estimated_cost?.toString() || "");
-  const [actualCost, setActualCost] = useState(request.actual_cost?.toString() || "");
-  const [scheduledFor, setScheduledFor] = useState(serverTimestampToLocalInput(request.scheduled_for));
-  const [completionNotes, setCompletionNotes] = useState(request.completion_notes || "");
-  const [assignToMe, setAssignToMe] = useState(defaultAssignedAgentId ? "yes" : "no");
+  const form = useForm<PmMaintenanceUpdateForm>({
+    resolver: zodResolver(pmMaintenanceUpdateSchema),
+    defaultValues: {
+      request_status: request.request_status,
+      work_order_status: request.work_order_status || "",
+      assign_to_me: defaultAssignedAgentId ? "yes" : "no",
+      priority: request.priority || "",
+      estimated_cost: request.estimated_cost?.toString() || "",
+      actual_cost: request.actual_cost?.toString() || "",
+      scheduled_for: serverTimestampToLocalInput(request.scheduled_for),
+      completion_notes: request.completion_notes || "",
+    },
+  });
+
+  const handleSubmit = async (values: PmMaintenanceUpdateForm) => {
+    const payload: MaintenanceRequestUpdate = {
+      request_status: values.request_status,
+      work_order_status: values.work_order_status || undefined,
+      assigned_agent_id: values.assign_to_me === "yes" ? defaultAssignedAgentId ?? undefined : undefined,
+      priority: values.priority || undefined,
+      estimated_cost: values.estimated_cost ? Number(values.estimated_cost) : undefined,
+      actual_cost: values.actual_cost ? Number(values.actual_cost) : undefined,
+      scheduled_for: localInputToServerTimestamp(values.scheduled_for) ?? undefined,
+      completion_notes: values.completion_notes || undefined,
+    };
+    await onSubmit(payload);
+  };
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Request status</Label>
-          <Select value={reqStatus} onValueChange={(v) => setReqStatus(v as MaintenanceRequestStatus)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MAINTENANCE_REQUEST_STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <Form {...form}>
+      <form onSubmit={(e) => void form.handleSubmit(handleSubmit)(e)} className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="request_status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Request status</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {MAINTENANCE_REQUEST_STATUSES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="work_order_status"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Work order status</FormLabel>
+                <Select value={field.value || "none"} onValueChange={(v) => field.onChange(v === "none" ? "" : v)}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="none">—</SelectItem>
+                    {WORK_ORDER_STATUSES.map((s) => (
+                      <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="assign_to_me"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Assign to me</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="no">No</SelectItem>
+                    <SelectItem value="yes">Yes</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="priority"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Priority (optional)</FormLabel>
+                <FormControl><Input placeholder="e.g. P1" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="estimated_cost"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Estimated cost (optional)</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="actual_cost"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Actual cost (optional)</FormLabel>
+                <FormControl><Input {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="scheduled_for"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Scheduled for (optional)</FormLabel>
+                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="completion_notes"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Completion notes (optional)</FormLabel>
+                <FormControl><Textarea rows={3} {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
-        <div className="space-y-2">
-          <Label>Work order status</Label>
-          <Select value={woStatus || "none"} onValueChange={(v) => setWoStatus(v === "none" ? "" : (v as WorkOrderStatus))}>
-            <SelectTrigger>
-              <SelectValue placeholder="—" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">—</SelectItem>
-              {WORK_ORDER_STATUSES.map((s) => (
-                <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex justify-end gap-2">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving…" : "Save"}
+          </Button>
         </div>
-        <div className="space-y-2">
-          <Label>Assign to me</Label>
-          <Select value={assignToMe} onValueChange={(v) => setAssignToMe(v as "yes" | "no")}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="no">No</SelectItem>
-              <SelectItem value="yes">Yes</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Priority (optional)</Label>
-          <Input value={priority} onChange={(e) => setPriority(e.target.value)} placeholder="e.g. P1" />
-        </div>
-        <div className="space-y-2">
-          <Label>Estimated cost (optional)</Label>
-          <Input value={estimatedCost} onChange={(e) => setEstimatedCost(e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label>Actual cost (optional)</Label>
-          <Input value={actualCost} onChange={(e) => setActualCost(e.target.value)} />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Scheduled for (optional)</Label>
-          <Input type="datetime-local" value={scheduledFor} onChange={(e) => setScheduledFor(e.target.value)} />
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Completion notes (optional)</Label>
-          <Textarea value={completionNotes} onChange={(e) => setCompletionNotes(e.target.value)} rows={3} />
-        </div>
-      </div>
-      <div className="flex justify-end gap-2">
-        <Button
-          onClick={() => {
-            const payload: MaintenanceRequestUpdate = {
-              request_status: reqStatus,
-              work_order_status: woStatus || undefined,
-              assigned_agent_id: assignToMe === "yes" ? defaultAssignedAgentId ?? undefined : undefined,
-              priority: priority || undefined,
-              estimated_cost: estimatedCost ? Number(estimatedCost) : undefined,
-              actual_cost: actualCost ? Number(actualCost) : undefined,
-              scheduled_for: localInputToServerTimestamp(scheduledFor) ?? undefined,
-              completion_notes: completionNotes || undefined,
-            };
-            void onSubmit(payload);
-          }}
-          disabled={isSubmitting}
-        >
-          {isSubmitting ? "Saving…" : "Save"}
-        </Button>
-      </div>
-    </div>
+      </form>
+    </Form>
   );
 }

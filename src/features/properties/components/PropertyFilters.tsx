@@ -92,7 +92,7 @@ const PropertyFilters: React.FC<PropertyFiltersProps> = ({
           <div>
             <Sheet>
               <SheetTrigger asChild><Button variant="outline" className="w-full justify-start"><Filter className="h-4 w-4 mr-2" />Amenities ({selectedAmenities.length})</Button></SheetTrigger>
-              <SheetContent className="w-[400px]">
+              <SheetContent className="w-full sm:w-[400px]">
                 <SheetHeader><SheetTitle>Select Amenities</SheetTitle><SheetDescription>Choose amenities to filter properties.</SheetDescription></SheetHeader>
                 <div className="py-4 space-y-2 max-h-[300px] overflow-y-auto">
                   {amenities.map((amenity) => (

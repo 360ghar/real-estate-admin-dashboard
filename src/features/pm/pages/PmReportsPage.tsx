@@ -58,7 +58,7 @@ export default function PmReportsPage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Reports</h1>
             <p className="text-sm text-muted-foreground">Generate operational reports and export CSV.</p>
           </div>
           <Badge variant="secondary" className="h-fit">

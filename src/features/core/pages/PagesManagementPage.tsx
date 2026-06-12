@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Plus, Edit, Eye, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -56,7 +56,7 @@ const PagesManagementPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div><h1 className="text-3xl font-bold">Pages Management</h1><p className="text-muted-foreground mt-2">Manage dynamic content pages</p></div>
         <Button onClick={() => { resetForm(); setIsDialogOpen(true) }}><Plus className="h-4 w-4 mr-2" />New Page</Button>
       </div>

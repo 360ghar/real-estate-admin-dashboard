@@ -30,16 +30,16 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
 
     return (
         <motion.div
-            style={{ x, rotate, opacity, position: 'absolute', width: '100%', maxWidth: '400px' }}
+            style={{ x, rotate, opacity }}
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
             onDragEnd={handleDragEnd}
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1, x: exitX }}
             transition={{ duration: 0.2 }}
-            className="cursor-grab active:cursor-grabbing"
+            className="absolute w-full max-w-[400px] cursor-grab active:cursor-grabbing"
         >
-            <Card className="overflow-hidden h-[600px] flex flex-col shadow-xl border-2">
+            <Card className="overflow-hidden h-[500px] sm:h-[600px] flex flex-col shadow-xl border-2">
                 <div className="relative h-3/5 bg-muted">
                     <img
                         src={property.main_image_url || '/placeholder-property.jpg'}
@@ -101,7 +101,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         <Button
                             size="lg"
                             variant="outline"
-                            className="rounded-full h-14 w-14 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                            className="rounded-full h-14 w-14 border-red-200 text-red-500 hover:bg-red-50 hover:text-red-600 hover:border-red-300 dark:border-red-800/40 dark:text-red-400 dark:hover:bg-red-900/30 dark:hover:text-red-300 dark:hover:border-red-700/50"
                             onClick={() => {
                                 setExitX(-200)
                                 onSwipe('left')
@@ -112,7 +112,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         <Button
                             size="lg"
                             variant="outline"
-                            className="rounded-full h-14 w-14 border-blue-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300"
+                            className="rounded-full h-14 w-14 border-blue-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:border-blue-800/40 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 dark:hover:border-blue-700/50"
                             asChild
                         >
                             <Link to={`/properties/${property.id}`}>
@@ -122,7 +122,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                         <Button
                             size="lg"
                             variant="outline"
-                            className="rounded-full h-14 w-14 border-green-200 text-green-500 hover:bg-green-50 hover:text-green-600 hover:border-green-300"
+                            className="rounded-full h-14 w-14 border-green-200 text-green-500 hover:bg-green-50 hover:text-green-600 hover:border-green-300 dark:border-green-800/40 dark:text-green-400 dark:hover:bg-green-900/30 dark:hover:text-green-300 dark:hover:border-green-700/50"
                             onClick={() => {
                                 setExitX(200)
                                 onSwipe('right')

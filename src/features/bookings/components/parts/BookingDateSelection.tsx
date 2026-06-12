@@ -1,4 +1,3 @@
-import React from 'react'
 import { Calendar } from '@/components/ui/calendar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Label } from '@/components/ui/label'
@@ -35,7 +34,7 @@ const BookingDateSelection: React.FC<BookingDateSelectionProps> = ({ selectedDat
       <div className="text-sm text-muted-foreground"><CalendarDays className="h-4 w-4 inline mr-1" />{differenceInDays(selectedDates.to, selectedDates.from)} nights</div>
     )}
     {availabilityInfo && !availabilityInfo.available && (
-      <div className="p-3 bg-red-50 border border-red-200 rounded-lg"><p className="text-sm text-red-800">{availabilityInfo.reason || 'Property is not available for selected dates'}</p></div>
+      <div className="p-3 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800/40"><p className="text-sm text-red-800 dark:text-red-300">{availabilityInfo.reason || 'Property is not available for selected dates'}</p></div>
     )}
     {pricingInfo && (
       <Card>

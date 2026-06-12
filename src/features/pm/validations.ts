@@ -235,3 +235,48 @@ export type PmExpenseUpdateForm = z.infer<typeof pmExpenseUpdateSchema>
 export type PmMaintenanceRequestForm = z.infer<typeof pmMaintenanceRequestSchema>
 export type PmInspectionCreateForm = z.infer<typeof pmInspectionCreateSchema>
 export type PmApplicationFormForm = z.infer<typeof pmApplicationFormSchema>
+
+export const pmChargeGenerateSchema = z.object({
+  scope: z.enum(['owner', 'lease']),
+  lease_id: z.string().optional().or(z.literal('')),
+  start_month: z.string().optional().or(z.literal('')),
+  months: z
+    .string()
+    .min(1, 'Number of months is required')
+    .refine(
+      (v) => {
+        const n = Number(v)
+        return !isNaN(n) && n >= 1 && n <= 24
+      },
+      'Months must be between 1 and 24',
+    ),
+})
+
+export type PmChargeGenerateForm = z.infer<typeof pmChargeGenerateSchema>
+
+export const pmMaintenanceUpdateSchema = z.object({
+  request_status: z.enum(['open', 'in_review', 'work_order_created', 'resolved', 'closed']),
+  work_order_status: z.enum(['created', 'assigned', 'in_progress', 'completed', 'closed', 'cancelled']).optional().or(z.literal('')),
+  assign_to_me: z.enum(['yes', 'no']),
+  priority: z.string().optional().or(z.literal('')),
+  estimated_cost: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (v) => !v || (!isNaN(Number(v)) && Number(v) >= 0),
+      'Estimated cost must be a non-negative number',
+    ),
+  actual_cost: z
+    .string()
+    .optional()
+    .or(z.literal(''))
+    .refine(
+      (v) => !v || (!isNaN(Number(v)) && Number(v) >= 0),
+      'Actual cost must be a non-negative number',
+    ),
+  scheduled_for: z.string().optional().or(z.literal('')),
+  completion_notes: z.string().optional().or(z.literal('')),
+})
+
+export type PmMaintenanceUpdateForm = z.infer<typeof pmMaintenanceUpdateSchema>

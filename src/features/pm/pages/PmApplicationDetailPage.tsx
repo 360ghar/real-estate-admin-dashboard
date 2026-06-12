@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertCircle, FileText, ShieldCheck, ShieldX } from "lucide-react";
+import { FileText, ShieldCheck, ShieldX } from "lucide-react";
 import DecisionAlertDialog from "@/features/pm/components/DecisionAlertDialog";
 import {
   useGetApplicationQuery,
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getErrorMessage } from "@/lib/errors";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function PmApplicationDetailPage() {
   const { applicationId } = useParams();
@@ -51,13 +51,10 @@ export default function PmApplicationDetailPage() {
 
   if (application.isError) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-        <AlertCircle className="h-4 w-4" />
-        <span>{getErrorMessage(application.error, 'Failed to load application.')}</span>
-        <Button variant="outline" size="sm" onClick={() => { void application.refetch(); }}>
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        error={application.error}
+        onRetry={() => { void application.refetch(); }}
+      />
     );
   }
 
@@ -65,7 +62,7 @@ export default function PmApplicationDetailPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {application.isLoading ? "Loading…" : `Application #${application.data?.id ?? applicationIdNum}`}
           </h1>
           <p className="text-sm text-muted-foreground">

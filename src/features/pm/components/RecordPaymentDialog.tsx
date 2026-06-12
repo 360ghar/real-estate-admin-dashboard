@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { DocumentType, RentChargeWithTotals, RentPaymentCreate } from "@/types/pm";
 import {
   useListRentChargesQuery,
@@ -21,9 +23,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
 import { PAYMENT_METHODS } from "@/features/pm/constants";
+import {
+  pmRentPaymentSchema,
+  type PmRentPaymentForm,
+} from "@/features/pm/validations";
 
 interface RecordPaymentDialogProps {
   ownerId: number | null;
@@ -47,20 +61,23 @@ export default function RecordPaymentDialog({
     { skip: !ownerId },
   );
 
-  const [amount, setAmount] = useState("");
-  const [method, setMethod] = useState("cash");
-  const [reference, setReference] = useState("");
-  const [notes, setNotes] = useState("");
   const [receipt, setReceipt] = useState<File | null>(null);
+
+  const form = useForm<PmRentPaymentForm>({
+    resolver: zodResolver(pmRentPaymentSchema),
+    defaultValues: {
+      amount_paid: "",
+      payment_method: "cash",
+      reference: "",
+      notes: "",
+    },
+  });
 
   const chargeId = charge?.charge.id ?? null;
 
-  const submit = async () => {
+  const onSubmit = async (values: PmRentPaymentForm) => {
     if (!chargeId) return;
-    if (!amount) {
-      toast({ title: "Missing amount", description: "Enter an amount.", variant: "destructive" });
-      return;
-    }
+
     try {
       let receiptDocumentId: number | undefined;
       if (receipt) {
@@ -81,17 +98,23 @@ export default function RecordPaymentDialog({
 
       const payload: RentPaymentCreate = {
         charge_id: chargeId,
-        amount_paid: Number(amount),
-        payment_method: method,
-        reference: reference || undefined,
-        notes: notes || undefined,
+        amount_paid: Number(values.amount_paid),
+        payment_method: values.payment_method,
+        reference: values.reference || undefined,
+        notes: values.notes || undefined,
         receipt_document_id: receiptDocumentId,
       };
       await recordPayment(payload).unwrap();
       toast({ title: "Recorded", description: "Payment recorded." });
+      form.reset();
+      setReceipt(null);
       onOpenChange(false);
     } catch (e: unknown) {
-      toast({ title: "Failed", description: getErrorMessage(e, "Could not record payment."), variant: "destructive" });
+      toast({
+        title: "Failed",
+        description: getErrorMessage(e, "Could not record payment."),
+        variant: "destructive",
+      });
     }
   };
 
@@ -101,53 +124,106 @@ export default function RecordPaymentDialog({
         <DialogHeader>
           <DialogTitle>Record payment</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="text-sm text-muted-foreground">
-            Charge #{chargeId}
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Amount</Label>
-              <Input value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              Charge #{chargeId}
             </div>
-            <div className="space-y-2">
-              <Label>Method</Label>
-              <Select value={method} onValueChange={setMethod}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid gap-4 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="amount_paid"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input placeholder="0" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="payment_method"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Method</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {PAYMENT_METHODS.map((m) => (
+                          <SelectItem key={m.value} value={m.value}>
+                            {m.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="reference"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Reference (optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-2">
+                <Label>Receipt file (optional)</Label>
+                <Input
+                  type="file"
+                  onChange={(e) => setReceipt(e.target.files?.[0] ?? null)}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem className="md:col-span-2">
+                    <FormLabel>Notes (optional)</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <div className="space-y-2">
-              <Label>Reference (optional)</Label>
-              <Input value={reference} onChange={(e) => setReference(e.target.value)} />
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={recordState.isLoading || uploadDocState.isLoading}
+              >
+                {recordState.isLoading || uploadDocState.isLoading
+                  ? "Saving…"
+                  : "Save"}
+              </Button>
             </div>
-            <div className="space-y-2">
-              <Label>Receipt file (optional)</Label>
-              <Input type="file" onChange={(e) => setReceipt(e.target.files?.[0] ?? null)} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>Notes (optional)</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
-            </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => { void submit(); }}
-              disabled={recordState.isLoading || uploadDocState.isLoading}
-            >
-              {recordState.isLoading || uploadDocState.isLoading ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

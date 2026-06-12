@@ -1,4 +1,3 @@
-import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,6 +8,7 @@ import { format } from 'date-fns'
 import { MapPin, Clock, User, Check, Edit } from 'lucide-react'
 import type { Visit } from '@/types/api'
 import { parseServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
+import { getVisitStatusColor } from '@/lib/statusColors'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 
 interface VisitCardProps {
@@ -20,28 +20,14 @@ interface VisitCardProps {
   onCancel: (visitId: number) => void
 }
 
-const VisitCard: React.FC<VisitCardProps> = ({
+const VisitCard = ({
   visit,
   isAdmin: _isAdmin,
   isUser,
   onComplete,
   onReschedule,
   onCancel,
-}) => {
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'scheduled':
-        return 'default'
-      case 'completed':
-        return 'default'
-      case 'cancelled':
-        return 'destructive'
-      case 'no_show':
-        return 'secondary'
-      default:
-        return 'outline'
-    }
-  }
+}: VisitCardProps) => {
 
   return (
     <Card>
@@ -79,7 +65,7 @@ const VisitCard: React.FC<VisitCardProps> = ({
                   </p>
                 )}
               </div>
-              <Badge variant={getStatusColor(visit.status)} className="capitalize">
+              <Badge variant={getVisitStatusColor(visit.status)} className="capitalize">
                 {visit.status}
               </Badge>
             </div>

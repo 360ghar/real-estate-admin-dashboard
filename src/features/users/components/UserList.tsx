@@ -78,7 +78,7 @@ const UserList = () => {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <Link className="text-blue-600 hover:underline" to={`/users/${row.original.id}`}>
+        <Link className="text-blue-600 dark:text-blue-400 hover:underline" to={`/users/${row.original.id}`}>
           View
         </Link>
       ),

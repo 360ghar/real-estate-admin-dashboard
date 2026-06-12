@@ -66,32 +66,32 @@ const UsersPage = ({ mode }: { mode?: 'detail' }) => {
 
             <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
               <div className="p-2 bg-green-500/10 rounded-full">
-                <TrendingUp className="h-4 w-4 text-green-600" />
+                <TrendingUp className="h-4 w-4 text-green-600 dark:text-green-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold text-green-600">--</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">--</p>
               </div>
             </div>
 
             <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
               <div className="p-2 bg-blue-500/10 rounded-full">
-                <Phone className="h-4 w-4 text-blue-600" />
+                <Phone className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Phone Verified</p>
-                <p className="text-2xl font-bold text-blue-600">--</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">--</p>
               </div>
             </div>
 
             {role === 'admin' && (
               <div className="flex items-center gap-3 p-4 rounded-lg border bg-muted/30">
                 <div className="p-2 bg-orange-500/10 rounded-full">
-                  <Shield className="h-4 w-4 text-orange-600" />
+                  <Shield className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Agents</p>
-                  <p className="text-2xl font-bold text-orange-600">--</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">--</p>
                 </div>
               </div>
             )}

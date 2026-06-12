@@ -2,62 +2,315 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useAppDispatch } from '@/hooks/redux'
 import { setCredentials, setError } from '@/features/auth/slices/authSlice'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Shield, Eye, EyeOff, Building2 } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
+import { GoogleIcon } from '@/components/ui/google-icon'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { mapSupabaseAuthError } from '@/lib/authErrors'
-import { fetchUserProfileWithToken } from '@/lib/auth'
-import { loginSchema, type LoginFormValues } from '@/features/auth/validations'
+import {
+  fetchUserProfileWithToken,
+  signInWithGoogle as startGoogleSignIn,
+  checkIdentifierStatus,
+  recordLastAuthMethod,
+  sendOtp as sendOtpRequest,
+  isEmail,
+  normalizeIdentifier,
+  requireSupabase,
+  type IdentifierChannel,
+  type AuthMethod,
+} from '@/lib/auth'
+import { isLoginInProgress } from '@/App'
+import { getLastAuthMethod, setLastAuthMethod, maskIdentifier } from '@/lib/lastAuthMethod'
+import { useWebOtp } from '@/hooks/useWebOtp'
+import { useResendTimer } from '@/hooks/useResendTimer'
+import { AuthBrandingPanel } from '@/components/auth/AuthBrandingPanel'
+import { AuthCardLayout } from '@/components/auth/AuthCardLayout'
+import {
+  identifierSchema,
+  passwordStepSchema,
+  otpStepSchema,
+  setPasswordStepSchema,
+  type IdentifierFormValues,
+  type PasswordStepFormValues,
+  type OtpStepFormValues,
+  type SetPasswordStepFormValues,
+} from '@/features/auth/validations'
 
-function normalizePhone(phone: string): string {
-  const trimmed = phone.trim().replace(/\s+/g, '')
-  if (trimmed.startsWith('+')) return trimmed
-  return `+${trimmed}`
+type Step = 'identifier' | 'password' | 'otp' | 'set-password'
+
+const METHOD_LABELS: Record<AuthMethod, string> = {
+  google: 'Google',
+  email_password: 'email & password',
+  phone_password: 'phone & password',
+  phone_otp: 'phone OTP',
+  email_otp: 'email OTP',
 }
 
 const LoginPage = () => {
   const navigate = useNavigate()
   const dispatch = useAppDispatch()
+  const [searchParams] = useSearchParams()
+
+  const [step, setStep] = useState<Step>('identifier')
+  const [channel, setChannel] = useState<IdentifierChannel>('phone')
+  // The canonical identifier (normalized phone/email) carried across steps.
+  const [normalized, setNormalized] = useState('')
+  const [displayIdentifier, setDisplayIdentifier] = useState('')
+  // Whether the account already has a password. Drives the mandatory
+  // set-password step after OTP. Unknown identifier (exists === false) => false.
+  const [hasPassword, setHasPassword] = useState(false)
+  // Session token from a successful OTP verify, held while the user sets a password.
+  const [otpAccessToken, setOtpAccessToken] = useState<string | null>(null)
+
+  const [otpVersion, setOtpVersion] = useState(0)
+  const isFinishingLogin = useRef(false)
+
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const form = useForm<LoginFormValues>({ resolver: zodResolver(loginSchema) })
+  const [infoMessage, setInfoMessage] = useState<string | null>(null)
 
-  const onSubmit = async (values: LoginFormValues) => {
-    if (!supabase) {
-      const message = 'Supabase is not configured. Please set environment variables.'
-      dispatch(setError(message))
-      setErrorMessage(message)
-      return
-    }
+  const lastMethod = useMemo(() => getLastAuthMethod(), [])
 
-    setIsSubmitting(true)
+  const identifierForm = useForm<IdentifierFormValues>({
+    resolver: zodResolver(identifierSchema),
+    defaultValues: { identifier: '' },
+  })
+  const passwordForm = useForm<PasswordStepFormValues>({
+    resolver: zodResolver(passwordStepSchema),
+    defaultValues: { password: '' },
+  })
+  const otpForm = useForm<OtpStepFormValues>({
+    resolver: zodResolver(otpStepSchema),
+    defaultValues: { otp: '' },
+  })
+  const setPasswordForm = useForm<SetPasswordStepFormValues>({
+    resolver: zodResolver(setPasswordStepSchema),
+    defaultValues: { password: '', confirm_password: '' },
+  })
+
+  // 30s cooldown for the "Resend code" control on the OTP step.
+  const resendTimer = useResendTimer()
+
+  // Surface auth-callback errors (e.g. unauthorized Google account) on the login screen.
+  useEffect(() => {
+    const queryError = searchParams.get('error')
+    if (queryError) setErrorMessage(queryError)
+  }, [searchParams])
+
+  // Android Chrome SMS OTP autofill — only while the OTP step is shown for a phone.
+  // `otpVersion` re-arms the hook on each resend so a stale pending request is
+  // replaced by a fresh one.
+  useWebOtp(
+    (code) => {
+      otpForm.setValue('otp', code, { shouldValidate: true })
+    },
+    step === 'otp' && channel === 'phone',
+    otpVersion,
+  )
+
+  const resetToIdentifier = () => {
+    setStep('identifier')
+    setNormalized('')
+    setDisplayIdentifier('')
     setErrorMessage(null)
+    setInfoMessage(null)
+    setOtpAccessToken(null)
+    passwordForm.reset()
+    otpForm.reset()
+    setPasswordForm.reset()
+    resendTimer.reset()
+  }
+
+  const finishLogin = async (accessToken: string, method: AuthMethod) => {
+    isFinishingLogin.current = true
+    isLoginInProgress.current = true
     try {
-      const result = await supabase.auth.signInWithPassword({
-        phone: normalizePhone(values.phone),
-        password: values.password,
-      })
+      const user = await fetchUserProfileWithToken(accessToken)
+      if (!user) {
+        throw new Error('Signed in, but your account is not authorized for the admin portal.')
+      }
+      dispatch(setCredentials({ token: accessToken, user }))
+      setLastAuthMethod(method, displayIdentifier || normalized)
+      void recordLastAuthMethod(accessToken, method)
+      navigate('/dashboard', { replace: true })
+    } finally {
+      // Reset the flags if navigation didn't happen (e.g. profile fetch failed).
+      isFinishingLogin.current = false
+      isLoginInProgress.current = false
+    }
+  }
+
+  const handleGoogle = async () => {
+    setErrorMessage(null)
+    setGoogleLoading(true)
+    try {
+      await startGoogleSignIn()
+      // Redirect happens; control leaves the page.
+    } catch (err) {
+      setGoogleLoading(false)
+      setErrorMessage(mapSupabaseAuthError(err))
+    }
+  }
+
+  const onIdentifierSubmit = async (values: IdentifierFormValues) => {
+    setErrorMessage(null)
+    setInfoMessage(null)
+    setIsSubmitting(true)
+    try {
+      const raw = values.identifier.trim()
+      const detectedChannel: IdentifierChannel = isEmail(raw) ? 'email' : 'phone'
+
+      // Pass the raw (un-normalized) identifier so the backend can look up
+      // the account before we commit to a channel or format.
+      const status = await checkIdentifierStatus(values.identifier.trim())
+      const resolvedChannel = status?.channel ?? detectedChannel
+      const canonical = normalizeIdentifier(raw, resolvedChannel)
+
+      setChannel(resolvedChannel)
+      setNormalized(canonical)
+      setDisplayIdentifier(raw)
+
+      // If the identifier-status endpoint is unavailable, fall back to
+      // password-first for emails and OTP-first for phones.
+      if (!status) {
+        setHasPassword(false)
+        if (resolvedChannel === 'email') {
+          setStep('password')
+          passwordForm.reset()
+        } else {
+          await sendOtp(canonical, resolvedChannel)
+        }
+        return
+      }
+
+      // Unknown identifier (exists === false) has no password; otherwise trust the flag.
+      setHasPassword(status.exists ? status.has_password : false)
+
+      // Verified accounts with a password -> password step.
+      if (status.next_step === 'password') {
+        setStep('password')
+        passwordForm.reset()
+        return
+      }
+
+      // Unverified / unknown -> OTP-first.
+      await sendOtp(canonical, resolvedChannel)
+    } catch (err) {
+      setErrorMessage(mapSupabaseAuthError(err))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const sendOtp = async (canonical: string, ch: IdentifierChannel) => {
+    requireSupabase()
+    await sendOtpRequest(canonical, ch)
+    setStep('otp')
+    otpForm.reset()
+    setOtpVersion((v) => v + 1)
+    resendTimer.start()
+    setInfoMessage(
+      ch === 'email'
+        ? `We sent a 6-digit code to ${canonical}.`
+        : `We sent a 6-digit code via SMS to ${canonical}.`
+    )
+  }
+
+  const onPasswordSubmit = async (values: PasswordStepFormValues) => {
+    const sb = requireSupabase()
+    setErrorMessage(null)
+    setIsSubmitting(true)
+    try {
+      const result =
+        channel === 'email'
+          ? await sb.auth.signInWithPassword({ email: normalized, password: values.password })
+          : await sb.auth.signInWithPassword({ phone: normalized, password: values.password })
       if (result.error || !result.data.session) {
         throw result.error ?? new Error('Login failed. Please check your credentials.')
       }
+      const method: AuthMethod = channel === 'email' ? 'email_password' : 'phone_password'
+      await finishLogin(result.data.session.access_token, method)
+    } catch (err) {
+      const error = mapSupabaseAuthError(err)
+      dispatch(setError(error))
+      setErrorMessage(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-      const accessToken = result.data.session.access_token
-      const user = await fetchUserProfileWithToken(accessToken)
-      if (!user) {
-        throw new Error('Login succeeded but user profile could not be loaded.')
+  const onOtpSubmit = async (values: OtpStepFormValues) => {
+    const sb = requireSupabase()
+    setErrorMessage(null)
+    setIsSubmitting(true)
+    try {
+      const result =
+        channel === 'email'
+          ? await sb.auth.verifyOtp({ email: normalized, token: values.otp, type: 'email' })
+          : await sb.auth.verifyOtp({ phone: normalized, token: values.otp, type: 'sms' })
+      if (result.error || !result.data.session) {
+        throw result.error ?? new Error('Invalid or expired code. Please try again.')
       }
 
-      dispatch(setCredentials({ token: accessToken, user }))
-      navigate('/dashboard', { replace: true })
-    } catch (err: unknown) {
+      const accessToken = result.data.session.access_token
+
+      // Requirement 6: if the account has no password, FORCE a mandatory
+      // set-password step before completing login. Not applied to Google.
+      if (!hasPassword) {
+        setOtpAccessToken(accessToken)
+        setInfoMessage(null)
+        setPasswordForm.reset()
+        setStep('set-password')
+        return
+      }
+
+      const method: AuthMethod = channel === 'email' ? 'email_otp' : 'phone_otp'
+      await finishLogin(accessToken, method)
+    } catch (err) {
+      const error = mapSupabaseAuthError(err)
+      dispatch(setError(error))
+      setErrorMessage(error)
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleResendOtp = async () => {
+    if (!resendTimer.canResend) return
+    setErrorMessage(null)
+    setIsSubmitting(true)
+    try {
+      await sendOtp(normalized, channel)
+    } catch (err) {
+      setErrorMessage(mapSupabaseAuthError(err))
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Mandatory set-password step (reached only after OTP for a passwordless account).
+  const onSetPasswordSubmit = async (values: SetPasswordStepFormValues) => {
+    const sb = requireSupabase()
+    setErrorMessage(null)
+    setIsSubmitting(true)
+    try {
+      const { error } = await sb.auth.updateUser({ password: values.password })
+      if (error) throw error
+      // Session token is unchanged by updateUser; reuse the one from OTP verify.
+      const { data } = await sb.auth.getSession()
+      const accessToken = data.session?.access_token ?? otpAccessToken
+      if (!accessToken) {
+        throw new Error('Your session expired. Please sign in again.')
+      }
+      const method: AuthMethod = channel === 'email' ? 'email_password' : 'phone_password'
+      await finishLogin(accessToken, method)
+    } catch (err) {
       const error = mapSupabaseAuthError(err)
       dispatch(setError(error))
       setErrorMessage(error)
@@ -68,134 +321,327 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Side - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary/90 to-primary/80 flex-col justify-center items-center p-12 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="relative z-10 text-center">
-          <div className="flex justify-center mb-8">
-            <div className="p-4 bg-primary-foreground/10 rounded-full backdrop-blur-sm">
-              <Building2 className="h-16 w-16" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold mb-4">360Ghar</h1>
-          <p className="text-xl mb-8 opacity-90">Real Estate Management Platform</p>
-          <div className="space-y-4 text-sm opacity-75">
-            <p>✓ Comprehensive property management</p>
-            <p>✓ Advanced analytics & reporting</p>
-            <p>✓ Seamless agent coordination</p>
-            <p>✓ Real-time booking system</p>
-          </div>
-        </div>
-        <div className="absolute bottom-8 left-8">
-          <Shield className="h-8 w-8 opacity-50" />
-        </div>
-      </div>
+      <AuthBrandingPanel
+        title="360Ghar"
+        subtitle="Real Estate Management Platform"
+        features={[
+          'Comprehensive property management',
+          'Advanced analytics & reporting',
+          'Seamless agent coordination',
+          'Real-time booking system',
+        ]}
+      />
 
-      {/* Right Side - Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
-        <Card className="w-full max-w-md shadow-xl border bg-card/80 backdrop-blur-sm">
-          <CardHeader className="space-y-1 text-center pb-8">
-            <div className="flex justify-center mb-4">
-              <div className="p-3 bg-primary/10 rounded-full">
-                <Shield className="h-8 w-8 text-primary" />
-              </div>
-            </div>
-            <CardTitle className="text-2xl font-bold">Welcome Back</CardTitle>
-            <p className="text-muted-foreground">
-              Sign in to your admin dashboard
-            </p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {errorMessage && (
-              <Alert variant="destructive">
-                <AlertDescription>{errorMessage}</AlertDescription>
-              </Alert>
-            )}
-
-            <Form {...form}>
-            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-5">
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Phone Number</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type="tel"
-                            placeholder="+91XXXXXXXXXX"
-                            className="h-11 pl-4 pr-4 text-base"
-                            {...field}
-                          />
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Password</FormLabel>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="Enter your password"
-                            className="h-11 pl-4 pr-12 text-base"
-                            {...field}
-                          />
-                          <button
-                            type="button"
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                            onClick={() => setShowPassword(!showPassword)}
-                          >
-                            {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
-                            ) : (
-                              <Eye className="h-5 w-5" />
-                            )}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="pt-2">
-                  <Button
-                    type="submit"
-                    className="w-full h-11 text-base font-medium"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Signing in...
-                      </>
-                    ) : (
-                      'Sign In'
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-
-            <div className="pt-2 flex items-center justify-between text-sm">
-              <Link to="/forgot-password" className="text-primary hover:underline">Forgot password?</Link>
-              <Link to="/signup" className="text-primary hover:underline">New agent? Sign up</Link>
-            </div>
-
+      <AuthCardLayout
+        title="Welcome Back"
+        subtitle="Sign in to your admin dashboard"
+        errorMessage={errorMessage}
+        infoMessage={infoMessage}
+        footer={
+          step === 'identifier' ? (
             <div className="text-center pt-4">
               <p className="text-sm text-muted-foreground">Secure access to 360Ghar Admin Portal</p>
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          ) : undefined
+        }
+      >
+            {lastMethod && step === 'identifier' && (
+              <p className="text-center text-sm text-muted-foreground">
+                Last time you signed in with{' '}
+                <span className="font-medium text-foreground">{METHOD_LABELS[lastMethod.method]}</span>
+                {lastMethod.identifierHint ? ` (${lastMethod.identifierHint})` : ''}.
+              </p>
+            )}
+
+            {/* Google — only on the entry step. Hidden once a flow is in progress so
+                it can't be used to bypass the mandatory set-password step. */}
+            {step === 'identifier' && (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full h-11 text-base font-medium gap-2"
+                  onClick={() => void handleGoogle()}
+                  disabled={googleLoading || isSubmitting}
+                >
+                  {googleLoading ? (
+                    <LoadingSpinner size="sm" className="mr-2" />
+                  ) : (
+                    <GoogleIcon className="h-5 w-5" />
+                  )}
+                  Sign in with Google
+                </Button>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Step 1: identifier */}
+            {step === 'identifier' && (
+              <Form {...identifierForm}>
+                <form
+                  onSubmit={(e) => void identifierForm.handleSubmit(onIdentifierSubmit)(e)}
+                  className="space-y-5"
+                >
+                  <FormField
+                    control={identifierForm.control}
+                    name="identifier"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Phone number or email</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="email"
+                            autoComplete="username"
+                            placeholder="+91XXXXXXXXXX or you@360ghar.com"
+                            className="h-11 px-4 text-base"
+                            autoFocus
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-2">
+                    <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Checking...
+                        </>
+                      ) : (
+                        'Continue'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+
+            {/* Step 2a: password */}
+            {step === 'password' && (
+              <Form {...passwordForm}>
+                <form
+                  onSubmit={(e) => void passwordForm.handleSubmit(onPasswordSubmit)(e)}
+                  className="space-y-5"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    Signing in as <span className="font-medium text-foreground">{displayIdentifier}</span>
+                  </p>
+                  <FormField
+                    control={passwordForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              autoComplete="current-password"
+                              placeholder="Enter your password"
+                              className="h-11 pl-4 pr-12 text-base"
+                              autoFocus
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-2 space-y-3">
+                    <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Signing in...
+                        </>
+                      ) : (
+                        'Sign In'
+                      )}
+                    </Button>
+                    <button
+                      type="button"
+                      onClick={resetToIdentifier}
+                      className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+                    >
+                      <ArrowLeft className="h-4 w-4" /> Use a different account
+                    </button>
+                  </div>
+                </form>
+              </Form>
+            )}
+
+            {/* Step 2b: OTP */}
+            {step === 'otp' && (
+              <Form {...otpForm}>
+                <form onSubmit={(e) => void otpForm.handleSubmit(onOtpSubmit)(e)} className="space-y-5">
+                  <p className="text-sm text-muted-foreground">
+                    Enter the code sent to{' '}
+                    <span className="font-medium text-foreground">{displayIdentifier}</span>
+                  </p>
+                  <FormField
+                    control={otpForm.control}
+                    name="otp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Verification code</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            maxLength={6}
+                            placeholder="123456"
+                            className="h-11 px-4 text-base tracking-[0.5em] text-center"
+                            autoFocus
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-2 space-y-3">
+                    <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Verifying...
+                        </>
+                      ) : (
+                        'Verify & Sign In'
+                      )}
+                    </Button>
+                    <div className="flex items-center justify-between text-sm">
+                      <button
+                        type="button"
+                        onClick={resetToIdentifier}
+                        className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                      >
+                        <ArrowLeft className="h-4 w-4" /> Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleResendOtp()}
+                        disabled={isSubmitting || !resendTimer.canResend}
+                        className="text-primary hover:underline disabled:no-underline disabled:opacity-50"
+                      >
+                        {resendTimer.isActive ? `Resend code in ${resendTimer.secondsLeft}s` : 'Resend code'}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </Form>
+            )}
+
+            {/* Step 3: mandatory set-password (no skip / no back) */}
+            {step === 'set-password' && (
+              <Form {...setPasswordForm}>
+                <form
+                  onSubmit={(e) => void setPasswordForm.handleSubmit(onSetPasswordSubmit)(e)}
+                  className="space-y-5"
+                >
+                  <p className="text-sm text-muted-foreground">
+                    Setting a password for{' '}
+                    <span className="font-medium text-foreground">
+                      {maskIdentifier(normalized || displayIdentifier)}
+                    </span>
+                    . Your account doesn&apos;t have one yet — set it to finish signing in and use it
+                    next time.
+                  </p>
+                  <FormField
+                    control={setPasswordForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">New password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              autoComplete="new-password"
+                              placeholder="Create a password"
+                              className="h-11 pl-4 pr-12 text-base"
+                              autoFocus
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={setPasswordForm.control}
+                    name="confirm_password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Confirm password</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="password"
+                            autoComplete="new-password"
+                            placeholder="Re-enter password"
+                            className="h-11 px-4 text-base"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="pt-2">
+                    <Button type="submit" className="w-full h-11 text-base font-medium" disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Saving...
+                        </>
+                      ) : (
+                        'Set Password & Continue'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            )}
+
+            {step === 'identifier' && (
+              <div className="pt-2 flex items-center justify-between text-sm">
+                <Link to="/forgot-password" className="text-primary hover:underline">
+                  Forgot password?
+                </Link>
+                <Link to="/signup" className="text-primary hover:underline">
+                  New agent? Sign up
+                </Link>
+              </div>
+            )}
+      </AuthCardLayout>
     </div>
   )
 }

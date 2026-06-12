@@ -1,40 +1,91 @@
 import { z } from 'zod'
 
-// Login form validation schema
+// Login form validation schema (legacy single-step phone+password)
 export const loginSchema = z.object({
   phone: z.string().min(8, 'Phone is required'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
 })
 
-// Signup form validation schema
-export const signupSchema = z
+// --- Login state-machine schemas ---
+
+// Step 1: identifier (phone or email) entry
+export const identifierSchema = z.object({
+  identifier: z.string().min(3, 'Enter your phone number or email'),
+})
+
+// Step 2a: password (verified accounts)
+export const passwordStepSchema = z.object({
+  password: z
+    .string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least 1 number'),
+})
+
+// Step 2b: OTP verification (unverified / OTP-first accounts)
+export const otpStepSchema = z.object({
+  otp: z
+    .string()
+    .min(6, 'Enter the 6-digit code')
+    .max(6, 'Enter the 6-digit code')
+    .regex(/^\d{6}$/, 'The code must be 6 digits'),
+})
+
+// Step 3 (mandatory): set a password after OTP for accounts with no password yet
+export const setPasswordStepSchema = z
   .object({
-    full_name: z.string().min(2, 'Full name is required'),
-    email: z.string().email('Please enter a valid email'),
-    phone: z
+    password: z
       .string()
-      .min(8, 'Phone number is required')
-      .regex(/^[0-9+\-()\s]+$/, 'Enter a valid phone number'),
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
+      .regex(/[0-9]/, 'Password must contain at least 1 number'),
     confirm_password: z.string().min(6, 'Please confirm your password'),
-    terms_accepted: z.boolean().refine((val) => val === true, {
-      message: 'You must accept the Terms & Conditions',
-    }),
   })
-  .refine((data) => data.password === data.confirm_password, {
+  .refine((d) => d.password === d.confirm_password, {
     message: 'Passwords do not match',
     path: ['confirm_password'],
   })
 
-// Forgot password form validation schema
-export const forgotPasswordSchema = z.object({
+export type IdentifierFormValues = z.infer<typeof identifierSchema>
+export type PasswordStepFormValues = z.infer<typeof passwordStepSchema>
+export type OtpStepFormValues = z.infer<typeof otpStepSchema>
+export type SetPasswordStepFormValues = z.infer<typeof setPasswordStepSchema>
+
+// Signup form validation schema (OTP-based: password is set after verification)
+export const signupSchema = z.object({
+  full_name: z.string().min(2, 'Full name is required'),
   email: z.string().email('Please enter a valid email'),
+  phone: z
+    .string()
+    .min(8, 'Phone number is required')
+    .regex(/^[0-9+\-()\s]+$/, 'Enter a valid phone number'),
+  terms_accepted: z.boolean().refine((val) => val === true, {
+    message: 'You must accept the Terms & Conditions',
+  }),
+})
+
+// Forgot password form validation schema — accepts email or phone
+export const forgotPasswordSchema = z.object({
+  identifier: z.string().min(3, 'Enter your email or phone number'),
+})
+
+// Forgot password OTP step (phone channel only)
+export const forgotPasswordOtpSchema = z.object({
+  otp: z
+    .string()
+    .min(6, 'Enter the 6-digit code')
+    .max(6, 'Enter the 6-digit code')
+    .regex(/^\d{6}$/, 'The code must be 6 digits'),
 })
 
 // Reset password form validation schema
 export const resetPasswordSchema = z
   .object({
-    password: z.string().min(6, 'Password must be at least 6 characters'),
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters')
+      .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
+      .regex(/[0-9]/, 'Password must contain at least 1 number'),
     confirm_password: z.string().min(6, 'Please confirm your password'),
   })
   .refine((d) => d.password === d.confirm_password, {
@@ -46,4 +97,5 @@ export const resetPasswordSchema = z
 export type LoginFormValues = z.infer<typeof loginSchema>
 export type SignupFormValues = z.infer<typeof signupSchema>
 export type ForgotPasswordFormValues = z.infer<typeof forgotPasswordSchema>
+export type ForgotPasswordOtpFormValues = z.infer<typeof forgotPasswordOtpSchema>
 export type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>

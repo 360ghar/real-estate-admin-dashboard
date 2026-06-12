@@ -1,10 +1,11 @@
 import { useCallback, useState } from "react";
-import type { ManagedPropertyStatus, PmPropertyCreate } from "@/types/pm";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { PmPropertyCreate } from "@/types/pm";
 import {
   useCreatePmPropertyMutation,
   useUpdatePmPropertyMutation,
 } from "@/features/pm/api/pmApi";
-import { VALIDATION } from "@/features/pm/constants";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,8 +14,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -25,6 +33,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { pmPropertyCreateSchema, type PmPropertyCreateForm } from "@/features/pm/validations";
 
 interface PropertyCreateDialogProps {
   ownerId: number | null;
@@ -39,48 +48,33 @@ export default function PropertyCreateDialog({
   const [createProperty, createState] = useCreatePmPropertyMutation();
   const [updateProperty] = useUpdatePmPropertyMutation();
   const [open, setOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [propertyType, setPropertyType] = useState<
-    "apartment" | "house" | "builder_floor" | "room"
-  >("apartment");
-  const [purpose, setPurpose] = useState<"rent" | "buy" | "short_stay">("rent");
-  const [basePrice, setBasePrice] = useState("");
-  const [city, setCity] = useState("");
-  const [locality, setLocality] = useState("");
-  const [fullAddress, setFullAddress] = useState("");
-  const [managementStatus, setManagementStatus] =
-    useState<ManagedPropertyStatus>("active");
-  const [paymentDueDay, setPaymentDueDay] = useState("1");
-  const [graceDays, setGraceDays] = useState("5");
-  const [lateFeePolicyJson, setLateFeePolicyJson] = useState(
-    '{"type":"fixed","amount":0}',
-  );
 
-  const resetForm = useCallback(() => {
-    setTitle("");
-    setPropertyType("apartment");
-    setPurpose("rent");
-    setBasePrice("");
-    setCity("");
-    setLocality("");
-    setFullAddress("");
-    setManagementStatus("active");
-    setPaymentDueDay("1");
-    setGraceDays("5");
-    setLateFeePolicyJson('{"type":"fixed","amount":0}');
-  }, []);
+  const form = useForm<PmPropertyCreateForm>({
+    resolver: zodResolver(pmPropertyCreateSchema),
+    defaultValues: {
+      title: "",
+      property_type: "apartment",
+      purpose: "rent",
+      base_price: "",
+      city: "",
+      locality: "",
+      full_address: "",
+      management_status: "active",
+      payment_due_day: "1",
+      grace_days: "5",
+      late_fee_policy_json: '{"type":"fixed","amount":0}',
+    },
+  });
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
-      if (!isOpen) {
-        resetForm();
-      }
+      if (!isOpen) form.reset();
     },
-    [resetForm],
+    [form],
   );
 
-  const submitCreate = async () => {
+  const onSubmit = async (values: PmPropertyCreateForm) => {
     if (!ownerId) {
       toast({
         title: "Select an owner",
@@ -89,77 +83,35 @@ export default function PropertyCreateDialog({
       });
       return;
     }
-    if (!title || !basePrice) {
-      toast({
-        title: "Missing fields",
-        description: "Title and base price are required.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const dueDayNum = Number(paymentDueDay);
-    if (
-      isNaN(dueDayNum) ||
-      dueDayNum < VALIDATION.PAYMENT_DUE_DAY_MIN ||
-      dueDayNum > VALIDATION.PAYMENT_DUE_DAY_MAX
-    ) {
-      toast({
-        title: "Invalid due day",
-        description: `Payment due day must be between ${VALIDATION.PAYMENT_DUE_DAY_MIN} and ${VALIDATION.PAYMENT_DUE_DAY_MAX}.`,
-        variant: "destructive",
-      });
-      return;
-    }
-    const graceDaysNum = Number(graceDays);
-    if (isNaN(graceDaysNum) || graceDaysNum < 0 || graceDaysNum > 30) {
-      toast({
-        title: "Invalid grace period",
-        description: "Grace period must be between 0 and 30 days.",
-        variant: "destructive",
-      });
-      return;
-    }
-    const basePriceNum = Number(basePrice);
-    if (isNaN(basePriceNum) || basePriceNum <= 0) {
-      toast({
-        title: "Invalid price",
-        description: "Base price must be a positive number.",
-        variant: "destructive",
-      });
-      return;
-    }
+
     let lateFeePolicy: Record<string, unknown> | undefined;
     try {
-      lateFeePolicy = lateFeePolicyJson
-        ? (JSON.parse(lateFeePolicyJson) as Record<string, unknown>)
+      lateFeePolicy = values.late_fee_policy_json
+        ? (JSON.parse(values.late_fee_policy_json) as Record<string, unknown>)
         : undefined;
     } catch {
-      toast({
-        title: "Invalid JSON",
-        description: "Late fee policy must be valid JSON.",
-        variant: "destructive",
-      });
+      // Zod should catch this, but just in case
       return;
     }
 
     const data: PmPropertyCreate = {
-      title,
-      property_type: propertyType,
-      purpose,
-      base_price: Number(basePrice),
-      city: city || undefined,
-      locality: locality || undefined,
-      full_address: fullAddress || undefined,
-      monthly_rent: purpose === "rent" ? Number(basePrice) : undefined,
+      title: values.title,
+      property_type: values.property_type,
+      purpose: values.purpose,
+      base_price: Number(values.base_price),
+      city: values.city || undefined,
+      locality: values.locality || undefined,
+      full_address: values.full_address || undefined,
+      monthly_rent: values.purpose === "rent" ? Number(values.base_price) : undefined,
     };
 
     try {
       const created = await createProperty({
         data,
         owner_id: ownerId,
-        management_status: managementStatus,
-        payment_due_day: Number(paymentDueDay),
-        grace_period_days: Number(graceDays),
+        management_status: values.management_status,
+        payment_due_day: Number(values.payment_due_day),
+        grace_period_days: Number(values.grace_days),
       }).unwrap();
       try {
         await updateProperty({
@@ -195,139 +147,173 @@ export default function PropertyCreateDialog({
         <DialogHeader>
           <DialogTitle>Create managed property</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Title</Label>
-            <Input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. 2BHK in Indiranagar"
+        <Form {...form}>
+          <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Title</FormLabel>
+                  <FormControl><Input placeholder="e.g. 2BHK in Indiranagar" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Property type</Label>
-            <Select
-              value={propertyType}
-              onValueChange={(v) =>
-                setPropertyType(v as typeof propertyType)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="apartment">apartment</SelectItem>
-                <SelectItem value="house">house</SelectItem>
-                <SelectItem value="builder_floor">builder_floor</SelectItem>
-                <SelectItem value="room">room</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Purpose</Label>
-            <Select
-              value={purpose}
-              onValueChange={(v) => setPurpose(v as typeof purpose)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rent">rent</SelectItem>
-                <SelectItem value="buy">buy</SelectItem>
-                <SelectItem value="short_stay">short_stay</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Base price (₹)</Label>
-            <Input
-              value={basePrice}
-              onChange={(e) => setBasePrice(e.target.value)}
-              placeholder="e.g. 25000"
+            <FormField
+              control={form.control}
+              name="property_type"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Property type</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="apartment">apartment</SelectItem>
+                      <SelectItem value="house">house</SelectItem>
+                      <SelectItem value="builder_floor">builder_floor</SelectItem>
+                      <SelectItem value="room">room</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>City (optional)</Label>
-            <Input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
+            <FormField
+              control={form.control}
+              name="purpose"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purpose</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="rent">rent</SelectItem>
+                      <SelectItem value="buy">buy</SelectItem>
+                      <SelectItem value="short_stay">short_stay</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Locality (optional)</Label>
-            <Input
-              value={locality}
-              onChange={(e) => setLocality(e.target.value)}
+            <FormField
+              control={form.control}
+              name="base_price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Base price (₹)</FormLabel>
+                  <FormControl><Input placeholder="e.g. 25000" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Full address (optional)</Label>
-            <Input
-              value={fullAddress}
-              onChange={(e) => setFullAddress(e.target.value)}
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City (optional)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Management status</Label>
-            <Select
-              value={managementStatus}
-              onValueChange={(v) =>
-                setManagementStatus(v as ManagedPropertyStatus)
-              }
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="draft">draft</SelectItem>
-                <SelectItem value="active">active</SelectItem>
-                <SelectItem value="archived">archived</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Payment due day (1-28)</Label>
-            <Input
-              value={paymentDueDay}
-              onChange={(e) => setPaymentDueDay(e.target.value)}
+            <FormField
+              control={form.control}
+              name="locality"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Locality (optional)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label>Grace period days</Label>
-            <Input
-              value={graceDays}
-              onChange={(e) => setGraceDays(e.target.value)}
+            <FormField
+              control={form.control}
+              name="full_address"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Full address (optional)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Late fee policy (JSON)</Label>
-            <Textarea
-              value={lateFeePolicyJson}
-              onChange={(e) => setLateFeePolicyJson(e.target.value)}
-              rows={6}
+            <FormField
+              control={form.control}
+              name="management_status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Management status</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="draft">draft</SelectItem>
+                      <SelectItem value="active">active</SelectItem>
+                      <SelectItem value="archived">archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => handleOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button
-            onClick={() => {
-              void submitCreate();
-            }}
-            disabled={createState.isLoading}
-          >
-            {createState.isLoading ? "Creating…" : "Create"}
-          </Button>
-        </div>
-        {disabled ? (
-          <div className="text-sm text-muted-foreground">
-            Select an owner from the top bar to create a managed
-            property in the correct portfolio.
-          </div>
-        ) : null}
+            <FormField
+              control={form.control}
+              name="payment_due_day"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment due day (1-28)</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="grace_days"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Grace period days</FormLabel>
+                  <FormControl><Input {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="late_fee_policy_json"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Late fee policy (JSON)</FormLabel>
+                  <FormControl><Textarea rows={6} {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2 pt-2 md:col-span-2">
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createState.isLoading}>
+                {createState.isLoading ? "Creating…" : "Create"}
+              </Button>
+            </div>
+            {disabled && (
+              <div className="text-sm text-muted-foreground md:col-span-2">
+                Select an owner from the top bar to create a managed
+                property in the correct portfolio.
+              </div>
+            )}
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

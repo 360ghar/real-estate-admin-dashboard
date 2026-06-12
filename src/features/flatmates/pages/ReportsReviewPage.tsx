@@ -115,7 +115,7 @@ export function ReportsReviewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold">User Reports Review</h1>
           <p className="text-muted-foreground mt-1">
@@ -254,19 +254,19 @@ export function ReportsReviewPage() {
                     <SelectItem value="dismiss">Dismiss - No action needed</SelectItem>
                     <SelectItem value="warn_user">
                       <span className="flex items-center gap-2">
-                        <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                        <AlertTriangle className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />
                         Warn User - Send warning notification
                       </span>
                     </SelectItem>
                     <SelectItem value="suspend_user">
                       <span className="flex items-center gap-2">
-                        <Shield className="h-4 w-4 text-red-500" />
+                        <Shield className="h-4 w-4 text-red-500 dark:text-red-400" />
                         Suspend User - Temporary account suspension
                       </span>
                     </SelectItem>
                     <SelectItem value="escalate">
                       <span className="flex items-center gap-2">
-                        <Flag className="h-4 w-4 text-orange-500" />
+                        <Flag className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                         Escalate - Requires senior review
                       </span>
                     </SelectItem>

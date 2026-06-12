@@ -11,10 +11,17 @@ import { supabase } from '@/lib/supabase'
 import { store } from '@/store'
 import { fetchUserProfileWithToken } from '@/lib/auth'
 
+/**
+ * Module-level flag set by LoginPage.finishLogin before it dispatches credentials.
+ * When true, the onAuthStateChange SIGNED_IN handler skips the redundant profile
+ * fetch — the login flow is already handling it.
+ */
+export const isLoginInProgress = { current: false }
+
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const SignupPage = lazy(() => import('@/features/auth/pages/SignupPage'))
+const AuthCallbackPage = lazy(() => import('@/features/auth/pages/AuthCallbackPage'))
 const ForgotPasswordPage = lazy(() => import('@/features/auth/pages/ForgotPasswordPage'))
-const ResetPasswordPage = lazy(() => import('@/features/auth/pages/ResetPasswordPage'))
 const DashboardPage = lazy(() => import('@/features/core/pages/DashboardPage'))
 const PropertiesPage = lazy(() => import('@/features/properties/pages/PropertiesPage'))
 const UsersPage = lazy(() => import('@/features/users/pages/UsersPage'))
@@ -99,8 +106,10 @@ function App() {
           }
 
           // SIGNED_IN fires after LoginPage already set credentials in Redux.
-          // Skip the redundant profile fetch.
+          // Skip the redundant profile fetch — either credentials are already
+          // set, or the login flow is mid-flight and will set them shortly.
           if (event === 'SIGNED_IN') {
+            if (isLoginInProgress.current) return
             const { auth } = store.getState()
             if (auth.token && auth.user) return
           }
@@ -141,8 +150,8 @@ function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/access-denied" element={<AccessDeniedPage />} />
 
           <Route element={<PrivateRoute />}>

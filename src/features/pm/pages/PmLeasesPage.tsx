@@ -115,7 +115,7 @@ export default function PmLeasesPage() {
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-3xl font-bold tracking-tight">Leases</h1>
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Leases</h1>
             <p className="text-sm text-muted-foreground">
               Create, renew, terminate, and upload signed lease documents.
             </p>

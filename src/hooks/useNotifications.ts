@@ -195,8 +195,8 @@ export const useNotifications = (): UseNotificationsReturn => {
         const rawId = id.replace('server:', '')
         // Optimistically mark as read
         setOpenedServerIds((prev) => new Set(prev).add(rawId))
-        markDeliveryOpened({ deliveryId: rawId }).catch((err) => {
-          console.error('Failed to mark notification as opened:', err)
+        markDeliveryOpened({ deliveryId: rawId }).catch(() => {
+          // Best-effort: silently ignore failures for analytics-style calls
         })
       }
     },
@@ -213,8 +213,8 @@ export const useNotifications = (): UseNotificationsReturn => {
     for (const n of serverUnread) {
       const rawId = n.rawId
       newOpened.add(rawId)
-      markDeliveryOpened({ deliveryId: rawId }).catch((err) => {
-        console.error('Failed to mark notification as opened:', err)
+      markDeliveryOpened({ deliveryId: rawId }).catch(() => {
+        // Best-effort: silently ignore failures for analytics-style calls
       })
     }
     setOpenedServerIds(newOpened)

@@ -29,7 +29,7 @@ export default function PmSettingsPage() {
     <OwnerScopeGate>
       <div className="space-y-6">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">PM Settings</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">PM Settings</h1>
           <p className="text-sm text-muted-foreground">
             Configure property management portal defaults.
           </p>

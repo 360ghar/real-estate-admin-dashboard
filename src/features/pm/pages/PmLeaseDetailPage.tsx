@@ -1,6 +1,5 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { AlertCircle } from "lucide-react";
 import UploadSignedDialog from "@/features/pm/components/UploadSignedDialog";
 import RenewLeaseDialog from "@/features/pm/components/RenewLeaseDialog";
 import TerminateLeaseDialog from "@/features/pm/components/TerminateLeaseDialog";
@@ -10,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getErrorMessage } from "@/lib/errors";
+import { ErrorState } from "@/components/ui/error-state";
 
 export default function PmLeaseDetailPage() {
   const { leaseId } = useParams();
@@ -32,13 +31,10 @@ export default function PmLeaseDetailPage() {
 
   if (lease.isError) {
     return (
-      <div className="flex items-center gap-2 rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive">
-        <AlertCircle className="h-4 w-4" />
-        <span>{getErrorMessage(lease.error, 'Failed to load lease.')}</span>
-        <Button variant="outline" size="sm" onClick={() => { void lease.refetch(); }}>
-          Retry
-        </Button>
-      </div>
+      <ErrorState
+        error={lease.error}
+        onRetry={() => { void lease.refetch(); }}
+      />
     );
   }
 
@@ -46,7 +42,7 @@ export default function PmLeaseDetailPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">{headerTitle}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{headerTitle}</h1>
           <p className="text-sm text-muted-foreground">
             Property #{lease.data?.property_id} &bull; Owner #{lease.data?.owner_id}
           </p>

@@ -3,7 +3,7 @@
 A comprehensive Admin + Agent dashboard for the 360Ghar real estate and short stays booking platform. Built with React, TypeScript, and modern UI libraries, this portal allows Admins to manage the entire system while Agents act as sub-admins managing their assigned users and properties.
 
 ## Goal
-Admins can manage the full platform (properties, users, bookings, reports, settings). Agents act as sub-admins, with full permissions to manage the properties and users assigned to them (add/edit/delete/update). The frontend integrates with an existing FastAPI backend and Supabase for authentication, storage, and row-level security (RLS).
+Admins can manage the full platform (properties, users, bookings, reports, settings). Agents act as sub-admins, with full permissions to manage the properties and users assigned to them (add/edit/delete/update). The frontend integrates with an existing FastAPI backend and Supabase for authentication and row-level security (RLS). File storage is handled by Cloudinary via the backend API.
 
 ## Tech Stack & Project Setup
 
@@ -156,7 +156,7 @@ Admins can manage the full platform (properties, users, bookings, reports, setti
 - Backend enforces role-based access control
 - Agents can only access data for their assigned users/properties
 - CORS configured for frontend origin
-- Supabase handles authentication and file storage
+- Supabase handles authentication; file storage is via Cloudinary through the backend API
 - Row-level security (RLS) implemented in database
 
 ## Design System

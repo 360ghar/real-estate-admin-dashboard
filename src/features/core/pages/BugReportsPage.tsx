@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -72,7 +72,7 @@ const BugReportsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Bug Reports</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Bug Reports</h1>
           <p className="text-muted-foreground">
             Track and manage bug reports and issues
           </p>
@@ -81,7 +81,7 @@ const BugReportsPage: React.FC = () => {
       </div>
 
       {/* Statistics */}
-      <div className="grid gap-4 md:grid-cols-5">
+      <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Reports</CardTitle>
@@ -121,10 +121,10 @@ const BugReportsPage: React.FC = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Critical</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.critical}</div>
+            <div className="text-2xl font-bold text-red-600 dark:text-red-400">{stats.critical}</div>
           </CardContent>
         </Card>
       </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useGetProfileQuery, useUpdatePreferencesMutation, useUpdateLocationMutation, UserPreferences } from '@/features/users/api/usersApi'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,13 +27,13 @@ const UserPreferencesPage = () => {
   const [preferences, setPreferences] = useState<UserPreferences>({ property_type: [], purpose: 'rent', location_preference: [], max_distance_km: 10 })
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (profile?.preferences) setPreferences(normalizePreferences(profile.preferences))
     if (typeof profile?.current_latitude === 'number' && typeof profile?.current_longitude === 'number') setLocation({ latitude: profile.current_latitude, longitude: profile.current_longitude })
     else if (!location && profile) setLocation({ latitude: 19.0760, longitude: 72.8777 })
   }, [profile, location])
 
-  const handlePreferencesSubmit = async (e: React.FormEvent) => {
+  const handlePreferencesSubmit = async (e: FormEvent) => {
     e.preventDefault()
     try { await updatePreferences(preferences).unwrap(); toast({ title: 'Success', description: 'Preferences updated successfully' }) }
     catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, 'Failed to update preferences'), variant: 'destructive' }) }
@@ -57,20 +57,20 @@ const UserPreferencesPage = () => {
       <div className="grid gap-6 md:grid-cols-2">
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" />Property Preferences</CardTitle></CardHeader>
           <CardContent><form onSubmit={(e) => { void handlePreferencesSubmit(e) }} className="space-y-4">
-            <div><Label className="text-sm font-medium">Property Type</Label><div className="grid grid-cols-2 gap-2 mt-2">
+            <div><Label className="text-sm font-medium">Property Type</Label><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               {[{ value: 'apartment', label: 'Apartment', icon: Building }, { value: 'house', label: 'House', icon: Home }, { value: 'builder_floor', label: 'Builder Floor', icon: Warehouse }, { value: 'room', label: 'Room', icon: Home }].map(({ value, label, icon: Icon }) => (
                 <div key={value} className="flex items-center space-x-2"><Checkbox id={`property-type-${value}`} checked={(preferences.property_type || []).includes(value)} onCheckedChange={() => togglePropertyType(value)} /><Label htmlFor={`property-type-${value}`} className="flex items-center gap-2 text-sm"><Icon className="h-4 w-4" />{label}</Label></div>
               ))}</div></div>
             <div><Label htmlFor="purpose">Purpose</Label><Select value={preferences.purpose} onValueChange={(value) => setPreferences(prev => ({ ...prev, purpose: value as 'buy' | 'rent' | 'short_stay' }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="rent">Rent</SelectItem><SelectItem value="buy">Buy</SelectItem><SelectItem value="short_stay">Short Stay</SelectItem></SelectContent></Select></div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label htmlFor="budget_min">Min Budget (₹)</Label><Input id="budget_min" type="number" value={preferences.budget_min ?? ''} onChange={(e) => setPreferences(prev => ({ ...prev, budget_min: e.target.value === '' ? undefined : Number(e.target.value) }))} /></div>
               <div><Label htmlFor="budget_max">Max Budget (₹)</Label><Input id="budget_max" type="number" value={preferences.budget_max ?? ''} onChange={(e) => setPreferences(prev => ({ ...prev, budget_max: e.target.value === '' ? undefined : Number(e.target.value) }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label htmlFor="bedrooms_min">Min Bedrooms</Label><Input id="bedrooms_min" type="number" value={preferences.bedrooms_min ?? ''} onChange={(e) => setPreferences(prev => ({ ...prev, bedrooms_min: e.target.value === '' ? undefined : Number(e.target.value) }))} /></div>
               <div><Label htmlFor="bedrooms_max">Max Bedrooms</Label><Input id="bedrooms_max" type="number" value={preferences.bedrooms_max ?? ''} onChange={(e) => setPreferences(prev => ({ ...prev, bedrooms_max: e.target.value === '' ? undefined : Number(e.target.value) }))} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div><Label htmlFor="area_min">Min Area (sqft)</Label><Input id="area_min" type="number" value={preferences.area_min ?? ''} onChange={(e) => setPreferences(prev => ({ ...prev, area_min: e.target.value === '' ? undefined : Number(e.target.value) }))} /></div>
               <div><Label htmlFor="area_max">Max Area (sqft)</Label><Input id="area_max" type="number" value={preferences.area_max ?? ''} onChange={(e) => setPreferences(prev => ({ ...prev, area_max: e.target.value === '' ? undefined : Number(e.target.value) }))} /></div>
             </div>
@@ -81,12 +81,12 @@ const UserPreferencesPage = () => {
         <Card><CardHeader><CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" />Location Settings</CardTitle></CardHeader>
           <CardContent><form onSubmit={(e) => { void handleLocationSubmit(e) }} className="space-y-4">
             <div><Label className="text-sm font-medium">Current Location</Label>
-              {location ? <div className="grid grid-cols-2 gap-4 mt-2">
+              {location ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
                 <div><Label htmlFor="latitude" className="text-xs">Latitude</Label><Input id="latitude" type="number" step="0.0001" value={location.latitude} onChange={(e) => setLocation(prev => prev ? ({ ...prev, latitude: Number(e.target.value) }) : null)} /></div>
                 <div><Label htmlFor="longitude" className="text-xs">Longitude</Label><Input id="longitude" type="number" step="0.0001" value={location.longitude} onChange={(e) => setLocation(prev => prev ? ({ ...prev, longitude: Number(e.target.value) }) : null)} /></div>
               </div> : <div className="text-sm text-muted-foreground mt-2">Location data is loading...</div>}
             </div>
-            <div><Label className="text-sm font-medium">Preferred Locations</Label><div className="grid grid-cols-2 gap-2 mt-2">
+            <div><Label className="text-sm font-medium">Preferred Locations</Label><div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
               {['Mumbai', 'Delhi', 'Bangalore', 'Chennai', 'Pune', 'Hyderabad'].map((city) => (
                 <div key={city} className="flex items-center space-x-2"><Checkbox id={`location-${city}`} checked={(preferences.location_preference || []).includes(city)} onCheckedChange={() => toggleLocationPreference(city)} /><Label htmlFor={`location-${city}`} className="text-sm">{city}</Label></div>
               ))}</div></div>

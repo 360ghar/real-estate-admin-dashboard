@@ -74,7 +74,7 @@ const VisitList = () => {
       id: 'actions',
       header: 'Actions',
       cell: ({ row }) => (
-        <Link className="text-blue-600 hover:underline" to={`/visits/${row.original.id}`}>
+        <Link className="text-blue-600 dark:text-blue-400 hover:underline" to={`/visits/${row.original.id}`}>
           View
         </Link>
       ),

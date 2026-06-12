@@ -73,7 +73,7 @@ const FilterControls: React.FC<FilterControlsProps> = ({
             <Filter className="h-4 w-4 mr-2" />{selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : 'Select amenities'}
           </Button>
         </SheetTrigger>
-        <SheetContent className="w-[400px]">
+        <SheetContent className="w-full sm:w-[400px]">
           <SheetHeader><SheetTitle>Select Amenities</SheetTitle><SheetDescription>Choose amenities to filter properties.</SheetDescription></SheetHeader>
           <div className="py-4 space-y-2 max-h-[300px] overflow-y-auto">
             {amenities.map((amenity) => (

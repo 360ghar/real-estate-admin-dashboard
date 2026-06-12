@@ -31,7 +31,7 @@ export default function PmInspectionDetailPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
             {inspection.isLoading ? 'Loading…' : `Inspection #${inspection.data?.id ?? inspectionIdNum}`}
           </h1>
           <p className="text-sm text-muted-foreground">

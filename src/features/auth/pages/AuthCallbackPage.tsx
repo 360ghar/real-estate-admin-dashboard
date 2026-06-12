@@ -1,0 +1,112 @@
+import { useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useAppDispatch } from '@/hooks/redux'
+import { setCredentials, setError } from '@/features/auth/slices/authSlice'
+import { supabase } from '@/lib/supabase'
+import {
+  fetchUserProfileWithToken,
+  isAllowedGoogleEmail,
+  recordLastAuthMethod,
+} from '@/lib/auth'
+import { setLastAuthMethod } from '@/lib/lastAuthMethod'
+import { mapSupabaseAuthError } from '@/lib/authErrors'
+import { LoadingState } from '@/components/ui/loading-state'
+
+/**
+ * OAuth (Google) redirect landing page.
+ *
+ * Exchanges the `code` for a Supabase session, then mirrors `LoginPage.onSubmit`:
+ * fetch the backend profile and `setCredentials`. Enforces the staff gate:
+ *  1. optional `@360ghar.com` email-domain allowlist (sign out + message if the
+ *     domain is not allowed);
+ *  2. the existing `RoleBasedRoute` guard then bounces any authenticated but
+ *     non-staff user (role derived from the profile) to `/access-denied`.
+ */
+export default function AuthCallbackPage() {
+  const navigate = useNavigate()
+  const dispatch = useAppDispatch()
+  const [searchParams] = useSearchParams()
+  const ranRef = useRef(false)
+
+  useEffect(() => {
+    // React 18 StrictMode double-invokes effects in dev; the code is single-use.
+    if (ranRef.current) return
+    ranRef.current = true
+
+    let isMounted = true
+
+    const failTo = (message: string) => {
+      if (!isMounted) return
+      dispatch(setError(message))
+      navigate(`/login?error=${encodeURIComponent(message)}`, { replace: true })
+    }
+
+    const run = async () => {
+      if (!supabase) {
+        failTo('Supabase is not configured. Please set environment variables.')
+        return
+      }
+
+      const client = supabase
+      const code = searchParams.get('code')
+      const oauthError = searchParams.get('error_description') || searchParams.get('error')
+
+      if (oauthError) {
+        failTo(oauthError)
+        return
+      }
+      if (!code) {
+        failTo('Sign-in could not be completed. Please try again.')
+        return
+      }
+
+      try {
+        const { data, error } = await client.auth.exchangeCodeForSession(code)
+        if (error || !data.session) {
+          throw error ?? new Error('Sign-in could not be completed. Please try again.')
+        }
+
+        const session = data.session
+        const email = session.user?.email ?? null
+
+        // Staff gate (step 1): optional email-domain allowlist.
+        if (!isAllowedGoogleEmail(email)) {
+          await client.auth.signOut()
+          failTo('This Google account is not authorized for the admin portal.')
+          return
+        }
+
+        const accessToken = session.access_token
+        const user = await fetchUserProfileWithToken(accessToken)
+        if (!user) {
+          // No backend profile -> not a provisioned staff member.
+          await client.auth.signOut()
+          failTo('Your account is not authorized for the admin portal.')
+          return
+        }
+
+        dispatch(setCredentials({ token: accessToken, user }))
+        setLastAuthMethod('google', email ?? undefined)
+        void recordLastAuthMethod(accessToken, 'google')
+
+        // Staff gate (step 2): RoleBasedRoute bounces non-staff to /access-denied.
+        if (!isMounted) return
+        navigate('/dashboard', { replace: true })
+      } catch (err) {
+        failTo(mapSupabaseAuthError(err))
+      }
+    }
+
+    void run()
+
+    return () => {
+      isMounted = false
+    }
+  }, [dispatch, navigate, searchParams])
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background to-muted/20">
+      <LoadingState type="spinner" text="Completing sign-in..." />
+    </div>
+  )
+}

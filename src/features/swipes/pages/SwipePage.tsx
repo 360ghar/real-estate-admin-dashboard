@@ -37,8 +37,11 @@ const SwipePage = () => {
                 })
             }
         } catch (error) {
-            console.error('Swipe failed:', error)
-            // Optionally revert index or show error, but for swipes it's usually better to ignore
+            toast({
+                title: "Swipe failed",
+                description: "Something went wrong. Please try again.",
+                variant: "destructive",
+            })
         }
     }
 
@@ -61,11 +64,11 @@ const SwipePage = () => {
     return (
         <div className="flex flex-col items-center justify-center h-[calc(100vh-4rem)] overflow-hidden relative">
             <div className="absolute top-4 text-center z-10">
-                <h1 className="text-3xl font-bold tracking-tight">Discover Properties</h1>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Discover Properties</h1>
                 <p className="text-muted-foreground">Swipe right to like, left to pass</p>
             </div>
 
-            <div className="relative w-full max-w-[400px] h-[600px] flex items-center justify-center">
+            <div className="relative w-full max-w-[400px] h-[500px] sm:h-[600px] flex items-center justify-center">
                 <AnimatePresence>
                     {!isFinished && currentProperties[currentIndex] && (
                         <SwipeCard

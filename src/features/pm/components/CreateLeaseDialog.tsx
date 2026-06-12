@@ -1,5 +1,7 @@
 import { useCallback, useState } from "react";
-import type { LeaseCreate, LeaseStatus } from "@/types/pm";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { LeaseCreate } from "@/types/pm";
 import { useCreatePmLeaseMutation, useListPmPropertiesQuery } from "@/features/pm/api/pmApi";
 import { LEASE_STATUSES } from "@/features/pm/constants";
 import { useUserRole } from "@/hooks/useUserRole";
@@ -11,8 +13,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,6 +32,7 @@ import {
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { pmLeaseCreateSchema, type PmLeaseCreateForm } from "@/features/pm/validations";
 
 interface CreateLeaseDialogProps {
   ownerId: number | null;
@@ -39,75 +49,46 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
   );
 
   const [open, setOpen] = useState(false);
-  const [propertyId, setPropertyId] = useState<string>("");
-  const [tenantName, setTenantName] = useState("");
-  const [tenantPhone, setTenantPhone] = useState("");
-  const [tenantEmail, setTenantEmail] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
-  const [monthlyRent, setMonthlyRent] = useState("");
-  const [securityDeposit, setSecurityDeposit] = useState("");
-  const [leaseStatus, setLeaseStatus] = useState<LeaseStatus>("draft");
 
-  const resetForm = useCallback(() => {
-    setPropertyId("");
-    setTenantName("");
-    setTenantPhone("");
-    setTenantEmail("");
-    setStartDate("");
-    setEndDate("");
-    setMonthlyRent("");
-    setSecurityDeposit("");
-    setLeaseStatus("draft");
-  }, []);
+  const form = useForm<PmLeaseCreateForm>({
+    resolver: zodResolver(pmLeaseCreateSchema),
+    defaultValues: {
+      property_id: "",
+      tenant_name: "",
+      tenant_phone: "",
+      tenant_email: "",
+      status: "draft",
+      start_date: "",
+      end_date: "",
+      monthly_rent: "",
+      security_deposit: "",
+    },
+  });
 
   const handleOpenChange = useCallback(
     (isOpen: boolean) => {
       setOpen(isOpen);
-      if (!isOpen) {
-        resetForm();
-      }
+      if (!isOpen) form.reset();
     },
-    [resetForm],
+    [form],
   );
 
-  const submit = async () => {
-    if (!propertyId || !startDate || !endDate || !monthlyRent || !securityDeposit) {
-      toast({ title: "Missing fields", description: "Fill required fields.", variant: "destructive" });
-      return;
-    }
-
-    const rentNum = Number(monthlyRent);
-    const depositNum = Number(securityDeposit);
-    if (isNaN(rentNum) || rentNum <= 0) {
-      toast({ title: "Invalid rent", description: "Monthly rent must be a positive number.", variant: "destructive" });
-      return;
-    }
-    if (isNaN(depositNum) || depositNum <= 0) {
-      toast({ title: "Invalid deposit", description: "Security deposit must be a positive number.", variant: "destructive" });
-      return;
-    }
-
-    if (new Date(endDate) <= new Date(startDate)) {
-      toast({ title: "Invalid dates", description: "End date must be after start date.", variant: "destructive" });
-      return;
-    }
-
+  const onSubmit = async (values: PmLeaseCreateForm) => {
     const selectedPropertyOwnerId = (properties.data || []).find(
-      (p) => String(p.id) === String(propertyId),
+      (p) => String(p.id) === values.property_id,
     )?.owner_id;
 
     const payload: LeaseCreate = {
       owner_id: ownerId ?? selectedPropertyOwnerId ?? undefined,
-      property_id: Number(propertyId),
-      tenant_name: tenantName || undefined,
-      tenant_phone: tenantPhone || undefined,
-      tenant_email: tenantEmail || undefined,
-      status: leaseStatus,
-      start_date: startDate,
-      end_date: endDate,
-      monthly_rent: rentNum,
-      security_deposit: depositNum,
+      property_id: Number(values.property_id),
+      tenant_name: values.tenant_name || undefined,
+      tenant_phone: values.tenant_phone || undefined,
+      tenant_email: values.tenant_email || undefined,
+      status: values.status,
+      start_date: values.start_date,
+      end_date: values.end_date,
+      monthly_rent: Number(values.monthly_rent),
+      security_deposit: Number(values.security_deposit),
     };
     try {
       await createLease(payload).unwrap();
@@ -130,74 +111,143 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
         <DialogHeader>
           <DialogTitle>Create lease</DialogTitle>
         </DialogHeader>
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label>Property</Label>
-            <Select value={propertyId} onValueChange={setPropertyId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select property…" />
-              </SelectTrigger>
-              <SelectContent>
-                {(properties.data || []).map((p) => (
-                  <SelectItem key={p.id} value={String(p.id)}>
-                    #{p.id} • {p.title}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Status</Label>
-            <Select value={leaseStatus} onValueChange={(v) => setLeaseStatus(v as LeaseStatus)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LEASE_STATUSES.filter((s) =>
-                  ["draft", "pending_signature", "active"].includes(s.value),
-                ).map((s) => (
-                  <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Tenant name</Label>
-            <Input value={tenantName} onChange={(e) => setTenantName(e.target.value)} placeholder="Optional" />
-          </div>
-          <div className="space-y-2">
-            <Label>Tenant phone</Label>
-            <Input value={tenantPhone} onChange={(e) => setTenantPhone(e.target.value)} placeholder="Optional" />
-          </div>
-          <div className="space-y-2">
-            <Label>Tenant email</Label>
-            <Input value={tenantEmail} onChange={(e) => setTenantEmail(e.target.value)} placeholder="Optional" />
-          </div>
-          <div className="space-y-2">
-            <Label>Start date</Label>
-            <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>End date</Label>
-            <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Monthly rent</Label>
-            <Input value={monthlyRent} onChange={(e) => setMonthlyRent(e.target.value)} placeholder="e.g. 25000" />
-          </div>
-          <div className="space-y-2">
-            <Label>Security deposit</Label>
-            <Input value={securityDeposit} onChange={(e) => setSecurityDeposit(e.target.value)} placeholder="e.g. 50000" />
-          </div>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={() => { void submit(); }} disabled={createState.isLoading}>
-            {createState.isLoading ? "Creating…" : "Create"}
-          </Button>
-        </div>
+        <Form {...form}>
+          <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="property_id"
+              render={({ field }) => (
+                <FormItem className="md:col-span-2">
+                  <FormLabel>Property</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select property…" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {(properties.data || []).map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          #{p.id} • {p.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select value={field.value} onValueChange={field.onChange}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {LEASE_STATUSES.filter((s) =>
+                        ["draft", "pending_signature", "active"].includes(s.value),
+                      ).map((s) => (
+                        <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="tenant_name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tenant name</FormLabel>
+                  <FormControl><Input placeholder="Optional" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="tenant_phone"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tenant phone</FormLabel>
+                  <FormControl><Input placeholder="Optional" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="tenant_email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Tenant email</FormLabel>
+                  <FormControl><Input placeholder="Optional" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="start_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Start date</FormLabel>
+                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="end_date"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>End date</FormLabel>
+                  <FormControl><Input type="date" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="monthly_rent"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Monthly rent</FormLabel>
+                  <FormControl><Input placeholder="e.g. 25000" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="security_deposit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Security deposit</FormLabel>
+                  <FormControl><Input placeholder="e.g. 50000" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2 pt-2 md:col-span-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createState.isLoading}>
+                {createState.isLoading ? "Creating…" : "Create"}
+              </Button>
+            </div>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

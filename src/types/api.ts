@@ -29,6 +29,9 @@ export interface User {
   role: 'user' | 'agent' | 'admin'
   is_active: boolean
   is_verified: boolean
+  email_verified?: boolean
+  phone_verified?: boolean
+  last_auth_method?: 'google' | 'email_password' | 'phone_password' | 'phone_otp' | 'email_otp' | null
   supabase_user_id: string
   agent_id?: number
   agent?: Agent

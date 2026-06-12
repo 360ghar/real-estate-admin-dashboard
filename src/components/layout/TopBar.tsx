@@ -134,7 +134,7 @@ const TopBar = () => {
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => void logout()} className="flex items-center gap-2 text-red-600 focus:text-red-600">
+            <DropdownMenuItem onClick={() => void logout()} className="flex items-center gap-2 text-red-600 focus:text-red-600 dark:text-red-400 dark:focus:text-red-400">
               <LogOut className="h-4 w-4" />
               Logout
             </DropdownMenuItem>

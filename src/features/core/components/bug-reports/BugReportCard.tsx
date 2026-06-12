@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -9,17 +9,17 @@ import type { BugReport, BugReportUpdate } from '@/types/api'
 import { BugReportUpdateForm } from './BugReportUpdateForm'
 
 const severityColors: Record<string, string> = {
-  low: 'bg-blue-100 text-blue-800',
-  medium: 'bg-yellow-100 text-yellow-800',
-  high: 'bg-orange-100 text-orange-800',
-  critical: 'bg-red-100 text-red-800',
+  low: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
+  high: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
+  critical: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
 }
 
 const statusColors: Record<string, string> = {
   open: 'bg-muted text-foreground',
-  in_progress: 'bg-blue-100 text-blue-800',
-  resolved: 'bg-green-100 text-green-800',
-  closed: 'bg-purple-100 text-purple-800',
+  in_progress: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
+  resolved: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
+  closed: 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300',
 }
 
 export { severityColors, statusColors }
@@ -139,9 +139,9 @@ const BugReportCard: React.FC<BugReportCardProps> = ({ bugReport, onUpdate, show
                 )}
 
                 {bugReport.resolution && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                    <h4 className="font-medium text-green-800 mb-1">Resolution Notes</h4>
-                    <p className="text-sm text-green-700">{bugReport.resolution}</p>
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg dark:bg-green-900/20 dark:border-green-800/40">
+                    <h4 className="font-medium text-green-800 dark:text-green-300 mb-1">Resolution Notes</h4>
+                    <p className="text-sm text-green-700 dark:text-green-400">{bugReport.resolution}</p>
                   </div>
                 )}
 
