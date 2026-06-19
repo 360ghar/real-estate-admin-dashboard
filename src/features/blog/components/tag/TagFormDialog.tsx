@@ -30,6 +30,7 @@ const TagFormDialog: React.FC<TagFormDialogProps> = ({ open, onOpenChange, editi
   })
 
   const handleSubmit = async (data: BlogTagForm) => {
+    form.clearErrors()
     try {
       if (editingTag) { await updateTag({ identifier: editingTag.id, data }).unwrap(); toast({ title: 'Success', description: 'Tag updated successfully' }) }
       else { await createTag(data).unwrap(); toast({ title: 'Success', description: 'Tag created successfully' }) }

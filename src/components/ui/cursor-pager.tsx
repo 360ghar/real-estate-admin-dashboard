@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react'
 
 interface CursorPagerProps {
   /** Whether a previous page exists (cursor history stack is non-empty). */
@@ -18,6 +18,7 @@ interface CursorPagerProps {
 export function CursorPager({ canPrev, hasMore, onPrev, onNext, loading }: CursorPagerProps) {
   return (
     <div className="flex items-center justify-end gap-2 pt-2">
+      {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
       <Button
         variant="outline"
         size="sm"

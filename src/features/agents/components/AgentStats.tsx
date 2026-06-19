@@ -12,10 +12,10 @@ const Stat = ({ label, value }: { label: string; value: string | number | null |
 
 const AgentStats = ({ id }: { id: number }) => {
   const { data: agentData, isLoading, error, refetch } = useGetAgentQuery(id)
-  const { data: statsData, isLoading: statsLoading } = useGetAgentStatsQuery(id)
+  const { data: statsData, isLoading: statsLoading, error: statsError, refetch: refetchStats } = useGetAgentStatsQuery(id)
 
   if (isLoading || statsLoading) return <LoadingState type="card" rows={4} />
-  if (error) return <ErrorState title="Failed to load agent" onRetry={() => { void refetch() }} />
+  if (error || statsError) return <ErrorState title="Failed to load agent" onRetry={() => { void refetch(); void refetchStats() }} />
 
   return (
     <div className="space-y-4">

@@ -44,7 +44,7 @@ export function SortableHeader({ column, children, className }: { column: { togg
   return (
     <button
       type="button"
-      onClick={() => column.toggleSorting(sorted === 'asc')}
+      onClick={() => column.toggleSorting()}
       className={cn('inline-flex items-center gap-1 hover:opacity-80', className)}
     >
       {children}

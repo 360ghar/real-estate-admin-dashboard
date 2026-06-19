@@ -3,6 +3,7 @@ import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
 import Link from '@tiptap/extension-link'
+import Placeholder from '@tiptap/extension-placeholder'
 import { Bold, Italic, Heading1, Heading2, Heading3, List, ListOrdered, Code, Quote, ImageIcon, Link as LinkIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -34,7 +35,7 @@ const ToolbarButton = ({ onClick, isActive, icon, title }: ToolbarButtonProps) =
   </Button>
 )
 
-const RichTextEditor = ({ value, onChange, placeholder: _placeholder, disabled }: RichTextEditorProps) => {
+const RichTextEditor = ({ value, onChange, placeholder, disabled }: RichTextEditorProps) => {
   const isUpdatingFromOutside = useRef(false)
 
   const editor = useEditor({
@@ -45,6 +46,9 @@ const RichTextEditor = ({ value, onChange, placeholder: _placeholder, disabled }
       Image,
       Link.configure({
         openOnClick: false,
+      }),
+      Placeholder.configure({
+        placeholder: placeholder ?? 'Start writing...',
       }),
     ],
     content: value,

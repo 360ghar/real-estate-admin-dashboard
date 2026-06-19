@@ -22,6 +22,11 @@ export interface BookingsQuery {
   payment_status?: string
 }
 
+export interface BookingsCursorQuery {
+  cursor?: string | null
+  limit?: number
+}
+
 export const bookingsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     // Create a booking
@@ -35,20 +40,29 @@ export const bookingsApi = api.injectEndpoints({
     }),
 
     // Get current user's bookings
-    getUserBookings: builder.query<PaginatedResponse<Booking>, void>({
-      query: () => '/bookings/',
+    getUserBookings: builder.query<PaginatedResponse<Booking>, BookingsCursorQuery | void>({
+      query: (params) => ({
+        url: '/bookings/',
+        params: params && 'cursor' in params ? { limit: 20, ...params } : undefined,
+      }),
       providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Get upcoming bookings for current user
-    getUpcomingBookings: builder.query<PaginatedResponse<Booking>, void>({
-      query: () => '/bookings/upcoming/',
+    getUpcomingBookings: builder.query<PaginatedResponse<Booking>, BookingsCursorQuery | void>({
+      query: (params) => ({
+        url: '/bookings/upcoming/',
+        params: params && 'cursor' in params ? { limit: 20, ...params } : undefined,
+      }),
       providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Get past bookings for current user
-    getPastBookings: builder.query<PaginatedResponse<Booking>, void>({
-      query: () => '/bookings/past/',
+    getPastBookings: builder.query<PaginatedResponse<Booking>, BookingsCursorQuery | void>({
+      query: (params) => ({
+        url: '/bookings/past/',
+        params: params && 'cursor' in params ? { limit: 20, ...params } : undefined,
+      }),
       providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 

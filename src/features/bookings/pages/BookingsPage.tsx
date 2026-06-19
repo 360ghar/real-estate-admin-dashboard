@@ -20,7 +20,7 @@ const StatCard = ({ icon, label, value, tone }: { icon: React.ReactNode; label: 
 const BookingsPage = ({ mode }: { mode?: 'detail' }) => {
   const params = useParams()
   const { role } = useUserRole()
-  const { data, isFetching } = useGetAllBookingsQuery({ limit: 1000 })
+  const { data, isFetching } = useGetAllBookingsQuery({ limit: 1000 }, { skip: mode === 'detail' })
 
   const counts = useMemo(() => {
     const items = data?.items ?? []
@@ -80,6 +80,7 @@ const BookingsPage = ({ mode }: { mode?: 'detail' }) => {
             tone="bg-red-500/10"
           />
         </div>
+        <p className="text-xs text-muted-foreground">Counts from the most recent bookings (sample).</p>
       </div>
 
       <BookingList />

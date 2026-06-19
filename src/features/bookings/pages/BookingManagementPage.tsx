@@ -25,7 +25,7 @@ const BookingManagementPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
   // API calls
-  const { data: userBookings, isLoading: userBookingsLoading, isError: userBookingsError, refetch: refetchUserBookings } = useGetUserBookingsQuery()
+  const { data: userBookings, isLoading: userBookingsLoading, isError: userBookingsError, refetch: refetchUserBookings } = useGetUserBookingsQuery({ limit: 100 })
 
   // Admin/Agent view
   const { data: allBookings, isLoading: allBookingsLoading, isError: allBookingsError, refetch: refetchAllBookings } = useGetAllBookingsQuery(
@@ -38,7 +38,8 @@ const BookingManagementPage: React.FC = () => {
   const [processPayment] = useProcessPaymentMutation()
   const [addReview] = useAddReviewMutation()
 
-  const bookings = user?.role === 'user' ? userBookings?.items || [] : allBookings?.items || []
+  const isUser = user?.role === 'user'
+  const bookings = isUser ? userBookings?.items || [] : allBookings?.items || []
 
   const filteredBookings = bookings.filter(booking => {
     if (searchQuery) {
@@ -192,32 +193,62 @@ const BookingManagementPage: React.FC = () => {
 
       {/* Booking List */}
       <div className="space-y-4">
-        {(userBookingsLoading || allBookingsLoading) ? (
-          <LoadingState type="cards" />
-        ) : (userBookingsError || allBookingsError) ? (
-          <EmptyState
-            icon={<AlertTriangle className="h-12 w-12" />}
-            title="Failed to load bookings"
-            description="There was an error loading bookings. Please try again."
-            action={{ label: 'Retry', onClick: () => { void refetchUserBookings(); void refetchAllBookings() }, variant: 'outline' }}
-          />
-        ) : filteredBookings.length === 0 ? (
-          <EmptyState
-            icon={<AlertCircle className="h-12 w-12" />}
-            title="No bookings found"
-            description={searchQuery ? 'Try adjusting your search' : 'Create your first booking to get started'}
-          />
-        ) : (
-          filteredBookings.map((booking) => (
-            <BookingCard
-              key={booking.id}
-              booking={booking}
-              onUpdate={(selectedBooking) => { void handleProcessPayment(selectedBooking) }}
-              onCancel={(bookingId) => { void handleCancelBooking(bookingId) }}
-              onReview={(bookingId, review) => { void handleAddReview(bookingId, review) }}
-              showActions={user?.role !== 'admin'}
+        {isUser ? (
+          userBookingsLoading ? (
+            <LoadingState type="cards" />
+          ) : userBookingsError ? (
+            <EmptyState
+              icon={<AlertTriangle className="h-12 w-12" />}
+              title="Failed to load bookings"
+              description="There was an error loading bookings. Please try again."
+              action={{ label: 'Retry', onClick: () => { void refetchUserBookings() }, variant: 'outline' }}
             />
-          ))
+          ) : filteredBookings.length === 0 ? (
+            <EmptyState
+              icon={<AlertCircle className="h-12 w-12" />}
+              title="No bookings found"
+              description={searchQuery ? 'Try adjusting your search' : 'Create your first booking to get started'}
+            />
+          ) : (
+            filteredBookings.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onUpdate={(selectedBooking) => { void handleProcessPayment(selectedBooking) }}
+                onCancel={(bookingId) => { void handleCancelBooking(bookingId) }}
+                onReview={(bookingId, review) => { void handleAddReview(bookingId, review) }}
+                showActions={user?.role !== 'admin'}
+              />
+            ))
+          )
+        ) : (
+          allBookingsLoading ? (
+            <LoadingState type="cards" />
+          ) : allBookingsError ? (
+            <EmptyState
+              icon={<AlertTriangle className="h-12 w-12" />}
+              title="Failed to load bookings"
+              description="There was an error loading bookings. Please try again."
+              action={{ label: 'Retry', onClick: () => { void refetchAllBookings() }, variant: 'outline' }}
+            />
+          ) : filteredBookings.length === 0 ? (
+            <EmptyState
+              icon={<AlertCircle className="h-12 w-12" />}
+              title="No bookings found"
+              description={searchQuery ? 'Try adjusting your search' : 'Create your first booking to get started'}
+            />
+          ) : (
+            filteredBookings.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                onUpdate={(selectedBooking) => { void handleProcessPayment(selectedBooking) }}
+                onCancel={(bookingId) => { void handleCancelBooking(bookingId) }}
+                onReview={(bookingId, review) => { void handleAddReview(bookingId, review) }}
+                showActions={user?.role !== 'admin'}
+              />
+            ))
+          )
         )}
       </div>
     </div>

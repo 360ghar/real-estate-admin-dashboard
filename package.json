@@ -37,6 +37,7 @@
     "@tanstack/react-table": "^8.21.3",
     "@tiptap/extension-image": "^3.27.0",
     "@tiptap/extension-link": "^3.27.0",
+    "@tiptap/extension-placeholder": "^3.27.0",
     "@tiptap/react": "^3.27.0",
     "@tiptap/starter-kit": "^3.27.0",
     "@types/dompurify": "^3.0.5",

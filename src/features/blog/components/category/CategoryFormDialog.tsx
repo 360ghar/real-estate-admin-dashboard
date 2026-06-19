@@ -31,6 +31,7 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
   })
 
   const handleSubmit = async (data: BlogCategoryForm) => {
+    form.clearErrors()
     try {
       if (editingCategory) { await updateCategory({ identifier: editingCategory.id, data }).unwrap(); toast({ title: 'Success', description: 'Category updated successfully' }) }
       else { await createCategory(data).unwrap(); toast({ title: 'Success', description: 'Category created successfully' }) }

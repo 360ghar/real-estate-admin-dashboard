@@ -47,6 +47,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
   }, [images, setValue])
 
   const onSubmit = async (values: BlogPostForm) => {
+    form.clearErrors()
     try {
       const payload = {
         title: values.title,

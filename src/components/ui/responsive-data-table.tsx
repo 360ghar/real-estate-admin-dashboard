@@ -57,6 +57,8 @@ interface ResponsiveDataTableProps<TData, TValue> {
   enableRowSelection?: boolean
   /** Called with the selected rows' original data whenever selection changes. */
   onSelectionChange?: (selectedRows: TData[]) => void
+  /** Stable row ID accessor for row selection. Defaults to index if omitted. */
+  getRowId?: (row: TData, index: number) => string
 }
 
 export function ResponsiveDataTable<TData, TValue>({
@@ -76,6 +78,7 @@ export function ResponsiveDataTable<TData, TValue>({
   enableSorting = false,
   enableRowSelection = false,
   onSelectionChange,
+  getRowId,
 }: ResponsiveDataTableProps<TData, TValue>) {
   const isMobile = useIsMobile()
   const [storedView, setStoredView] = useViewMode(viewStorageKey)
@@ -94,6 +97,7 @@ export function ResponsiveDataTable<TData, TValue>({
   const table = useReactTable({
     data,
     columns,
+    getRowId,
     getCoreRowModel: getCoreRowModel(),
     ...(enableSorting
       ? {
@@ -174,20 +178,17 @@ export function ResponsiveDataTable<TData, TValue>({
   )
 
   // Default card renderer
-  const defaultCardRender = (row: TData, index: number) => {
-    const rowData = table.getRowModel().rows[index]
-    if (!rowData) return null
-
+  const defaultCardRender = (rowData: TData, tableRow: ReturnType<typeof table.getRowModel>['rows'][number]) => {
     return (
       <Card
         className={cn(
           'p-4',
           onRowClick && 'cursor-pointer hover:bg-muted/50 transition-colors'
         )}
-        onClick={() => onRowClick?.(row)}
+        onClick={() => onRowClick?.(rowData)}
       >
         <div className="space-y-2">
-          {rowData.getVisibleCells().slice(0, 4).map((cell) => {
+          {tableRow.getVisibleCells().slice(0, 4).map((cell) => {
             const header = cell.column.columnDef.header
             const headerText = typeof header === 'string' ? header : ''
 
@@ -210,21 +211,24 @@ export function ResponsiveDataTable<TData, TValue>({
   }
 
   // Render cards view
-  const renderCards = () => (
-    <div className="space-y-3">
-      {data.length > 0 ? (
-        data.map((row, index) => (
-          <React.Fragment key={index}>
-            {mobileCardRender ? mobileCardRender(row, index) : defaultCardRender(row, index)}
-          </React.Fragment>
-        ))
-      ) : (
-        <Card className="p-6 text-center text-muted-foreground">
-          {emptyMessage}
-        </Card>
-      )}
-    </div>
-  )
+  const renderCards = () => {
+    const rows = table.getRowModel().rows
+    return (
+      <div className="space-y-3">
+        {rows.length > 0 ? (
+          rows.map((row) => (
+            <React.Fragment key={row.id}>
+              {mobileCardRender ? mobileCardRender(row.original, row.index) : defaultCardRender(row.original, row)}
+            </React.Fragment>
+          ))
+        ) : (
+          <Card className="p-6 text-center text-muted-foreground">
+            {emptyMessage}
+          </Card>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className={cn('space-y-4', className)}>

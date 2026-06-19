@@ -60,9 +60,14 @@ export default function AuthCallbackPage() {
         return
       }
 
+      let timedOut = false
+
       try {
-        const timeoutPromise = new Promise<{data: null; error: Error}>((_, reject) =>
-          setTimeout(() => reject(new Error('Request timed out. Please try again.')), 15000)
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => {
+            timedOut = true
+            reject(new Error('Request timed out. Please try again.'))
+          }, 15000)
         )
         const { data, error } = await Promise.race([
           client.auth.exchangeCodeForSession(code),
@@ -99,6 +104,11 @@ export default function AuthCallbackPage() {
         if (!isMounted) return
         navigate('/dashboard', { replace: true })
       } catch (err) {
+        // If the timeout fired, the exchange may still complete in the
+        // background and set a Supabase session. Sign out to be safe.
+        if (timedOut) {
+          try { await client.auth.signOut() } catch { /* best-effort */ }
+        }
         failTo(mapSupabaseAuthError(err))
       }
     }
