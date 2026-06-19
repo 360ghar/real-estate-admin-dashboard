@@ -6,6 +6,7 @@ import {
   useGetPmPropertyDetailQuery,
   useUpdatePmPropertyMutation,
 } from '@/features/pm/api/pmApi'
+import { formatCurrency } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -49,11 +50,11 @@ export default function PmPropertyDetailPage() {
       const parsed = JSON.parse(lateFeePolicyJson || '{}') as Record<string, unknown>
       const type = parsed.type
       if (type === 'fixed' && typeof parsed.amount === 'number') {
-        return `If rent is ₹${activeLease.monthly_rent.toLocaleString('en-IN')}, late fee = ₹${parsed.amount.toLocaleString('en-IN')}`
+        return `If rent is ${formatCurrency(activeLease.monthly_rent)}, late fee = ${formatCurrency(parsed.amount)}`
       }
       if (type === 'percentage' && typeof parsed.percent === 'number') {
         const fee = Math.round((activeLease.monthly_rent * parsed.percent) / 100)
-        return `If rent is ₹${activeLease.monthly_rent.toLocaleString('en-IN')}, late fee ≈ ₹${fee.toLocaleString('en-IN')} (${parsed.percent}%)`
+        return `If rent is ${formatCurrency(activeLease.monthly_rent)}, late fee ≈ ${formatCurrency(fee)} (${parsed.percent}%)`
       }
       return null
     } catch {
@@ -111,12 +112,66 @@ export default function PmPropertyDetailPage() {
     return <EmptyState title="Invalid property id" />
   }
 
+  if (detail.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+          </Card>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent><Skeleton className="h-9 w-40" /></CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <Skeleton className="h-5 w-16" />
+              <Skeleton className="h-4 w-4" />
+            </CardHeader>
+            <CardContent><Skeleton className="h-9 w-40" /></CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {detail.isLoading ? 'Loading…' : prop?.title || `Property #${propertyIdNum}`}
+            {prop?.title || `Property #${propertyIdNum}`}
           </h1>
           <p className="text-sm text-muted-foreground">
             {(prop?.full_address || prop?.locality || prop?.city || '').toString() || '—'}
@@ -189,12 +244,7 @@ export default function PmPropertyDetailPage() {
             <CardTitle className="text-base">Overview</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {detail.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-              </div>
-            ) : prop ? (
+            {prop ? (
               <>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Owner</span>
@@ -226,12 +276,7 @@ export default function PmPropertyDetailPage() {
             <CardTitle className="text-base">Lease & Tenant</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {detail.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-4/6" />
-              </div>
-            ) : activeLease ? (
+            {activeLease ? (
               <>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Lease</span>
@@ -249,7 +294,7 @@ export default function PmPropertyDetailPage() {
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Monthly rent</span>
-                  <span className="font-medium">₹{activeLease.monthly_rent.toLocaleString('en-IN')}</span>
+                  <span className="font-medium">{formatCurrency(activeLease.monthly_rent)}</span>
                 </div>
               </>
             ) : (

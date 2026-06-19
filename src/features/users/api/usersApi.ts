@@ -23,11 +23,11 @@ export interface TypedUserNotificationPayload {
 
 export const usersApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // List users with pagination and search
+    // List users with cursor pagination and search
     getUsers: builder.query<PaginatedResponse<User>, UsersQuery>({
       query: (params) => ({
         url: '/users/',
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, ...params }
       }),
       providesTags: (res) =>
         res?.items
@@ -87,7 +87,7 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: [{type: 'User', id: 'LIST'}],
+      invalidatesTags: [{type: 'User', id: 'LIST'}, {type: 'User', id: 'PROFILE'}],
     }),
 
     // Update user location
@@ -97,18 +97,18 @@ export const usersApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: [{type: 'User', id: 'LIST'}],
+      invalidatesTags: [{type: 'User', id: 'LIST'}, {type: 'User', id: 'PROFILE'}],
     }),
 
     // Notification settings
     getNotificationSettings: builder.query<UserNotificationSettings, void>({
-      query: () => '/users/notification-settings',
+      query: () => '/users/notification-settings/',
       providesTags: [{type: 'User', id: 'NOTIFICATION_SETTINGS'}],
     }),
 
     updateNotificationSettings: builder.mutation<void, UserNotificationSettings>({
       query: (data) => ({
-        url: '/users/notification-settings',
+        url: '/users/notification-settings/',
         method: 'PUT',
         body: data,
       }),
@@ -126,13 +126,13 @@ export const usersApi = api.injectEndpoints({
 
     // Privacy settings
     getPrivacySettings: builder.query<UserPrivacySettings, void>({
-      query: () => '/users/privacy-settings',
+      query: () => '/users/privacy-settings/',
       providesTags: [{type: 'User', id: 'PRIVACY_SETTINGS'}],
     }),
 
     updatePrivacySettings: builder.mutation<void, UserPrivacySettings>({
       query: (data) => ({
-        url: '/users/privacy-settings',
+        url: '/users/privacy-settings/',
         method: 'PUT',
         body: data,
       }),

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { UserRound, Users } from 'lucide-react'
@@ -11,12 +11,13 @@ import AssignAgent from '@/features/users/components/assign/AssignAgent'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DataTable } from '@/components/ui/data-table'
+import { ResponsiveDataTable } from '@/components/ui/responsive-data-table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LoadingState } from '@/components/ui/loading-state'
 import { Input } from '@/components/ui/input'
-import Pagination from '@/components/ui/pagination'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import type { User } from '@/types'
 import { getOwnerLabel, getKycStatus } from '@/features/pm/utils'
 
@@ -25,11 +26,14 @@ export default function PmOwnersPage() {
   const dispatch = useAppDispatch()
   const navigate = useNavigate()
 
-  const [page, setPage] = useState(1)
   const [q, setQ] = useState('')
   const debouncedQ = useDebounce(q, 300)
+  const pager = useCursorPagination()
 
-  const users = useGetUsersQuery({ page, limit: 20, q: debouncedQ || undefined })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, debouncedQ])
+
+  const users = useGetUsersQuery({ cursor: pager.cursor, limit: 20, q: debouncedQ || undefined })
 
   const owners = useMemo(() => (users.data?.items || []).filter((u) => u.role === 'user'), [users.data?.items])
 
@@ -121,7 +125,7 @@ export default function PmOwnersPage() {
         </div>
         <Badge variant="secondary" className="h-fit">
           <Users className="mr-1 h-3 w-3" />
-          {users.data?.total ?? owners.length} total
+          {owners.length} shown
         </Badge>
       </div>
 
@@ -144,12 +148,13 @@ export default function PmOwnersPage() {
             <LoadingState type="spinner" />
           ) : owners.length ? (
             <>
-              <DataTable columns={columns} data={owners} />
-              <Pagination
-                page={page}
-                pageSize={20}
-                total={users.data?.total || 0}
-                onChange={(next) => setPage(next)}
+              <ResponsiveDataTable columns={columns} data={owners} />
+              <CursorPager
+                canPrev={pager.canPrev}
+                hasMore={users.data?.has_more ?? false}
+                loading={users.isFetching}
+                onPrev={pager.prev}
+                onNext={() => users.data && pager.next(users.data.next_cursor)}
               />
             </>
           ) : (

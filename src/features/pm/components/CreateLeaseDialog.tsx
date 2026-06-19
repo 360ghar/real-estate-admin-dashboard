@@ -32,6 +32,8 @@ import {
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { applyServerValidation } from "@/lib/formErrors";
+import { FormRootError } from "@/components/ui/form-root-error";
 import { pmLeaseCreateSchema, type PmLeaseCreateForm } from "@/features/pm/validations";
 
 interface CreateLeaseDialogProps {
@@ -44,7 +46,7 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
   const [createLease, createState] = useCreatePmLeaseMutation();
 
   const properties = useListPmPropertiesQuery(
-    { owner_id: ownerId, limit: 200, offset: 0 },
+    { owner_id: ownerId, limit: 200 },
     { skip: role === "agent" && !ownerId },
   );
 
@@ -74,7 +76,7 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
   );
 
   const onSubmit = async (values: PmLeaseCreateForm) => {
-    const selectedPropertyOwnerId = (properties.data || []).find(
+    const selectedPropertyOwnerId = (properties.data?.items ?? []).find(
       (p) => String(p.id) === values.property_id,
     )?.owner_id;
 
@@ -95,6 +97,7 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
       toast({ title: "Created", description: "Lease created." });
       setOpen(false);
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError);
       toast({ title: "Failed", description: getErrorMessage(e, "Could not create lease."), variant: "destructive" });
     }
   };
@@ -113,6 +116,7 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2"><FormRootError form={form} /></div>
             <FormField
               control={form.control}
               name="property_id"
@@ -126,11 +130,17 @@ export default function CreateLeaseDialog({ ownerId }: CreateLeaseDialogProps) {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {(properties.data || []).map((p) => (
-                        <SelectItem key={p.id} value={String(p.id)}>
-                          #{p.id} • {p.title}
-                        </SelectItem>
-                      ))}
+                      {properties.isLoading ? (
+                        <SelectItem value="loading" disabled>Loading properties…</SelectItem>
+                      ) : !properties.data?.items?.length ? (
+                        <SelectItem value="none" disabled>No properties available</SelectItem>
+                      ) : (
+                        properties.data.items.map((p) => (
+                          <SelectItem key={p.id} value={String(p.id)}>
+                            #{p.id} • {p.title}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />

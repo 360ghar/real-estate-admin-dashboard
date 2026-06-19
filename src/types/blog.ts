@@ -30,35 +30,26 @@ export interface BlogPost {
   updated_at?: string | null
 }
 
-// List Response Types
+// List Response Types — uniform cursor-paginated shape
 export interface BlogPostListResponse {
   items: BlogPost[]
-  total: number
-  page: number
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
 }
 
 export interface BlogCategoryListResponse {
   items: BlogCategory[]
-  total: number
-  page: number
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
 }
 
 export interface BlogTagListResponse {
   items: BlogTag[]
-  total: number
-  page: number
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
 }
 
 // Filter Types
@@ -67,17 +58,17 @@ export interface BlogPostFilters {
   categories?: string[]
   tags?: string[]
   keywords?: string[]
-  page?: number
+  cursor?: string | null
   limit?: number
 }
 
 export interface BlogCategoryFilters {
-  page?: number
+  cursor?: string | null
   limit?: number
 }
 
 export interface BlogTagFilters {
-  page?: number
+  cursor?: string | null
   limit?: number
 }
 

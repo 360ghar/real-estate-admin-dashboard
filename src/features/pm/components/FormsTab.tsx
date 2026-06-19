@@ -5,7 +5,8 @@ import { AlertCircle, Copy, FileSearch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
+import { ResponsiveDataTable } from "@/components/ui/responsive-data-table";
+import CursorPager from "@/components/ui/cursor-pager";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
 import { PAGE_SIZES } from "@/features/pm/constants";
@@ -18,10 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { RentalApplicationForm } from "@/types/pm";
-import { API_BASE_URL } from "@/lib/config";
 
 const buildPublicFormUrl = (slug: string) => {
-  return `${API_BASE_URL}/pm/public/applications/${slug}`;
+  return `${window.location.origin}/apply/${slug}`;
 };
 
 interface FormsTabProps {
@@ -29,7 +29,6 @@ interface FormsTabProps {
   formsIsLoading: boolean;
   formsIsError: boolean;
   formsRefetch: () => void;
-  formsOffset: number;
   formsLimit: number;
   formsCanPrev: boolean;
   formsCanNext: boolean;
@@ -39,7 +38,7 @@ interface FormsTabProps {
   onFormsQChange: (q: string) => void;
   formsLimitValue: number;
   onFormsLimitChange: (limit: number) => void;
-  toast: (props: { title: string; description: string; variant?: "default" | "destructive" | null }) => void;
+  toast: (props: { title: string; description: string; variant?: "default" | "destructive" }) => void;
 }
 
 export default function FormsTab({
@@ -47,8 +46,7 @@ export default function FormsTab({
   formsIsLoading,
   formsIsError,
   formsRefetch,
-  formsOffset,
-  formsLimit,
+  formsLimit: _formsLimit,
   formsCanPrev,
   formsCanNext,
   onFormsPrev,
@@ -164,20 +162,13 @@ export default function FormsTab({
           </div>
         ) : formsData?.length ? (
           <>
-            <DataTable columns={formColumns} data={formsData} />
-            <div className="flex items-center justify-between pt-2">
-              <div className="text-xs text-muted-foreground">
-                Offset {formsOffset} &bull; Limit {formsLimit}
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled={!formsCanPrev} onClick={onFormsPrev}>
-                  Prev
-                </Button>
-                <Button variant="outline" size="sm" disabled={!formsCanNext} onClick={onFormsNext}>
-                  Next
-                </Button>
-              </div>
-            </div>
+            <ResponsiveDataTable columns={formColumns} data={formsData} />
+            <CursorPager
+              canPrev={formsCanPrev}
+              hasMore={formsCanNext}
+              onPrev={onFormsPrev}
+              onNext={onFormsNext}
+            />
           </>
         ) : (
           <EmptyState title="No forms" description="Create an application form to start collecting submissions." />

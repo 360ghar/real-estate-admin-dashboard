@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useCreateAgentMutation, useGetAgentQuery, useUpdateAgentMutation } from '@/features/agents/api/agentsApi'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -19,6 +20,7 @@ const AgentForm = ({ id }: { id?: number }) => {
   const [create, createState] = useCreateAgentMutation()
   const [update, updateState] = useUpdateAgentMutation()
   const { toast } = useToast()
+  const navigate = useNavigate()
   const isEdit = !!id
   const form = useForm<AgentFormValues>({
     resolver: zodResolver(agentFormSchema),
@@ -84,6 +86,7 @@ const AgentForm = ({ id }: { id?: number }) => {
         }).unwrap()
         toast({ title: 'Created', description: 'Agent created' })
       }
+      navigate('/agents')
     } catch (e: unknown) {
       applyServerValidation(e, form.setError)
       toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
@@ -239,7 +242,10 @@ const AgentForm = ({ id }: { id?: number }) => {
                   </FormItem>
                 )}
               />
-              <div className="md:col-span-2 flex justify-end">
+              <div className="md:col-span-2 flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => navigate('/agents')}>
+                  Cancel
+                </Button>
                 <Button type="submit" disabled={createState.isLoading || updateState.isLoading}>
                   {isEdit ? (updateState.isLoading ? 'Saving…' : 'Save') : createState.isLoading ? 'Creating…' : 'Create'}
                 </Button>

@@ -3,7 +3,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import type { DocumentType, RentChargeWithTotals, RentPaymentCreate } from "@/types/pm";
 import {
-  useListRentChargesQuery,
   useRecordRentPaymentMutation,
   useUploadPmDocumentMutation,
 } from "@/features/pm/api/pmApi";
@@ -33,6 +32,9 @@ import {
 } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { applyServerValidation } from "@/lib/formErrors";
+import { FormRootError } from "@/components/ui/form-root-error";
+import { formatCurrency } from "@/lib/format";
 import { PAYMENT_METHODS } from "@/features/pm/constants";
 import {
   pmRentPaymentSchema,
@@ -56,11 +58,6 @@ export default function RecordPaymentDialog({
   const [recordPayment, recordState] = useRecordRentPaymentMutation();
   const [uploadDoc, uploadDocState] = useUploadPmDocumentMutation();
 
-  const charges = useListRentChargesQuery(
-    { owner_id: ownerId, limit: 50, offset: 0 },
-    { skip: !ownerId },
-  );
-
   const [receipt, setReceipt] = useState<File | null>(null);
 
   const form = useForm<PmRentPaymentForm>({
@@ -74,14 +71,26 @@ export default function RecordPaymentDialog({
   });
 
   const chargeId = charge?.charge.id ?? null;
+  const outstanding = charge?.outstanding ?? 0;
+
+  const amountPaid = form.watch("amount_paid");
+  const exceedsOutstanding = Number(amountPaid) > outstanding;
 
   const onSubmit = async (values: PmRentPaymentForm) => {
     if (!chargeId) return;
+    if (Number(values.amount_paid) > outstanding) {
+      toast({
+        title: "Invalid amount",
+        description: `Amount paid (${formatCurrency(values.amount_paid)}) exceeds outstanding (${formatCurrency(outstanding)}).`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     try {
       let receiptDocumentId: number | undefined;
-      if (receipt) {
-        const c = charges.data?.find((item) => item.charge.id === chargeId)?.charge;
+      if (receipt && charge) {
+        const c = charge.charge;
         const fd = new FormData();
         fd.append("file", receipt);
         fd.append("document_type", "receipt" satisfies DocumentType);
@@ -110,6 +119,7 @@ export default function RecordPaymentDialog({
       setReceipt(null);
       onOpenChange(false);
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError);
       toast({
         title: "Failed",
         description: getErrorMessage(e, "Could not record payment."),
@@ -125,10 +135,16 @@ export default function RecordPaymentDialog({
           <DialogTitle>Record payment</DialogTitle>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+            <FormRootError form={form} />
             <div className="text-sm text-muted-foreground">
-              Charge #{chargeId}
+              Charge #{chargeId} &bull; Outstanding: {formatCurrency(outstanding)}
             </div>
+            {exceedsOutstanding && (
+              <p className="text-sm text-destructive">
+                Amount paid exceeds outstanding balance.
+              </p>
+            )}
             <div className="grid gap-4 md:grid-cols-2">
               <FormField
                 control={form.control}
@@ -215,7 +231,7 @@ export default function RecordPaymentDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={recordState.isLoading || uploadDocState.isLoading}
+                disabled={recordState.isLoading || uploadDocState.isLoading || exceedsOutstanding}
               >
                 {recordState.isLoading || uploadDocState.isLoading
                   ? "Saving…"

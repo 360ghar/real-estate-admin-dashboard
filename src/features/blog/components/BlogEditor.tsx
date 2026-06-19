@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import RichTextEditor from '@/components/ui/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import MultiSelect from '@/components/ui/multi-select'
@@ -13,6 +14,8 @@ import { useCreateBlogPostMutation, useGetBlogCategoriesQuery, useGetBlogTagsQue
 import { useToast } from '@/hooks/use-toast'
 import { blogPostSchema, type BlogPostForm } from '@/lib/blogValidation'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import type { BlogCategory, BlogTag } from '@/types/blog'
 
 const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
@@ -44,6 +47,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
   }, [images, setValue])
 
   const onSubmit = async (values: BlogPostForm) => {
+    form.clearErrors()
     try {
       const payload = {
         title: values.title,
@@ -59,6 +63,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
       toast({ title: 'Created', description: 'Blog post created successfully' })
       onSuccess?.(res.slug)
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError)
       toast({ title: 'Save failed', description: getErrorMessage(e, 'Please check inputs'), variant: 'destructive' })
     }
   }
@@ -85,6 +90,9 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
           <Form {...form}>
             <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-2">
+                <FormRootError form={form} />
+              </div>
+              <div className="md:col-span-2">
                 <FormField
                   control={form.control}
                   name="title"
@@ -107,7 +115,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
                     <FormItem>
                       <FormLabel>Content (HTML or Markdown)</FormLabel>
                       <FormControl>
-                        <Textarea rows={12} placeholder="<h1>Introduction</h1>..." {...field} />
+                        <RichTextEditor value={field.value} onChange={field.onChange} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -131,7 +139,7 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
               </div>
               <div className="md:col-span-2">
                 <FormLabel>Cover Image</FormLabel>
-                <ImageUpload value={images} onChange={setImages} multiple={false} primary={images[0] || null} onPrimaryChange={(u) => { setImages(u ? [u] : []) }} />
+                <ImageUpload value={images} onChange={setImages} multiple={false} primary={images[0] || null} onPrimaryChange={(u) => { setImages(prev => { const filtered = prev.filter(i => i !== u); return u ? [u, ...filtered] : prev }) }} />
                 <div className="mt-2">
                   <FormField
                     control={form.control}

@@ -17,12 +17,27 @@ import {
   Calendar,
   CalendarPlus,
   ClipboardList,
+  FileBarChart,
+  FileSearch,
   FileText,
+  Folder,
   HelpCircle,
   Home,
   Plus,
+  Receipt,
+  ShieldCheck,
+  Smartphone,
   UserCog,
   Users,
+  Wrench,
+  ClipboardCheck,
+  HardHat,
+  Settings,
+  Bug,
+  User,
+  Sliders,
+  Heart,
+  LayoutDashboard,
 } from 'lucide-react'
 
 interface CommandPaletteProps {
@@ -42,7 +57,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search pages and actions…" />
+      <CommandInput placeholder="Search pages and actions…" autoFocus />
       <CommandList>
         <CommandEmpty>No results found.</CommandEmpty>
         <CommandGroup heading="Navigate">
@@ -58,6 +73,58 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <ClipboardList className="h-4 w-4" />
             Property Management
           </CommandItem>
+          <CommandItem onSelect={() => go('/pm/properties')}>
+            <Building className="h-4 w-4" />
+            PM Properties
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/leases')}>
+            <FileText className="h-4 w-4" />
+            Leases & Tenants
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/applications')}>
+            <FileSearch className="h-4 w-4" />
+            Applications
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/rent-ledger')}>
+            <Receipt className="h-4 w-4" />
+            Rent Ledger
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/maintenance')}>
+            <Wrench className="h-4 w-4" />
+            Maintenance
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/inspections')}>
+            <ClipboardCheck className="h-4 w-4" />
+            Inspections
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/expenses')}>
+            <HardHat className="h-4 w-4" />
+            Expenses
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/documents')}>
+            <Folder className="h-4 w-4" />
+            PM Documents
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/owners')}>
+            <Users className="h-4 w-4" />
+            PM Owners
+          </CommandItem>
+          <CommandItem onSelect={() => go('/pm/reports')}>
+            <FileBarChart className="h-4 w-4" />
+            PM Reports
+          </CommandItem>
+          {isAdmin && (
+            <>
+              <CommandItem onSelect={() => go('/pm/audit')}>
+                <ShieldCheck className="h-4 w-4" />
+                Audit Log
+              </CommandItem>
+              <CommandItem onSelect={() => go('/pm/settings')}>
+                <Settings className="h-4 w-4" />
+                PM Settings
+              </CommandItem>
+            </>
+          )}
           <CommandItem onSelect={() => go('/visits')}>
             <Calendar className="h-4 w-4" />
             Visits
@@ -92,6 +159,45 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
                 <HelpCircle className="h-4 w-4" />
                 FAQs
               </CommandItem>
+              <CommandItem onSelect={() => go('/pages')}>
+                <FileText className="h-4 w-4" />
+                CMS Pages
+              </CommandItem>
+              <CommandItem onSelect={() => go('/app-updates')}>
+                <Smartphone className="h-4 w-4" />
+                App Updates
+              </CommandItem>
+              <CommandItem onSelect={() => go('/flatmates/moderation')}>
+                <ClipboardCheck className="h-4 w-4" />
+                Flatmates Moderation
+              </CommandItem>
+              <CommandItem onSelect={() => go('/bug-reports')}>
+                <Bug className="h-4 w-4" />
+                Bug Reports
+              </CommandItem>
+            </>
+          )}
+        </CommandGroup>
+        <CommandSeparator />
+        <CommandGroup heading="Account">
+          <CommandItem onSelect={() => go('/profile')}>
+            <User className="h-4 w-4" />
+            Profile
+          </CommandItem>
+          <CommandItem onSelect={() => go('/users/preferences')}>
+            <Sliders className="h-4 w-4" />
+            Preferences
+          </CommandItem>
+          {!isAdmin && (
+            <>
+              <CommandItem onSelect={() => go('/agents/me')}>
+                <UserCog className="h-4 w-4" />
+                My Agent Profile
+              </CommandItem>
+              <CommandItem onSelect={() => go('/agents/dashboard')}>
+                <LayoutDashboard className="h-4 w-4" />
+                Agent Dashboard
+              </CommandItem>
             </>
           )}
         </CommandGroup>
@@ -104,6 +210,10 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
           <CommandItem onSelect={() => go('/visits/new')}>
             <CalendarPlus className="h-4 w-4" />
             Schedule visit
+          </CommandItem>
+          <CommandItem onSelect={() => go('/swipes')}>
+            <Heart className="h-4 w-4" />
+            Discover properties
           </CommandItem>
           {isAdmin && (
             <CommandItem onSelect={() => go('/agents/new')}>

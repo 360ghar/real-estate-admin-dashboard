@@ -1,4 +1,7 @@
 import { useDeletePropertyMutation, useGetPropertyQuery } from '@/features/properties/api/propertiesApi'
+import { LoadingState } from '@/components/ui/loading-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/format'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -27,7 +30,7 @@ const SectionTitle = ({ children }: { children: ReactNode }) => (
 )
 
 const PropertyDetail = ({ id }: { id: number }) => {
-  const { data } = useGetPropertyQuery(id)
+  const { data, isLoading, error, refetch } = useGetPropertyQuery(id)
   const [openDelete, setOpenDelete] = useState(false)
   const [del, delState] = useDeletePropertyMutation()
   const navigate = useNavigate()
@@ -43,6 +46,9 @@ const PropertyDetail = ({ id }: { id: number }) => {
       toast({ title: 'Delete Failed', description: getErrorMessage(e, 'Could not delete property'), variant: 'destructive' })
     }
   }
+
+  if (isLoading) return <LoadingState type="card" rows={8} />
+  if (error) return <ErrorState title="Failed to load property" error={error} onRetry={() => void refetch()} />
 
   return (
     <div className="space-y-4">
@@ -75,10 +81,10 @@ const PropertyDetail = ({ id }: { id: number }) => {
           <div className="grid gap-3 md:grid-cols-3">
             <Item label="Type" value={data?.property_type} />
             <Item label="Purpose" value={data?.purpose} />
-            <Item label="Price" value={data?.base_price ? `₹${data.base_price.toLocaleString('en-IN')}` : '-'} />
-            <Item label="Created" value={data?.created_at ? new Date(data.created_at).toLocaleDateString() : '-'} />
+            <Item label="Price" value={data?.base_price ? formatCurrency(data.base_price) : '-'} />
+            <Item label="Created" value={data?.created_at ? formatDate(data.created_at) : '-'} />
             <Item label="Liked" value={data?.liked ? 'Yes' : 'No'} />
-            <Item label="Next Visit" value={data?.user_next_visit_date ? new Date(data.user_next_visit_date).toLocaleString() : '-'} />
+            <Item label="Next Visit" value={data?.user_next_visit_date ? formatDateTime(data.user_next_visit_date) : '-'} />
           </div>
 
           {/* Location */}
@@ -160,7 +166,7 @@ const PropertyDetail = ({ id }: { id: number }) => {
               <SectionTitle>Media</SectionTitle>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {data.images.map((image) => (
-                  <img key={image.id} src={image.image_url} className="h-28 w-full rounded-md object-cover" />
+                  <img key={image.id} src={image.image_url} alt={image.caption || `Property image ${image.id}`} loading="lazy" className="h-28 w-full rounded-md object-cover" />
                 ))}
               </div>
             </div>

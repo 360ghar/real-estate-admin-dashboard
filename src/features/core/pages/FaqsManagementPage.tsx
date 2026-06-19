@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { z } from 'zod'
 import { Edit, HelpCircle, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -20,6 +19,7 @@ import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
 import { applyServerValidation } from '@/lib/formErrors'
 import { formatDate } from '@/lib/format'
+import { faqSchema, type FaqFormValues } from '@/features/core/validations'
 import {
   useCreateFaqMutation,
   useDeleteFaqMutation,
@@ -27,17 +27,6 @@ import {
   useUpdateFaqMutation,
   type Faq,
 } from '@/features/core/api/coreApi'
-
-const faqFormSchema = z.object({
-  question: z.string().trim().min(1, 'Question is required').max(500, 'Keep the question under 500 characters'),
-  answer: z.string().trim().min(1, 'Answer is required'),
-  category: z.string().trim().max(100).optional(),
-  tags: z.string().trim().optional(),
-  display_order: z.coerce.number().int('Must be a whole number').min(0, 'Must be 0 or greater'),
-  is_active: z.boolean(),
-})
-
-type FaqFormValues = z.infer<typeof faqFormSchema>
 
 const defaultValues: FaqFormValues = {
   question: '',
@@ -59,11 +48,11 @@ const FaqsManagementPage = () => {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Faq | null>(null)
 
-  const form = useForm<FaqFormValues>({ resolver: zodResolver(faqFormSchema), defaultValues })
+  const form = useForm<FaqFormValues>({ resolver: zodResolver(faqSchema), defaultValues })
 
   const faqs = useMemo(() => {
     const term = search.trim().toLowerCase()
-    const list = data ?? []
+    const list = data?.items ?? []
     if (!term) return list
     return list.filter(
       (faq) =>

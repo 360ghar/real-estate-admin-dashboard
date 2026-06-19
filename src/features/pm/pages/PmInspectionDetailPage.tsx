@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { ClipboardCheck } from 'lucide-react'
 import { useGetPmInspectionQuery } from '@/features/pm/api/pmApi'
+import { formatDateTime } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -27,12 +28,45 @@ export default function PmInspectionDetailPage() {
     return <EmptyState title="Invalid inspection id" />
   }
 
+  if (inspection.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <Skeleton className="h-6 w-24" />
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-4/6" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {inspection.isLoading ? 'Loading…' : `Inspection #${inspection.data?.id ?? inspectionIdNum}`}
+            {`Inspection #${inspection.data?.id ?? inspectionIdNum}`}
           </h1>
           <p className="text-sm text-muted-foreground">
             Lease #{inspection.data?.lease_id} • Property #{inspection.data?.property_id}
@@ -50,13 +84,7 @@ export default function PmInspectionDetailPage() {
             <CardTitle className="text-base">Rooms data</CardTitle>
           </CardHeader>
           <CardContent>
-            {inspection.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-                <Skeleton className="h-4 w-4/6" />
-              </div>
-            ) : roomsJson ? (
+            {roomsJson ? (
               <pre className="max-h-[520px] overflow-auto rounded-md bg-muted p-4 text-xs">
                 {roomsJson}
               </pre>
@@ -70,16 +98,11 @@ export default function PmInspectionDetailPage() {
             <CardTitle className="text-base">Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {inspection.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-4/6" />
-              </div>
-            ) : inspection.data ? (
+            {inspection.data ? (
               <>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Conducted</span>
-                  <span className="font-medium">{new Date(inspection.data.conducted_at).toLocaleString()}</span>
+                  <span className="font-medium">{inspection.data.conducted_at ? formatDateTime(inspection.data.conducted_at) : '—'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Signed (owner)</span>

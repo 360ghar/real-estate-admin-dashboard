@@ -33,6 +33,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { applyServerValidation } from "@/lib/formErrors";
+import { FormRootError } from "@/components/ui/form-root-error";
 import { pmPropertyCreateSchema, type PmPropertyCreateForm } from "@/features/pm/validations";
 
 interface PropertyCreateDialogProps {
@@ -46,7 +48,7 @@ export default function PropertyCreateDialog({
 }: PropertyCreateDialogProps) {
   const { toast } = useToast();
   const [createProperty, createState] = useCreatePmPropertyMutation();
-  const [updateProperty] = useUpdatePmPropertyMutation();
+  const [updateProperty, updateState] = useUpdatePmPropertyMutation();
   const [open, setOpen] = useState(false);
 
   const form = useForm<PmPropertyCreateForm>({
@@ -90,7 +92,11 @@ export default function PropertyCreateDialog({
         ? (JSON.parse(values.late_fee_policy_json) as Record<string, unknown>)
         : undefined;
     } catch {
-      // Zod should catch this, but just in case
+      toast({
+        title: 'Invalid JSON',
+        description: 'Late fee policy contains invalid JSON. Please correct it.',
+        variant: 'destructive',
+      })
       return;
     }
 
@@ -130,6 +136,7 @@ export default function PropertyCreateDialog({
       toast({ title: "Created", description: "Managed property created." });
       handleOpenChange(false);
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError);
       toast({
         title: "Failed",
         description: getErrorMessage(e, "Could not create property."),
@@ -149,6 +156,7 @@ export default function PropertyCreateDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2"><FormRootError form={form} /></div>
             <FormField
               control={form.control}
               name="title"
@@ -302,7 +310,7 @@ export default function PropertyCreateDialog({
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createState.isLoading}>
+              <Button type="submit" disabled={createState.isLoading || updateState.isLoading}>
                 {createState.isLoading ? "Creating…" : "Create"}
               </Button>
             </div>

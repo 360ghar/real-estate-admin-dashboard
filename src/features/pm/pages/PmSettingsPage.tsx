@@ -1,168 +1,273 @@
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Separator } from '@/components/ui/separator'
-import { useToast } from '@/hooks/use-toast'
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Settings } from 'lucide-react'
 import OwnerScopeGate from '@/features/pm/components/OwnerScopeGate'
+import { useUserRole } from '@/hooks/useUserRole'
+import { useAppSelector } from '@/hooks/redux'
+import { selectSelectedOwnerId } from '@/features/pm/slices/pmSlice'
+import { useGetPmSettingsQuery, useUpdatePmSettingsMutation } from '@/features/pm/api/pmApi'
+import { pmSettingsSchema, type PmSettingsForm } from '@/features/pm/validations'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
+import { getErrorMessage } from '@/lib/errors'
+import { useToast } from '@/hooks/use-toast'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormDescription, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { ErrorState } from '@/components/ui/error-state'
+import { Badge } from '@/components/ui/badge'
+
+const DEFAULTS: PmSettingsForm = {
+  payment_due_day: 1,
+  grace_period_days: 5,
+  late_fee_enabled: false,
+  late_fee_flat: 0,
+  late_fee_percent: 0,
+  auto_generate_charges: true,
+  notify_owner_on_payment: true,
+  notify_tenant_on_charge: false,
+  default_lease_term_months: 11,
+}
 
 export default function PmSettingsPage() {
+  const { role } = useUserRole()
+  const selectedOwnerId = useAppSelector(selectSelectedOwnerId)
+  const ownerId = selectedOwnerId
   const { toast } = useToast()
 
-  const [paymentDueDay, setPaymentDueDay] = useState(1)
-  const [gracePeriodDays, setGracePeriodDays] = useState(5)
-  const [lateFeeAmount, setLateFeeAmount] = useState(0)
-  const [lateFeePercentage, setLateFeePercentage] = useState(0)
+  const settings = useGetPmSettingsQuery(
+    { owner_id: ownerId },
+    { skip: role === 'agent' && !ownerId },
+  )
+  const [updateSettings, updateState] = useUpdatePmSettingsMutation()
 
-  const [notifyLeaseExpiry, setNotifyLeaseExpiry] = useState(true)
-  const [notifyRentOverdue, setNotifyRentOverdue] = useState(true)
-  const [notifyMaintenance, setNotifyMaintenance] = useState(true)
-  const [notifyApplication, setNotifyApplication] = useState(true)
+  const form = useForm<PmSettingsForm>({
+    resolver: zodResolver(pmSettingsSchema),
+    defaultValues: DEFAULTS,
+  })
 
-  const handleSave = () => {
-    toast({ title: 'Settings saved', description: 'PM portal settings have been updated.' })
+  const { reset, formState } = form
+
+  useEffect(() => {
+    if (settings.data) {
+      reset({
+        payment_due_day: settings.data.payment_due_day ?? DEFAULTS.payment_due_day,
+        grace_period_days: settings.data.grace_period_days ?? DEFAULTS.grace_period_days,
+        late_fee_enabled: settings.data.late_fee_enabled ?? DEFAULTS.late_fee_enabled,
+        late_fee_flat: settings.data.late_fee_flat ?? DEFAULTS.late_fee_flat,
+        late_fee_percent: settings.data.late_fee_percent ?? DEFAULTS.late_fee_percent,
+        auto_generate_charges: settings.data.auto_generate_charges ?? DEFAULTS.auto_generate_charges,
+        notify_owner_on_payment: settings.data.notify_owner_on_payment ?? DEFAULTS.notify_owner_on_payment,
+        notify_tenant_on_charge: settings.data.notify_tenant_on_charge ?? DEFAULTS.notify_tenant_on_charge,
+        default_lease_term_months: settings.data.default_lease_term_months ?? DEFAULTS.default_lease_term_months,
+      })
+    }
+  }, [settings.data, reset])
+
+  const onSubmit = async (values: PmSettingsForm) => {
+    try {
+      await updateSettings({ owner_id: ownerId, payload: values }).unwrap()
+      toast({ title: 'Saved', description: 'PM settings updated successfully.' })
+    } catch (e: unknown) {
+      applyServerValidation(e, form.setError)
+      toast({ title: 'Save failed', description: getErrorMessage(e, 'Please check inputs'), variant: 'destructive' })
+    }
   }
 
   return (
     <OwnerScopeGate>
       <div className="space-y-6">
-        <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">PM Settings</h1>
-          <p className="text-sm text-muted-foreground">
-            Configure property management portal defaults.
-          </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Settings</h1>
+            <p className="text-sm text-muted-foreground">
+              Configure billing defaults, automation, and notification preferences for this portfolio.
+            </p>
+          </div>
+          <Badge variant="secondary" className="h-fit">
+            <Settings className="mr-1 h-3 w-3" />
+            PM
+          </Badge>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Payment & Late Fees</CardTitle>
-            <CardDescription>
-              Default payment terms for new leases and properties.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="paymentDueDay">Payment Due Day</Label>
-                <Input
-                  id="paymentDueDay"
-                  type="number"
-                  min={1}
-                  max={28}
-                  value={paymentDueDay}
-                  onChange={(e) => setPaymentDueDay(Number(e.target.value))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Day of month rent is due (1-28).
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="gracePeriodDays">Grace Period (days)</Label>
-                <Input
-                  id="gracePeriodDays"
-                  type="number"
-                  min={0}
-                  max={30}
-                  value={gracePeriodDays}
-                  onChange={(e) => setGracePeriodDays(Number(e.target.value))}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Days after due date before late fees apply.
-                </p>
-              </div>
-            </div>
+        {settings.isError ? (
+          <ErrorState title="Couldn't load settings" error={settings.error} onRetry={() => void settings.refetch()} />
+        ) : settings.isLoading ? (
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-32" /></CardHeader>
+            <CardContent className="space-y-4">
+              {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-full" />)}
+            </CardContent>
+          </Card>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
+              <FormRootError form={form} />
 
-            <Separator />
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Billing Defaults</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="payment_due_day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Payment due day</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} max={28} {...field} value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))} />
+                        </FormControl>
+                        <FormDescription>Day of the month (1-28) rent is due.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="grace_period_days"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Grace period (days)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} max={30} {...field} value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))} />
+                        </FormControl>
+                        <FormDescription>Days after due date before a charge is marked overdue.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="default_lease_term_months"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Default lease term (months)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} max={60} {...field} value={field.value ?? ''} onChange={(e) => field.onChange(Number(e.target.value))} />
+                        </FormControl>
+                        <FormDescription>Pre-filled term for new leases.</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="lateFeeAmount">Fixed Late Fee</Label>
-                <Input
-                  id="lateFeeAmount"
-                  type="number"
-                  min={0}
-                  value={lateFeeAmount}
-                  onChange={(e) => setLateFeeAmount(Number(e.target.value))}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="lateFeePercentage">Late Fee Percentage (%)</Label>
-                <Input
-                  id="lateFeePercentage"
-                  type="number"
-                  min={0}
-                  max={100}
-                  step={0.1}
-                  value={lateFeePercentage}
-                  onChange={(e) => setLateFeePercentage(Number(e.target.value))}
-                  placeholder="0"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Percentage of monthly rent, applied if fixed fee is 0.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Late Fees</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="late_fee_enabled"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-md border p-4">
+                        <div className="space-y-1">
+                          <FormLabel>Enable late fees</FormLabel>
+                          <FormDescription>Apply a late fee once the grace period ends.</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="late_fee_flat"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Late fee flat (INR)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} {...field} value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="late_fee_percent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Late fee percent (%)</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={0} max={100} step="0.01" {...field} value={field.value ?? ''} onChange={(e) => field.onChange(e.target.value === '' ? null : Number(e.target.value))} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Notification Preferences</CardTitle>
-            <CardDescription>
-              Choose which PM events trigger in-app notifications.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Lease Expiry Warnings</Label>
-                <p className="text-xs text-muted-foreground">
-                  Notify when leases are approaching expiry.
-                </p>
-              </div>
-              <Switch checked={notifyLeaseExpiry} onCheckedChange={setNotifyLeaseExpiry} />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Rent Overdue Alerts</Label>
-                <p className="text-xs text-muted-foreground">
-                  Notify when rent payments become overdue.
-                </p>
-              </div>
-              <Switch checked={notifyRentOverdue} onCheckedChange={setNotifyRentOverdue} />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Maintenance Request Updates</Label>
-                <p className="text-xs text-muted-foreground">
-                  Notify on new or updated maintenance requests.
-                </p>
-              </div>
-              <Switch checked={notifyMaintenance} onCheckedChange={setNotifyMaintenance} />
-            </div>
-            <Separator />
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Application Decisions</Label>
-                <p className="text-xs text-muted-foreground">
-                  Notify when rental applications are submitted or decided.
-                </p>
-              </div>
-              <Switch checked={notifyApplication} onCheckedChange={setNotifyApplication} />
-            </div>
-          </CardContent>
-        </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Automation & Notifications</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4 md:grid-cols-3">
+                  <FormField
+                    control={form.control}
+                    name="auto_generate_charges"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-md border p-4">
+                        <div className="space-y-1">
+                          <FormLabel>Auto-generate rent charges</FormLabel>
+                          <FormDescription>Create monthly charges automatically.</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="notify_owner_on_payment"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-md border p-4">
+                        <div className="space-y-1">
+                          <FormLabel>Notify owner on payment</FormLabel>
+                          <FormDescription>Email the owner when a payment is recorded.</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="notify_tenant_on_charge"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-md border p-4">
+                        <div className="space-y-1">
+                          <FormLabel>Notify tenant on charge</FormLabel>
+                          <FormDescription>Notify the tenant when a charge is generated.</FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
 
-        <div className="flex justify-end">
-          <Button onClick={handleSave} className="rounded-cohere-pill px-6">
-            Save Settings
-          </Button>
-        </div>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={updateState.isLoading || !formState.isDirty}>
+                  {updateState.isLoading ? 'Saving…' : 'Save Settings'}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        )}
       </div>
     </OwnerScopeGate>
   )

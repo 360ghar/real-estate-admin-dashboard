@@ -42,7 +42,7 @@ export function AuthCardLayout({
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
-          {infoMessage && (
+          {!errorMessage && infoMessage && (
             <Alert>
               <AlertDescription>{infoMessage}</AlertDescription>
             </Alert>

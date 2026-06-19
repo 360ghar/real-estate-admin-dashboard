@@ -11,6 +11,7 @@ import { SidebarContent } from './SidebarContent'
 import { User, Settings, LogOut, Menu, Search } from 'lucide-react'
 import { ModeToggle } from '@/components/common/mode-toggle'
 import { CommandPalette } from '@/components/common/CommandPalette'
+import NotificationCenter from '@/features/core/components/notifications/NotificationCenter'
 import { supabase } from '@/lib/supabase'
 import { useEffect, useState } from 'react'
 
@@ -93,6 +94,7 @@ const TopBar = () => {
           <Search className="h-5 w-5" />
         </Button>
         <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
+        <NotificationCenter />
         <ModeToggle />
         {/* User Menu */}
         <DropdownMenu>

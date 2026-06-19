@@ -9,6 +9,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useCreateBlogCategoryMutation, useUpdateBlogCategoryMutation } from '@/features/blog/api/blogsApi'
 import { blogCategorySchema, type BlogCategoryForm } from '@/lib/blogValidation'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import type { BlogCategory } from '@/types/blog'
 
 interface CategoryFormDialogProps {
@@ -29,11 +31,12 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
   })
 
   const handleSubmit = async (data: BlogCategoryForm) => {
+    form.clearErrors()
     try {
       if (editingCategory) { await updateCategory({ identifier: editingCategory.id, data }).unwrap(); toast({ title: 'Success', description: 'Category updated successfully' }) }
       else { await createCategory(data).unwrap(); toast({ title: 'Success', description: 'Category created successfully' }) }
       form.reset(); onSuccess()
-    } catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, `Failed to ${editingCategory ? 'update' : 'create'} category`), variant: 'destructive' }) }
+    } catch (error: unknown) { applyServerValidation(error, form.setError); toast({ title: 'Error', description: getErrorMessage(error, `Failed to ${editingCategory ? 'update' : 'create'} category`), variant: 'destructive' }) }
   }
 
   return (
@@ -41,8 +44,9 @@ const CategoryFormDialog: React.FC<CategoryFormDialogProps> = ({ open, onOpenCha
       <DialogContent>
         <DialogHeader><DialogTitle>{editingCategory ? 'Edit Category' : 'Create New Category'}</DialogTitle></DialogHeader>
         <Form {...form}><form onSubmit={(e) => void form.handleSubmit(handleSubmit)(e)} className="space-y-4">
-          <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Category name" {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (Optional)</FormLabel><FormControl><Textarea placeholder="Category description" {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <FormRootError form={form} />
+          <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Category name" {...field} disabled={isCreating || isUpdating} /></FormControl><FormMessage /></FormItem>)} />
+          <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (Optional)</FormLabel><FormControl><Textarea placeholder="Category description" {...field} disabled={isCreating || isUpdating} /></FormControl><FormMessage /></FormItem>)} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isCreating || isUpdating}>{(isCreating || isUpdating) ? (editingCategory ? 'Updating...' : 'Creating...') : (editingCategory ? 'Update Category' : 'Create Category')}</Button>

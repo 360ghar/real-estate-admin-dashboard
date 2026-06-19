@@ -1,9 +1,11 @@
 import { LoadingSpinner } from './loading-spinner'
 
 interface LoadingStateProps {
-  type?: 'skeleton' | 'spinner' | 'card' | 'cards'
+  type?: 'skeleton' | 'spinner' | 'card' | 'cards' | 'table'
   rows?: number
   height?: string
+  /** Number of columns for table skeleton */
+  columns?: number
   text?: string
   className?: string
 }
@@ -12,6 +14,7 @@ export function LoadingState({
   type = 'skeleton',
   rows = 5,
   height = 'h-16',
+  columns = 4,
   text,
   className = ''
 }: LoadingStateProps) {
@@ -63,6 +66,38 @@ export function LoadingState({
               <div className="h-11 w-11 bg-muted animate-pulse rounded" />
               <div className="h-11 w-11 bg-muted animate-pulse rounded" />
             </div>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Table skeleton - mimics a data table with header and rows
+  if (type === 'table') {
+    const widths = ['w-3/12', 'w-4/12', 'w-2/12', 'w-3/12']
+    return (
+      <div className={`rounded-md border ${className}`}>
+        <div className="border-b px-4 py-3 bg-muted/50">
+          <div className="flex gap-4">
+            {Array.from({ length: columns }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-4 bg-muted animate-pulse rounded ${widths[i % widths.length]}`}
+              />
+            ))}
+          </div>
+        </div>
+        {Array.from({ length: rows }).map((_, i) => (
+          <div
+            key={i}
+            className={`flex gap-4 border-b px-4 py-4 ${i === rows - 1 ? 'border-b-0' : ''}`}
+          >
+            {Array.from({ length: columns }).map((_, j) => (
+              <div
+                key={j}
+                className={`h-4 bg-muted animate-pulse rounded ${widths[j % widths.length]}`}
+              />
+            ))}
           </div>
         ))}
       </div>

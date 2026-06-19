@@ -8,7 +8,6 @@ interface ApplicationTableProps {
   formsIsLoading: boolean;
   formsIsError: boolean;
   formsRefetch: () => void;
-  formsOffset: number;
   formsLimit: number;
   formsCanPrev: boolean;
   formsCanNext: boolean;
@@ -23,7 +22,6 @@ interface ApplicationTableProps {
   applicationsIsLoading: boolean;
   applicationsIsError: boolean;
   applicationsRefetch: () => void;
-  appsOffset: number;
   appsLimit: number;
   appsCanPrev: boolean;
   appsCanNext: boolean;
@@ -36,6 +34,7 @@ interface ApplicationTableProps {
   decideIsLoading: boolean;
   onApprove: (application: RentalApplication) => void;
   onReject: (application: RentalApplication) => void;
+  onDeleteApplication: (applicationId: number) => Promise<void>;
 }
 
 const ApplicationTable: React.FC<ApplicationTableProps> = ({
@@ -44,7 +43,6 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
   formsIsLoading,
   formsIsError,
   formsRefetch,
-  formsOffset,
   formsLimit,
   formsCanPrev,
   formsCanNext,
@@ -59,7 +57,6 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
   applicationsIsLoading,
   applicationsIsError,
   applicationsRefetch,
-  appsOffset,
   appsLimit,
   appsCanPrev,
   appsCanNext,
@@ -72,6 +69,7 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
   decideIsLoading,
   onApprove,
   onReject,
+  onDeleteApplication,
 }) => {
   if (tab === "forms") {
     return (
@@ -80,7 +78,6 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
         formsIsLoading={formsIsLoading}
         formsIsError={formsIsError}
         formsRefetch={formsRefetch}
-        formsOffset={formsOffset}
         formsLimit={formsLimit}
         formsCanPrev={formsCanPrev}
         formsCanNext={formsCanNext}
@@ -101,7 +98,6 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
       applicationsIsLoading={applicationsIsLoading}
       applicationsIsError={applicationsIsError}
       applicationsRefetch={applicationsRefetch}
-      appsOffset={appsOffset}
       appsLimit={appsLimit}
       appsCanPrev={appsCanPrev}
       appsCanNext={appsCanNext}
@@ -114,6 +110,7 @@ const ApplicationTable: React.FC<ApplicationTableProps> = ({
       decideIsLoading={decideIsLoading}
       onApprove={onApprove}
       onReject={onReject}
+      onDeleteApplication={onDeleteApplication}
     />
   );
 };

@@ -1,16 +1,19 @@
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import { useUserRole } from '@/hooks/useUserRole'
-import { useDeletePropertyMutation, useSearchPropertiesQuery, useUpdatePropertyMutation, type PropertySearchParams } from '@/features/properties/api/propertiesApi'
+import { useDeletePropertyMutation, useSearchPropertiesQuery, useUpdatePropertyMutation, type PropertySearchParams, type PropertyResponse } from '@/features/properties/api/propertiesApi'
 import type { PropertyStatus } from '@/types/pm'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
 import { Card } from '@/components/ui/card'
 import { ResponsiveDataTable } from '@/components/ui/responsive-data-table'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useNavigate } from 'react-router-dom'
-import Pagination from '@/components/ui/pagination'
+import CursorPager from '@/components/ui/cursor-pager'
 import { useToast } from '@/hooks/use-toast'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useFilterPersistence } from '@/hooks/useFilterPersistence'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { useIsMobile } from '@/hooks/useMediaQuery'
+import type { ColumnDef } from '@tanstack/react-table'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,6 +31,9 @@ import { motion } from 'framer-motion'
 import { getErrorMessage } from '@/lib/errors'
 import { PropertyColumns, renderPropertyCard } from '@/features/properties/components/PropertyColumns'
 import { PropertyFilters, type PropertyFiltersState } from '@/features/properties/components/PropertyFilters'
+import { Button } from '@/components/ui/button'
+import { Download } from 'lucide-react'
+import { downloadCsv, csvFilename } from '@/lib/csv'
 
 const PropertyList = () => {
   const { user, role } = useUserRole()
@@ -74,18 +80,33 @@ const PropertyList = () => {
   }
 
   const [confirmId, setConfirmId] = useState<number | null>(null)
+  const [selectedRows, setSelectedRows] = useState<PropertyResponse[]>([])
   const { toast } = useToast()
-  const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
+  const pager = useCursorPagination()
 
   // Debounced search terms
   const dq = useDebounce(filters.q, 300)
   const dcity = useDebounce(filters.city, 300)
   const dlocality = useDebounce(filters.locality, 300)
 
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    pager.reset()
+  }, [
+    pager.reset,
+    dq, dcity, dlocality,
+    filters.propertyType, filters.purpose, filters.status,
+    filters.priceMin, filters.priceMax,
+    filters.bedroomsMin, filters.bedroomsMax,
+    selectedAmenities, filters.radius,
+    filters.sortBy, pageSize,
+  ])
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   const params = useMemo((): PropertySearchParams => {
     const base: PropertySearchParams = {
-      page,
+      cursor: pager.cursor,
       limit: pageSize,
       sort_by: filters.sortBy,
     }
@@ -115,7 +136,7 @@ const PropertyList = () => {
 
     return base
   }, [
-    page,
+    pager.cursor,
     pageSize,
     filters.sortBy,
     dq,
@@ -139,7 +160,7 @@ const PropertyList = () => {
   const [del] = useDeletePropertyMutation()
   const [updateProperty] = useUpdatePropertyMutation()
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = useCallback(async (id: number) => {
     try {
       await del(id).unwrap()
       toast({ title: 'Deleted', description: 'Property removed' })
@@ -147,18 +168,75 @@ const PropertyList = () => {
     } catch (e: unknown) {
       toast({ title: 'Failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
-  }
+  }, [del, toast])
 
-  const handleSetStatus = async (id: number, status: PropertyStatus) => {
+  const handleBulkDelete = useCallback(async () => {
+    if (selectedRows.length === 0) return
+    const results = await Promise.allSettled(
+      selectedRows.map((row) => del(row.id).unwrap())
+    )
+    const fulfilled = results.filter((r) => r.status === 'fulfilled').length
+    const rejected = results.length - fulfilled
+    if (rejected === 0) {
+      toast({ title: 'Deleted', description: `${fulfilled} propert${fulfilled === 1 ? 'y' : 'ies'} removed` })
+    } else if (fulfilled === 0) {
+      toast({ title: 'Failed', description: `Could not delete ${rejected} propert${rejected === 1 ? 'y' : 'ies'}`, variant: 'destructive' })
+    } else {
+      toast({ title: 'Partial success', description: `${fulfilled} deleted, ${rejected} failed`, variant: 'destructive' })
+    }
+    setSelectedRows([])
+  }, [del, selectedRows, toast])
+
+  const handleSetStatus = useCallback(async (id: number, status: PropertyStatus) => {
     try {
       await updateProperty({ id, data: { status, is_available: status === 'available' } }).unwrap()
       toast({ title: 'Status updated', description: `Property #${id} marked ${status.replace(/_/g, ' ')}.` })
     } catch (e: unknown) {
       toast({ title: 'Update failed', description: getErrorMessage(e, 'Try again'), variant: 'destructive' })
     }
+  }, [updateProperty, toast])
+
+  const handleExport = () => {
+    const rows = (data?.items ?? []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      property_type: p.property_type,
+      purpose: p.purpose,
+      status: p.status,
+      base_price: p.base_price,
+      city: p.city,
+      locality: p.locality,
+      bedrooms: p.bedrooms,
+      bathrooms: p.bathrooms,
+      created_at: p.created_at,
+    }))
+    downloadCsv(csvFilename('properties'), rows)
   }
 
-  const columns = PropertyColumns({ setConfirmId, onSetStatus: (id, status) => void handleSetStatus(id, status) })
+  const columns = useMemo<ColumnDef<PropertyResponse>[]>(
+    () => [
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            onCheckedChange={(value) => table.toggleAllRowsSelected(!!value)}
+            aria-label="Select all"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select row"
+          />
+        ),
+        enableSorting: false,
+      },
+      ...PropertyColumns({ setConfirmId, onSetStatus: (id, status) => void handleSetStatus(id, status) }),
+    ],
+    [handleSetStatus]
+  )
 
   // Count active filters
   const activeFilterCount = [
@@ -178,18 +256,25 @@ const PropertyList = () => {
     <div className="space-y-6">
       {/* Search and Filters */}
       <Card className="p-4 md:p-6">
-        <PropertyFilters
-          filters={filters as unknown as PropertyFiltersState}
-          setFilters={(patch) => setFilters(patch as Partial<typeof filters>)}
-          clearFilters={clearFilters}
-          hasActiveFilters={hasActiveFilters}
-          selectedAmenities={selectedAmenities}
-          handleAmenityToggle={handleAmenityToggle}
-          amenities={amenities}
-          activeFilterCount={activeFilterCount}
-          pageSize={pageSize}
-          onPageSizeChange={(size) => { setPageSize(size); setPage(1) }}
-        />
+        <div className="space-y-4">
+          <PropertyFilters
+            filters={filters as unknown as PropertyFiltersState}
+            setFilters={(patch) => setFilters(patch as Partial<typeof filters>)}
+            clearFilters={clearFilters}
+            hasActiveFilters={hasActiveFilters}
+            selectedAmenities={selectedAmenities}
+            handleAmenityToggle={handleAmenityToggle}
+            amenities={amenities}
+            activeFilterCount={activeFilterCount}
+            pageSize={pageSize}
+            onPageSizeChange={(size) => { setPageSize(size) }}
+          />
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={isFetching} className="gap-2">
+              <Download className="h-4 w-4" />Export
+            </Button>
+          </div>
+        </div>
       </Card>
 
       {/* Results */}
@@ -207,7 +292,7 @@ const PropertyList = () => {
               error={error}
               onRetry={() => void refetch()}
             />
-          ) : !data?.properties?.length ? (
+          ) : !data?.items?.length ? (
             <EmptyState
               title="No properties found"
               description={
@@ -223,22 +308,43 @@ const PropertyList = () => {
             />
           ) : (
             <div className="space-y-4">
-              <div className="text-sm text-muted-foreground">
-                Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, data.total || 0)} of {data.total || 0} properties
-              </div>
+              {selectedRows.length > 0 && (
+                <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-md border bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+                  <span className="text-sm font-medium">
+                    {selectedRows.length} selected
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => { void handleBulkDelete() }}
+                    disabled={isFetching}
+                  >
+                    Delete Selected
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedRows([])}
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
               <ResponsiveDataTable
                 columns={columns}
-                data={data.properties}
+                data={data.items}
                 mobileCardRender={(property) => renderPropertyCard(property, setConfirmId)}
+                enableSorting
+                enableRowSelection
+                onSelectionChange={setSelectedRows}
               />
-              {data.total && data.total > pageSize && (
-                <Pagination
-                  page={page}
-                  pageSize={pageSize}
-                  total={data.total}
-                  onChange={setPage}
-                />
-              )}
+              <CursorPager
+                canPrev={pager.canPrev}
+                hasMore={data.has_more}
+                loading={isFetching}
+                onPrev={pager.prev}
+                onNext={() => pager.next(data.next_cursor)}
+              />
             </div>
           )}
         </Card>

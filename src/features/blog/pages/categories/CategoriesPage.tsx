@@ -6,10 +6,12 @@ import { Card } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorState } from '@/components/ui/error-state'
 import { toast } from '@/hooks/use-toast'
 import { useGetBlogCategoriesQuery, useDeleteBlogCategoryMutation } from '@/features/blog/api/blogsApi'
 import { Plus, Edit2, Trash2, Folder, FileText } from 'lucide-react'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDate } from '@/lib/format'
 import type { BlogCategory } from '@/types/blog'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 import CategoryFormDialog from '../../components/category/CategoryFormDialog'
@@ -44,12 +46,12 @@ const CategoriesPage = () => {
       </div>
       <Card className="p-6">
         {isFetching ? <LoadingState type="card" rows={5} /> : error ? (
-          <EmptyState title="Failed to load categories" description="Please check your connection and try again" action={{ label: 'Retry', onClick: () => { void refetch() }, variant: 'outline' }} />
+          <ErrorState title="Failed to load categories" error={error} onRetry={() => { void refetch() }} />
         ) : !categoriesData?.items?.length ? (
           <EmptyState icon={<Folder className="h-12 w-12" />} title="No categories found" description="Create your first category to organize blog posts." action={{ label: 'New Category', onClick: () => setIsCreateDialogOpen(true) }} />
         ) : (
           <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">{categoriesData.total} categories total</div>
+            <div className="text-sm text-muted-foreground">{categoriesData.items.length} categories total</div>
             <Table>
               <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Description</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
               <TableBody>{categoriesData.items.map((category: BlogCategory) => (
@@ -57,7 +59,7 @@ const CategoriesPage = () => {
                   <TableCell className="font-medium">{category.name}</TableCell>
                   <TableCell><code className="px-2 py-1 bg-muted rounded text-sm">{category.slug}</code></TableCell>
                   <TableCell className="max-w-xs truncate">{category.description || <span className="text-muted-foreground">No description</span>}</TableCell>
-                  <TableCell>{new Date(category.created_at || '').toLocaleDateString()}</TableCell>
+                  <TableCell>{formatDate(category.created_at)}</TableCell>
                   <TableCell className="text-right"><div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(category)}><Edit2 className="h-4 w-4" /></Button>
                     <ConfirmAlertDialog title="Delete Category" description={`Are you sure you want to delete "${category.name}"? This will remove the category from all posts.`} confirmLabel="Delete" variant="destructive" onConfirm={() => handleDeleteCategory(category)}>

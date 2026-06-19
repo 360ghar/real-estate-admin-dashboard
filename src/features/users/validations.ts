@@ -29,6 +29,15 @@ export const userPreferencesSchema = z.object({
   area_max: z.number().min(0),
   location_preference: z.array(z.string()),
   max_distance_km: z.number().min(0),
+}).refine(data => data.budget_min <= data.budget_max, {
+  message: 'Minimum budget must be less than or equal to maximum budget',
+  path: ['budget_max'],
+}).refine(data => data.bedrooms_min <= data.bedrooms_max, {
+  message: 'Minimum bedrooms must be less than or equal to maximum bedrooms',
+  path: ['bedrooms_max'],
+}).refine(data => data.area_min <= data.area_max, {
+  message: 'Minimum area must be less than or equal to maximum area',
+  path: ['area_max'],
 })
 
 // Export inferred types

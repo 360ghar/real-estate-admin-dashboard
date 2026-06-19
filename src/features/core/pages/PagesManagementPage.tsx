@@ -5,9 +5,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDate } from '@/lib/format'
 import { useGetPagesQuery, useDeletePageMutation } from '@/features/core/api/coreApi'
 import type { Page } from '@/types/api'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
@@ -28,7 +30,7 @@ const PagesManagementPage: React.FC = () => {
   const { data: pagesData, isLoading, refetch } = useGetPagesQuery()
   const [deletePage, { isLoading: isDeleting }] = useDeletePageMutation()
 
-  const pages = pagesData || []
+  const pages = pagesData?.items ?? []
   const filteredPages = pages.filter((page) => {
     const matchesSearch = page.title.toLowerCase().includes(searchTerm.toLowerCase()) || page.unique_name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesType = filterType === 'all' || page.format === filterType
@@ -74,7 +76,7 @@ const PagesManagementPage: React.FC = () => {
           </Select>
         </div>
       </CardContent></Card>
-      {isLoading ? <div className="text-center py-8">Loading pages...</div> : !filteredPages.length ? (
+      {isLoading ? <LoadingState type="card" rows={3} /> : !filteredPages.length ? (
         <EmptyState icon={<FileText className="h-10 w-10" />} title="No pages found" description="Create your first page to get started."
           action={{ label: 'New Page', onClick: () => { resetForm(); setIsDialogOpen(true) } }} />
       ) : (
@@ -85,7 +87,7 @@ const PagesManagementPage: React.FC = () => {
                 <div className="flex items-center gap-2"><h3 className="font-semibold">{page.title}</h3><Badge variant="outline">{page.format}</Badge>{page.is_draft && <Badge variant="secondary">Draft</Badge>}</div>
                 <p className="text-sm text-muted-foreground">/{page.unique_name}</p>
                 <p className="text-sm line-clamp-2">{page.content.replace(/<[^>]*>/g, '').substring(0, 150)}...</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground"><span>Status: {page.is_active ? 'Active' : 'Inactive'}</span><span>Updated: {new Date(page.updated_at).toLocaleDateString()}</span></div>
+                <div className="flex items-center gap-4 text-xs text-muted-foreground"><span>Status: {page.is_active ? 'Active' : 'Inactive'}</span><span>Updated: {formatDate(page.updated_at)}</span></div>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" onClick={() => handlePreview(page)}><Eye className="h-4 w-4" /></Button>

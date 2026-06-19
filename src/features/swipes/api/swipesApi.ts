@@ -1,4 +1,5 @@
 import { api } from '@/store/api'
+import type { SwipeListResponse } from '@/types/api'
 
 export interface SwipeRequest {
     property_id: number
@@ -11,7 +12,7 @@ export interface SwipeResponse {
 }
 
 export interface SwipeListParams {
-    page?: number
+    cursor?: string | null
     limit?: number
     is_liked?: boolean
     q?: string
@@ -39,10 +40,10 @@ export const swipesApi = api.injectEndpoints({
             }),
             invalidatesTags: [{type: 'Property', id: 'LIST'}, {type: 'Swipe', id: 'LIST'}],
         }),
-        listSwipes: builder.query<Record<string, unknown>, SwipeListParams | void>({
+        listSwipes: builder.query<SwipeListResponse, SwipeListParams | void>({
             query: (params) => ({
                 url: '/swipes/',
-                params: { page: 1, limit: 20, ...(params || {}) },
+                params: { limit: 20, ...(params || {}) },
             }),
             providesTags: [{type: 'Swipe' as const, id: 'LIST'}],
         }),

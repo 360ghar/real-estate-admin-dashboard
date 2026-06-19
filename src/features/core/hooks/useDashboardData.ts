@@ -29,24 +29,26 @@ export interface PropertyStatusBreakdown {
 }
 
 /**
- * Property counts per status. The platform has no grouped-count endpoint, so
- * we issue one `limit: 1` search per status and read `total`. Hooks are called
- * statically (one per status) to satisfy the rules of hooks.
+ * Property counts per status. The platform has no grouped-count endpoint and
+ * the cursor-paginated list endpoints no longer return a `total`, so we fetch
+ * a bounded sample (`limit: 100`) per status and count the returned items as a
+ * best-effort breakdown. Hooks are called statically (one per status) to
+ * satisfy the rules of hooks.
  */
 export function usePropertyStatusBreakdown(): PropertyStatusBreakdown {
-  const available = useSearchPropertiesQuery({ status: 'available', limit: 1 })
-  const rented = useSearchPropertiesQuery({ status: 'rented', limit: 1 })
-  const sold = useSearchPropertiesQuery({ status: 'sold', limit: 1 })
-  const underOffer = useSearchPropertiesQuery({ status: 'under_offer', limit: 1 })
-  const maintenance = useSearchPropertiesQuery({ status: 'maintenance', limit: 1 })
+  const available = useSearchPropertiesQuery({ status: 'available', limit: 100 })
+  const rented = useSearchPropertiesQuery({ status: 'rented', limit: 100 })
+  const sold = useSearchPropertiesQuery({ status: 'sold', limit: 100 })
+  const underOffer = useSearchPropertiesQuery({ status: 'under_offer', limit: 100 })
+  const maintenance = useSearchPropertiesQuery({ status: 'maintenance', limit: 100 })
 
   const queries = [available, rented, sold, underOffer, maintenance]
   const totals = [
-    available.data?.total,
-    rented.data?.total,
-    sold.data?.total,
-    underOffer.data?.total,
-    maintenance.data?.total,
+    available.data?.items.length,
+    rented.data?.items.length,
+    sold.data?.items.length,
+    underOffer.data?.items.length,
+    maintenance.data?.items.length,
   ]
 
   const data = PROPERTY_STATUS_META.map((meta, i) => ({ ...meta, count: totals[i] ?? 0 }))
@@ -68,6 +70,7 @@ export interface DashboardActivity {
   feed: ActivityEntry[]
   isLoading: boolean
   isError: boolean
+  error: unknown
   refetch: () => void
 }
 
@@ -82,7 +85,7 @@ export function useDashboardActivity(): DashboardActivity {
   const newProperties = useSearchPropertiesQuery({ sort_by: 'newest', limit: 5 })
 
   const trend = useMemo(
-    () => buildActivityTrend(visits.data?.items ?? [], bookings.data?.bookings ?? []),
+    () => buildActivityTrend(visits.data?.items ?? [], bookings.data?.items ?? []),
     [visits.data, bookings.data],
   )
 
@@ -92,11 +95,11 @@ export function useDashboardActivity(): DashboardActivity {
       const entry = visitToActivity(v)
       if (entry) entries.push(entry)
     }
-    for (const b of bookings.data?.bookings ?? []) {
+    for (const b of bookings.data?.items ?? []) {
       const entry = bookingToActivity(b)
       if (entry) entries.push(entry)
     }
-    for (const p of newProperties.data?.properties ?? []) {
+    for (const p of newProperties.data?.items ?? []) {
       const entry = propertyToActivity(p)
       if (entry) entries.push(entry)
     }
@@ -107,7 +110,8 @@ export function useDashboardActivity(): DashboardActivity {
     trend,
     feed,
     isLoading: visits.isLoading || bookings.isLoading || newProperties.isLoading,
-    isError: visits.isError && bookings.isError && newProperties.isError,
+    isError: visits.isError || bookings.isError || newProperties.isError,
+    error: visits.error || bookings.error || newProperties.error,
     refetch: () => {
       void visits.refetch()
       void bookings.refetch()

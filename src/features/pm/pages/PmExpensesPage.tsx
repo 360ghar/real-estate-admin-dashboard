@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, Download } from "lucide-react";
+import { AlertCircle, Download, Trash2 } from "lucide-react";
 import { EXPENSE_CATEGORIES, PAGE_SIZES } from "@/features/pm/constants";
 import { formatINR, downloadCsv } from "@/features/pm/utils";
+import { formatDate } from "@/lib/format";
 import OwnerScopeGate from "@/features/pm/components/OwnerScopeGate";
 import CreateExpenseDialog from "@/features/pm/components/CreateExpenseDialog";
 import ExpenseEditForm from "@/features/pm/components/ExpenseEditForm";
@@ -13,15 +14,20 @@ import type { DocumentType, Expense, ExpenseCategory } from "@/types/pm";
 import {
   useListPmExpensesQuery,
   useUpdatePmExpenseMutation,
+  useDeletePmExpenseMutation,
   useUploadPmDocumentMutation,
 } from "@/features/pm/api/pmApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { ResponsiveDataTable } from "@/components/ui/responsive-data-table";
+import CursorPager from "@/components/ui/cursor-pager";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
+import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +41,7 @@ import {
 export default function PmExpensesPage() {
   const { role } = useUserRole();
   const selectedOwnerId = useAppSelector(selectSelectedOwnerId);
+  const { toast } = useToast();
 
   const ownerId = selectedOwnerId;
 
@@ -42,9 +49,12 @@ export default function PmExpensesPage() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [limit, setLimit] = useState(50);
-  const [offset, setOffset] = useState(0);
 
   const validDateRange = !startDate || !endDate || startDate <= endDate;
+
+  const pager = useCursorPagination();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, category, startDate, endDate, limit]);
 
   const expenses = useListPmExpensesQuery(
     {
@@ -53,12 +63,13 @@ export default function PmExpensesPage() {
       start_date: validDateRange && startDate ? startDate : undefined,
       end_date: validDateRange && endDate ? endDate : undefined,
       limit,
-      offset,
+      cursor: pager.cursor,
     },
     { skip: role === "agent" && !ownerId },
   );
 
   const [updateExpense, updateState] = useUpdatePmExpenseMutation();
+  const [deleteExpense, deleteState] = useDeletePmExpenseMutation();
   const [uploadDoc, uploadDocState] = useUploadPmDocumentMutation();
 
   const columns = useMemo<ColumnDef<Expense>[]>(() => {
@@ -66,7 +77,7 @@ export default function PmExpensesPage() {
       {
         accessorKey: "expense_date",
         header: "Date",
-        cell: ({ row }) => new Date(row.original.expense_date).toLocaleDateString(),
+        cell: ({ row }) => formatDate(row.original.expense_date),
       },
       {
         accessorKey: "category",
@@ -97,7 +108,7 @@ export default function PmExpensesPage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">Edit</Button>
@@ -126,14 +137,33 @@ export default function PmExpensesPage() {
                 />
               </DialogContent>
             </Dialog>
+            <ConfirmAlertDialog
+              title="Delete Expense"
+              description={`Are you sure you want to delete expense #${row.original.id}? This action cannot be undone.`}
+              confirmLabel="Delete"
+              variant="destructive"
+              onConfirm={async () => {
+                try {
+                  await deleteExpense(row.original.id).unwrap();
+                  toast({ title: "Deleted", description: "Expense deleted." });
+                } catch (e: unknown) {
+                  toast({ title: "Failed", description: getErrorMessage(e, "Could not delete expense."), variant: "destructive" });
+                }
+              }}
+            >
+              {(openDialog) => (
+                <Button variant="destructive" size="sm" onClick={openDialog} disabled={deleteState.isLoading} aria-label="Delete">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </ConfirmAlertDialog>
           </div>
         ),
       },
     ];
-  }, [updateExpense, updateState.isLoading, uploadDoc, uploadDocState.isLoading]);
+  }, [updateExpense, updateState.isLoading, deleteExpense, deleteState.isLoading, uploadDoc, uploadDocState.isLoading, toast]);
 
-  const canPrev = offset > 0;
-  const canNext = (expenses.data?.length ?? 0) >= limit;
+  const expenseItems = expenses.data?.items ?? [];
 
   return (
     <OwnerScopeGate>
@@ -148,7 +178,7 @@ export default function PmExpensesPage() {
             <Button
               variant="outline"
               onClick={() => {
-                const rows = (expenses.data || []).map((e) => ({
+                const rows = expenseItems.map((e) => ({
                   id: e.id,
                   expense_date: e.expense_date,
                   category: e.category,
@@ -171,17 +201,14 @@ export default function PmExpensesPage() {
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base">Expense List</CardTitle>
             <Badge variant="secondary" className="h-fit">
-              {expenses.data?.length ?? 0} shown
+              {expenseItems.length} shown
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
               <Select
                 value={category || "all"}
-                onValueChange={(v) => {
-                  setCategory(v === "all" ? "" : (v as ExpenseCategory));
-                  setOffset(0);
-                }}
+                onValueChange={(v) => setCategory(v === "all" ? "" : (v as ExpenseCategory))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Category" />
@@ -193,17 +220,17 @@ export default function PmExpensesPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Input type="date" value={startDate} onChange={(e) => { setStartDate(e.target.value); setOffset(0); }} />
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               <Input
                 type="date"
                 value={endDate}
-                onChange={(e) => { setEndDate(e.target.value); setOffset(0); }}
+                onChange={(e) => setEndDate(e.target.value)}
                 className={!validDateRange ? "border-destructive" : ""}
               />
               {!validDateRange && <span className="text-xs text-destructive">End date must be after start date</span>}
               <Select
                 value={String(limit)}
-                onValueChange={(v) => { setLimit(Number(v)); setOffset(0); }}
+                onValueChange={(v) => setLimit(Number(v))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Page size" />
@@ -226,22 +253,16 @@ export default function PmExpensesPage() {
               </div>
             ) : expenses.isLoading ? (
               <LoadingState type="spinner" />
-            ) : expenses.data?.length ? (
+            ) : expenseItems.length ? (
               <>
-                <DataTable columns={columns} data={expenses.data} />
-                <div className="flex items-center justify-between pt-2">
-                  <div className="text-xs text-muted-foreground">
-                    Offset {offset} &bull; Limit {limit}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={!canPrev} onClick={() => setOffset(Math.max(0, offset - limit))}>
-                      Prev
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={!canNext} onClick={() => setOffset(offset + limit)}>
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                <ResponsiveDataTable columns={columns} data={expenseItems} />
+                <CursorPager
+                  canPrev={pager.canPrev}
+                  hasMore={expenses.data?.has_more ?? false}
+                  loading={expenses.isFetching}
+                  onPrev={pager.prev}
+                  onNext={() => expenses.data && pager.next(expenses.data.next_cursor)}
+                />
               </>
             ) : (
               <EmptyState title="No expenses" description="Add an expense to track costs." />

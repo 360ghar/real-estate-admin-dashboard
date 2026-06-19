@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DialogClose } from '@/components/ui/dialog'
 import type { BugReport, BugReportUpdate } from '@/types/api'
 
 const BugReportUpdateForm: React.FC<{ bugReport: BugReport; onSubmit: (data: BugReportUpdate) => void }> = ({ bugReport, onSubmit }) => {
@@ -66,9 +67,9 @@ const BugReportUpdateForm: React.FC<{ bugReport: BugReport; onSubmit: (data: Bug
         <Button type="submit" disabled={isSubmitting} className="flex-1">
           {isSubmitting ? 'Updating...' : 'Update Report'}
         </Button>
-        <Button type="button" variant="outline">
-          Cancel
-        </Button>
+        <DialogClose asChild>
+          <Button type="button" variant="outline">Cancel</Button>
+        </DialogClose>
       </div>
     </form>
   )

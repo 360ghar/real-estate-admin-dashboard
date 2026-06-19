@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useState } from 'react'
 import { useAppDispatch, useAppSelector } from '@/hooks/redux'
 import { setCredentials } from '@/features/auth/slices/authSlice'
 import { useUserRole } from '@/hooks/useUserRole'
@@ -6,11 +6,12 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useUpdateUserMutation } from '@/features/users/api/usersApi'
+import { useUploadFileMutation } from '@/features/core/api/uploadApi'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { FormRootError } from '@/components/ui/form-root-error'
 import { User, Mail, Phone, Calendar, MapPin, Shield, CheckCircle, Camera } from 'lucide-react'
@@ -43,6 +44,32 @@ const ProfilePage = () => {
   const { toast } = useToast()
   const form = useForm<ProfileFormValues>({ resolver: zodResolver(profileSchema), defaultValues: { full_name: '', phone: '', email: '' } })
   const [updateUser, updateState] = useUpdateUserMutation()
+  const [uploadFile, uploadState] = useUploadFileMutation()
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file || !me?.id) return
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Invalid file', description: 'Please choose an image file.', variant: 'destructive' })
+      return
+    }
+    setIsUploadingAvatar(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const uploaded = await uploadFile(fd).unwrap()
+      const updatedUser = await updateUser({ id: me.id, data: { profile_image_url: uploaded.public_url } }).unwrap()
+      dispatch(setCredentials({ token: authToken, user: updatedUser }))
+      toast({ title: 'Avatar updated' })
+    } catch (error: unknown) {
+      toast({ title: 'Upload failed', description: getErrorMessage(error, 'Could not update avatar. Please try again.'), variant: 'destructive' })
+    } finally {
+      setIsUploadingAvatar(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   React.useEffect(() => {
     if (me && 'id' in me) form.reset({ full_name: me.full_name || '', phone: me.phone || '', email: me.email || '' })
@@ -68,7 +95,24 @@ const ProfilePage = () => {
           <CardHeader className="pb-4"><CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Profile Overview</CardTitle></CardHeader>
           <CardContent className="space-y-6">
             <div className="flex flex-col items-center space-y-4">
-              <div className="relative"><Avatar className="h-24 w-24"><AvatarFallback className="text-2xl font-semibold bg-primary/10 text-primary">{me?.full_name ? me.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}</AvatarFallback></Avatar><Button className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full p-0 shadow-lg"><Camera className="h-4 w-4" /></Button></div>
+              <div className="relative">
+                <Avatar className="h-24 w-24">
+                  {me?.profile_image_url ? <AvatarImage src={me.profile_image_url} alt={me?.full_name ?? 'avatar'} /> : null}
+                  <AvatarFallback className="text-2xl font-semibold bg-primary/10 text-primary">{me?.full_name ? me.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : 'U'}</AvatarFallback>
+                </Avatar>
+                <input ref={fileInputRef} type="file" accept="image/*" onChange={(e) => void handleAvatarChange(e)} className="hidden" aria-hidden="true" />
+                <Button
+                  type="button"
+                  variant="default"
+                  size="icon"
+                  className="absolute -bottom-1 -right-1 h-8 w-8 rounded-full shadow-lg"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingAvatar || uploadState.isLoading}
+                  aria-label="Change avatar"
+                >
+                  {isUploadingAvatar ? <LoadingSpinner size="sm" /> : <Camera className="h-4 w-4" />}
+                </Button>
+              </div>
               <div className="text-center"><h3 className="text-xl font-semibold">{me?.full_name || 'N/A'}</h3>
                 <div className="flex items-center justify-center gap-2 mt-2"><Badge variant={role === 'admin' ? 'default' : 'secondary'} className="px-3 py-1">{role === 'admin' ? <><Shield className="h-3 w-3 mr-1" />Administrator</> : <><User className="h-3 w-3 mr-1" />Agent</>}</Badge></div>
               </div>

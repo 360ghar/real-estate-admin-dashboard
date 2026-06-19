@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
-import { DataTable } from '@/components/ui/data-table'
+import { DataTable, SortableHeader } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import Pagination from '@/components/ui/pagination'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Link } from 'react-router-dom'
@@ -12,41 +13,59 @@ import { useDebounce } from '@/hooks/useDebounce'
 import { useGetBlogPostsQuery, useDeleteBlogPostMutation, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
 import { toast } from '@/hooks/use-toast'
 import type { BlogPost, BlogPostFilters } from '@/types/blog'
-import { Search, Edit2, Trash2, Eye, CheckCircle, EyeOff } from 'lucide-react'
+import { Search, Edit2, Trash2, Eye, CheckCircle, EyeOff, Download } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDateTime } from '@/lib/format'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
+import { downloadCsv, csvFilename } from '@/lib/csv'
 
 const BlogList = () => {
   const [q, setQ] = useState('')
   const dq = useDebounce(q, 300)
   const [categoriesText, setCategoriesText] = useState('')
   const [tagsText, setTagsText] = useState('')
-  const [page, setPage] = useState(1)
   const pageSize = 20
+  const pager = useCursorPagination()
 
   const params = useMemo(() => {
-    const p: BlogPostFilters = { page, limit: pageSize }
+    const p: BlogPostFilters = { cursor: pager.cursor, limit: pageSize }
     if (dq) p.q = dq
     const cats = categoriesText.split(',').map((s) => s.trim()).filter(Boolean)
     const tags = tagsText.split(',').map((s) => s.trim()).filter(Boolean)
     if (cats.length) p.categories = cats
     if (tags.length) p.tags = tags
     return p
-  }, [dq, categoriesText, tagsText, page, pageSize])
+  }, [dq, categoriesText, tagsText, pager.cursor, pageSize])
 
   const { data, isFetching, error, refetch } = useGetBlogPostsQuery(params)
+
+  const handleExport = () => {
+    const rows = (data?.items ?? []).map((p) => ({
+      id: p.id,
+      title: p.title,
+      slug: p.slug,
+      active: p.active,
+      created_at: p.created_at,
+      categories: (p.categories ?? []).map((c) => c.slug).join('|'),
+      tags: (p.tags ?? []).map((t) => t.slug).join('|'),
+    }))
+    downloadCsv(csvFilename('blog-posts'), rows)
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, dq, categoriesText, tagsText])
   const [deleteBlogPost, { isLoading: isDeleting }] = useDeleteBlogPostMutation()
   const [updateBlogPost, { isLoading: isTogglingStatus }] = useUpdateBlogPostMutation()
 
-  const handleDeletePost = async (post: BlogPost) => {
+  const handleDeletePost = useCallback(async (post: BlogPost) => {
     try {
       await deleteBlogPost(post.id).unwrap()
       toast({ title: 'Success', description: 'Blog post deleted successfully' })
     } catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, 'Failed to delete blog post'), variant: 'destructive' }) }
-  }
+  }, [deleteBlogPost])
 
-  const handleToggleStatus = async (post: BlogPost) => {
+  const handleToggleStatus = useCallback(async (post: BlogPost) => {
     const nextActive = !post.active
     try {
       await updateBlogPost({ identifier: post.id, data: { active: nextActive } }).unwrap()
@@ -63,9 +82,9 @@ const BlogList = () => {
         variant: 'destructive',
       })
     }
-  }
+  }, [updateBlogPost])
 
-  const columns: ColumnDef<BlogPost>[] = [
+  const columns = useMemo<ColumnDef<BlogPost>[]>(() => [
     {
       accessorKey: 'id',
       header: 'ID',
@@ -73,13 +92,13 @@ const BlogList = () => {
     },
     {
       accessorKey: 'title',
-      header: 'Title',
+      header: ({ column }) => <SortableHeader column={column}>Title</SortableHeader>,
       cell: ({ row }) => (
         <div className="space-y-1">
           <Link to={`/blogs/${row.original.slug}`} className="font-medium hover:underline">
             {row.original.title}
           </Link>
-          <div className="text-xs text-muted-foreground">{new Date(row.original.created_at).toLocaleString()}</div>
+          <div className="text-xs text-muted-foreground">{formatDateTime(row.original.created_at)}</div>
         </div>
       ),
     },
@@ -107,7 +126,7 @@ const BlogList = () => {
     },
     {
       accessorKey: 'active',
-      header: 'Status',
+      header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>,
       cell: ({ row }) => (
         <Badge variant={row.original.active ? 'default' : 'outline'}>
           {row.original.active ? 'Published' : 'Draft'}
@@ -123,6 +142,7 @@ const BlogList = () => {
             variant="outline"
             size="sm"
             asChild
+            aria-label="View"
           >
             <Link to={`/blogs/${row.original.slug}`}>
               <Eye className="h-4 w-4" />
@@ -132,6 +152,7 @@ const BlogList = () => {
             variant="outline"
             size="sm"
             asChild
+            aria-label="Edit"
           >
             <Link to={`/blogs/${row.original.slug}/edit`}>
               <Edit2 className="h-4 w-4" />
@@ -163,7 +184,7 @@ const BlogList = () => {
             onConfirm={() => handleDeletePost(row.original)}
           >
             {(openDialog) => (
-              <Button variant="outline" size="sm" onClick={openDialog} disabled={isDeleting}>
+              <Button variant="outline" size="sm" onClick={openDialog} disabled={isDeleting} aria-label="Delete">
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
@@ -171,7 +192,7 @@ const BlogList = () => {
         </div>
       ),
     },
-  ]
+  ], [handleDeletePost, handleToggleStatus, isDeleting, isTogglingStatus])
 
   return (
     <div className="space-y-6">
@@ -197,6 +218,11 @@ const BlogList = () => {
             onChange={(e) => setTagsText(e.target.value)}
           />
         </div>
+        <div className="mt-3 flex justify-end">
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={isFetching} className="gap-2">
+            <Download className="h-4 w-4" />Export
+          </Button>
+        </div>
       </Card>
 
       <Card className="p-6">
@@ -219,13 +245,14 @@ const BlogList = () => {
           />
         ) : (
           <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">
-              Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, data.total || 0)} of {data.total || 0} posts
-            </div>
-            <DataTable columns={columns} data={data.items} />
-            {data.total > pageSize && (
-              <Pagination page={page} pageSize={pageSize} total={data.total} onChange={setPage} />
-            )}
+            <DataTable columns={columns} data={data.items} enableSorting />
+            <CursorPager
+              canPrev={pager.canPrev}
+              hasMore={data.has_more}
+              loading={isFetching}
+              onPrev={pager.prev}
+              onNext={() => pager.next(data.next_cursor)}
+            />
           </div>
         )}
       </Card>

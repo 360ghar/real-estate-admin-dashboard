@@ -2,16 +2,19 @@ import { Activity } from 'lucide-react'
 import { useUserRole } from '@/hooks/useUserRole'
 import { Badge } from '@/components/ui/badge'
 import { AdminKpis, AgentKpis } from '@/features/core/components/dashboard/DashboardKpis'
+import { BusinessMetrics } from '@/features/core/components/dashboard/BusinessMetrics'
 import { ActivityTrendCard, PropertyStatusCard } from '@/features/core/components/dashboard/DashboardCharts'
 import { RecentActivityCard } from '@/features/core/components/dashboard/RecentActivityCard'
 import { QuickActions } from '@/features/core/components/dashboard/QuickActions'
 import { useDashboardActivity } from '@/features/core/hooks/useDashboardData'
+import ErrorBoundary from '@/components/common/ErrorBoundary'
 
 const DashboardPage = () => {
   const { user, role } = useUserRole()
   const activity = useDashboardActivity()
 
   return (
+    <ErrorBoundary>
     <div className="space-y-8">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
@@ -19,7 +22,7 @@ const DashboardPage = () => {
             {role === 'agent' ? 'Agent' : 'Admin'} Dashboard
           </h1>
           <p className="text-muted-foreground">
-            Welcome back{user?.full_name ? `, ${user.full_name}` : ''}. Here's what's happening with your{' '}
+            Welcome back{user?.full_name ? `, ${user.full_name}` : '!'} Here's what's happening with your{' '}
             {role === 'agent' ? 'assigned portfolio' : 'platform'}.
           </p>
         </div>
@@ -30,6 +33,8 @@ const DashboardPage = () => {
       </div>
 
       {role === 'agent' ? <AgentKpis agentId={user?.agent_id} /> : <AdminKpis />}
+
+      {role !== 'agent' && <BusinessMetrics />}
 
       <QuickActions role={role} />
 
@@ -51,6 +56,7 @@ const DashboardPage = () => {
         onRetry={activity.refetch}
       />
     </div>
+    </ErrorBoundary>
   )
 }
 

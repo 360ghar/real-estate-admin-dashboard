@@ -6,22 +6,22 @@ import { Button } from '@/components/ui/button'
 import { RotateCcw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { LoadingState } from '@/components/ui/loading-state'
+import { ErrorState } from '@/components/ui/error-state'
 import { AnimatePresence } from 'framer-motion'
+import { getErrorMessage } from '@/lib/errors'
 
 const SwipePage = () => {
     const { toast } = useToast()
     const [currentIndex, setCurrentIndex] = useState(0)
-    const { data: properties, isLoading, refetch } = useGetRecommendationsQuery({ limit: 10 })
+    const { data: recommendations, isLoading, isError, refetch } = useGetRecommendationsQuery({ limit: 10 })
     const [swipeProperty] = useSwipePropertyMutation()
 
     const handleSwipe = async (direction: 'left' | 'right') => {
-        if (!properties || !properties[currentIndex]) return
+        const items = recommendations?.items ?? []
+        if (!items[currentIndex]) return
 
-        const property = properties[currentIndex]
+        const property = items[currentIndex]
         const isLiked = direction === 'right'
-
-        // Optimistic update: move to next card immediately
-        setCurrentIndex((prev) => prev + 1)
 
         try {
             const result = await swipeProperty({
@@ -29,17 +29,20 @@ const SwipePage = () => {
                 is_liked: isLiked,
             }).unwrap()
 
+            // Optimistic update: move to next card only after success
+            setCurrentIndex((prev) => prev + 1)
+
             if (result.match) {
                 toast({
                     title: "It's a Match!",
                     description: `You matched with ${property.title}`,
-                    variant: "default", // You might want a special 'success' or 'match' variant
+                    variant: "default",
                 })
             }
         } catch (error) {
             toast({
                 title: "Swipe failed",
-                description: "Something went wrong. Please try again.",
+                description: getErrorMessage(error, 'Something went wrong. Please try again.'),
                 variant: "destructive",
             })
         }
@@ -58,7 +61,15 @@ const SwipePage = () => {
         )
     }
 
-    const currentProperties = properties || []
+    if (isError) {
+        return (
+            <div className="flex items-center justify-center h-[calc(100vh-4rem)]">
+                <ErrorState title="Failed to load recommendations" onRetry={() => void refetch()} />
+            </div>
+        )
+    }
+
+    const currentProperties = recommendations?.items ?? []
     const isFinished = currentIndex >= currentProperties.length
 
     return (

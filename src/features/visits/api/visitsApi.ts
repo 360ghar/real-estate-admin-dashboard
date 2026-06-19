@@ -3,12 +3,11 @@ import type {
   Visit,
   VisitCreate,
   VisitUpdate,
-  VisitList,
   PaginatedResponse
 } from '@/types/api'
 
 export interface VisitsQuery {
-  page?: number
+  cursor?: string | null
   limit?: number
   status?: string
   agent_id?: number
@@ -16,6 +15,18 @@ export interface VisitsQuery {
   user_id?: number
   q?: string
 }
+
+/**
+ * Cursor-based query args for the "current user's" visits endpoints.
+ * The three list endpoints (`/visits`, `/visits/upcoming`, `/visits/past`)
+ * all accept the same `{ cursor, limit }` shape.
+ */
+export interface VisitsCursorQuery {
+  cursor?: string | null
+  limit?: number
+}
+
+const DEFAULT_VISITS_LIMIT = 20
 
 export const visitsApi = api.injectEndpoints({
   endpoints: (builder) => ({
@@ -30,20 +41,29 @@ export const visitsApi = api.injectEndpoints({
     }),
 
     // Get current user's visits
-    getUserVisits: builder.query<VisitList, void>({
-      query: () => '/visits/',
+    getUserVisits: builder.query<PaginatedResponse<Visit>, VisitsCursorQuery>({
+      query: ({ cursor, limit }) => ({
+        url: '/visits/',
+        params: { limit: limit ?? DEFAULT_VISITS_LIMIT, cursor: cursor ?? undefined }
+      }),
       providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get upcoming visits for current user
-    getUpcomingVisits: builder.query<{ visits: Visit[]; total: number }, void>({
-      query: () => '/visits/upcoming/',
+    getUpcomingVisits: builder.query<PaginatedResponse<Visit>, VisitsCursorQuery>({
+      query: ({ cursor, limit }) => ({
+        url: '/visits/upcoming/',
+        params: { limit: limit ?? DEFAULT_VISITS_LIMIT, cursor: cursor ?? undefined }
+      }),
       providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get past visits for current user
-    getPastVisits: builder.query<{ visits: Visit[]; total: number }, void>({
-      query: () => '/visits/past/',
+    getPastVisits: builder.query<PaginatedResponse<Visit>, VisitsCursorQuery>({
+      query: ({ cursor, limit }) => ({
+        url: '/visits/past/',
+        params: { limit: limit ?? DEFAULT_VISITS_LIMIT, cursor: cursor ?? undefined }
+      }),
       providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),
 
@@ -60,7 +80,7 @@ export const visitsApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'Visit', id }]
+      invalidatesTags: (res, _e, { id }) => [{ type: 'Visit', id }, { type: 'Visit', id: 'LIST' }]
     }),
 
     // Reschedule a visit
@@ -73,7 +93,7 @@ export const visitsApi = api.injectEndpoints({
           reason,
         }
       }),
-      invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }]
+      invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }, { type: 'Visit', id: 'LIST' }]
     }),
 
     // Cancel a visit
@@ -83,14 +103,14 @@ export const visitsApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }]
+      invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }, { type: 'Visit', id: 'LIST' }]
     }),
 
     // Get all visits (admin/agent view)
     getAllVisits: builder.query<PaginatedResponse<Visit>, VisitsQuery>({
       query: (params) => ({
         url: '/visits/all/',
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, ...params }
       }),
       providesTags: (res) =>
         res?.items
@@ -109,7 +129,7 @@ export const visitsApi = api.injectEndpoints({
         method: 'POST',
         body: data
       }),
-      invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }]
+      invalidatesTags: (res, _e, { visitId }) => [{ type: 'Visit', id: visitId }, { type: 'Visit', id: 'LIST' }]
     }),
 
   }),

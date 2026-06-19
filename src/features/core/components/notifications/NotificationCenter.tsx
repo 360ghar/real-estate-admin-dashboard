@@ -92,6 +92,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
+              onClick={() => window.location.href = '/notifications'}
             >
               <Settings className="h-4 w-4" />
             </Button>

@@ -9,7 +9,7 @@ import type {
 interface QueueParams {
   status?: string
   limit?: number
-  offset?: number
+  cursor?: string | null
 }
 
 export const flatmatesApi = api.injectEndpoints({
@@ -20,13 +20,13 @@ export const flatmatesApi = api.injectEndpoints({
         params: {
           status: params?.status ?? 'pending_review',
           limit: params?.limit ?? 50,
-          offset: params?.offset ?? 0,
+          cursor: params?.cursor ?? undefined,
         },
       }),
       providesTags: (result) =>
-        result?.listings
+        result?.items
           ? [
-              ...result.listings.map((listing) => ({
+              ...result.items.map((listing) => ({
                 type: 'FlatmatesListing' as const,
                 id: listing.id,
               })),
@@ -54,13 +54,13 @@ export const flatmatesApi = api.injectEndpoints({
         params: {
           status: params?.status ?? 'open',
           limit: params?.limit ?? 50,
-          offset: params?.offset ?? 0,
+          cursor: params?.cursor ?? undefined,
         },
       }),
       providesTags: (result) =>
-        result?.reports
+        result?.items
           ? [
-              ...result.reports.map((report) => ({
+              ...result.items.map((report) => ({
                 type: 'FlatmatesReport' as const,
                 id: report.id,
               })),

@@ -34,6 +34,8 @@ import { Plus } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { applyServerValidation } from "@/lib/formErrors";
+import { FormRootError } from "@/components/ui/form-root-error";
 import { pmChargeGenerateSchema, type PmChargeGenerateForm } from "@/features/pm/validations";
 
 interface GenerateChargesDialogProps {
@@ -50,7 +52,7 @@ export default function GenerateChargesDialog({
   const [generateCharges, generateState] = useGenerateRentChargesMutation();
 
   const leases = useListPmLeasesQuery(
-    { owner_id: ownerId, status: "active", limit: 200, offset: 0 },
+    { owner_id: ownerId, status: "active", limit: 200 },
     { skip: role === "agent" && !ownerId },
   );
 
@@ -79,6 +81,7 @@ export default function GenerateChargesDialog({
       form.reset();
       setOpen(false);
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError);
       toast({ title: "Failed", description: getErrorMessage(e, "Could not generate charges."), variant: "destructive" });
     }
   };
@@ -97,6 +100,7 @@ export default function GenerateChargesDialog({
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-4">
+            <FormRootError form={form} />
             <FormField
               control={form.control}
               name="scope"
@@ -130,7 +134,7 @@ export default function GenerateChargesDialog({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {(leases.data || []).map((l) => (
+                        {(leases.data?.items ?? []).map((l) => (
                           <SelectItem key={l.id} value={String(l.id)}>
                             #{l.id} • Property #{l.property_id}
                           </SelectItem>
@@ -149,8 +153,8 @@ export default function GenerateChargesDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Start month</FormLabel>
-                    <FormControl><Input type="date" {...field} /></FormControl>
-                    <p className="text-xs text-muted-foreground">Pick any day; backend uses month start.</p>
+                    <FormControl><Input type="month" {...field} /></FormControl>
+                    <p className="text-xs text-muted-foreground">Select the start month for charge generation.</p>
                     <FormMessage />
                   </FormItem>
                 )}

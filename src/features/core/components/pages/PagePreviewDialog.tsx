@@ -12,10 +12,7 @@ interface PagePreviewDialogProps {
   format: string
 }
 
-const BR = '<br>'
-
 const PagePreviewDialog: React.FC<PagePreviewDialogProps> = ({ open, onOpenChange, title, content, uniqueName, format }) => {
-  const html = content.split('\n').join(BR)
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
@@ -26,7 +23,7 @@ const PagePreviewDialog: React.FC<PagePreviewDialogProps> = ({ open, onOpenChang
         <div className="space-y-4">
           <div className="prose max-w-none">
             <h1>{title}</h1>
-            <SanitizedHtml html={html} />
+            <SanitizedHtml html={content} />
           </div>
           <Alert>
             <AlertDescription>

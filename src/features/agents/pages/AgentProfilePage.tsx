@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Phone, Users, TrendingUp, Star } from 'lucide-react'
+import { formatDate } from '@/lib/format'
 
 const AgentProfilePage = () => {
   const { data: agentProfile, isLoading } = useGetAgentProfileQuery()
@@ -103,7 +104,7 @@ const AgentProfilePage = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="text-sm text-muted-foreground">Created:</span>
-                  <span className="text-sm">{new Date(agentProfile.created_at).toLocaleDateString()}</span>
+                  <span className="text-sm">{formatDate(agentProfile.created_at)}</span>
                 </div>
               </div>
             </div>
@@ -168,7 +169,16 @@ const AgentProfilePage = () => {
             <CardTitle>Working Hours</CardTitle>
           </CardHeader>
           <CardContent>
-            <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(agentProfile.working_hours, null, 2)}</pre>
+            <div className="space-y-1">
+              {Object.entries(agentProfile.working_hours as Record<string, { start: string; end: string } | null>).map(([day, hours]) => (
+                <div key={day} className="flex items-center gap-4 text-sm">
+                  <span className="w-28 font-medium capitalize">{day}</span>
+                  <span className="text-muted-foreground">
+                    {hours ? `${hours.start} – ${hours.end}` : 'Closed'}
+                  </span>
+                </div>
+              ))}
+            </div>
           </CardContent>
         </Card>
       )}

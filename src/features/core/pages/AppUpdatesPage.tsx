@@ -5,9 +5,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDate } from '@/lib/format'
 import { useGetAppUpdatesQuery, useUpdateAppUpdateMutation } from '@/features/core/api/coreApi'
 import type { AppUpdate } from '@/types/api'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
@@ -25,7 +27,7 @@ const AppUpdatesPage: React.FC = () => {
   const { data: updatesData, isLoading, refetch } = useGetAppUpdatesQuery()
   const [updateUpdate] = useUpdateAppUpdateMutation()
 
-  const filteredUpdates = (updatesData || []).filter((update) => {
+  const filteredUpdates = (updatesData?.items ?? []).filter((update) => {
     const matchesSearch = update.version.toLowerCase().includes(searchTerm.toLowerCase()) || (update.release_notes || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesPlatform = filterPlatform === 'all' || update.platform === filterPlatform
     const matchesStatus = filterStatus === 'all' || (filterStatus === 'active' && update.is_active) || (filterStatus === 'inactive' && !update.is_active)
@@ -68,7 +70,7 @@ const AppUpdatesPage: React.FC = () => {
           </Select>
         </div>
       </CardContent></Card>
-      {isLoading ? <div className="text-center py-8">Loading updates...</div> : !filteredUpdates.length ? (
+      {isLoading ? <div className="space-y-4"><LoadingState type="card" rows={3} /></div> : !filteredUpdates.length ? (
         <EmptyState icon={<Monitor className="h-10 w-10" />} title="No updates found" description="Create your first app update entry."
           action={{ label: 'New Update', onClick: () => { resetForm(); setIsDialogOpen(true) } }} />
       ) : (
@@ -84,7 +86,7 @@ const AppUpdatesPage: React.FC = () => {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1">{getPlatformIcon(update.platform)}<span className="capitalize">{update.platform}</span></span>
                   {update.min_supported_version && <span>Min Version: {update.min_supported_version}</span>}
-                  <span>Created: {new Date(update.created_at).toLocaleDateString()}</span>
+                  <span>Created: {formatDate(update.created_at)}</span>
                 </div>
                 {update.release_notes && <details className="mt-2"><summary className="text-sm font-medium cursor-pointer hover:text-primary">View release notes</summary><div className="mt-2 p-3 bg-muted rounded-md text-sm"><pre className="whitespace-pre-wrap">{update.release_notes}</pre></div></details>}
               </div>

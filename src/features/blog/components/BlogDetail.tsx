@@ -10,6 +10,7 @@ import { LoadingState } from '@/components/ui/loading-state'
 import { useToast } from '@/hooks/use-toast'
 import { useDeleteBlogPostMutation, useGetBlogPostQuery, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDateTime } from '@/lib/format'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 import { SanitizedHtml } from '@/components/ui/sanitized-html'
 
@@ -228,11 +229,11 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
         <CardHeader>
           <CardTitle className="text-2xl">{post.title}</CardTitle>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-            <span>Created {new Date(post.created_at).toLocaleString()}</span>
+            <span>Created {formatDateTime(post.created_at)}</span>
             {post.updated_at && (
               <>
                 <span className="h-1 w-1 rounded-full bg-muted-foreground/40" />
-                <span>Updated {new Date(post.updated_at).toLocaleString()}</span>
+                <span>Updated {formatDateTime(post.updated_at)}</span>
               </>
             )}
             {readingTime && (

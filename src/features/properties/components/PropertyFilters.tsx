@@ -45,7 +45,7 @@ const PropertyFilters: React.FC<PropertyFiltersProps> = ({
             handleAmenityToggle={handleAmenityToggle} amenities={amenities} clearFilters={clearFilters} hasActiveFilters={hasActiveFilters} />
         </MobileFilters>
       </div>
-      <Button variant="outline" onClick={() => setFilters({ showFilters: !filters.showFilters })}
+      <Button variant="outline" onClick={() => setFilters({ showFilters: !filters.showFilters })} aria-label="Open filters"
         className={`hidden md:flex ${hasActiveFilters ? 'border-primary text-primary' : ''}`}>
         <Filter className="h-4 w-4 mr-2" />Filters
         {hasActiveFilters && <Badge variant="secondary" className="ml-2">Active</Badge>}
@@ -91,7 +91,7 @@ const PropertyFilters: React.FC<PropertyFiltersProps> = ({
           </Select>
           <div>
             <Sheet>
-              <SheetTrigger asChild><Button variant="outline" className="w-full justify-start"><Filter className="h-4 w-4 mr-2" />Amenities ({selectedAmenities.length})</Button></SheetTrigger>
+              <SheetTrigger asChild><Button variant="outline" className="w-full justify-start" aria-label="Filter by amenities"><Filter className="h-4 w-4 mr-2" />Amenities ({selectedAmenities.length})</Button></SheetTrigger>
               <SheetContent className="w-full sm:w-[400px]">
                 <SheetHeader><SheetTitle>Select Amenities</SheetTitle><SheetDescription>Choose amenities to filter properties.</SheetDescription></SheetHeader>
                 <div className="py-4 space-y-2 max-h-[300px] overflow-y-auto">

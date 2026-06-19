@@ -69,7 +69,7 @@ const FilterControls: React.FC<FilterControlsProps> = ({
       <label className="text-sm font-medium mb-1 block">Amenities</label>
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" className="w-full justify-start">
+          <Button variant="outline" className="w-full justify-start" aria-label="Filter by amenities">
             <Filter className="h-4 w-4 mr-2" />{selectedAmenities.length > 0 ? `${selectedAmenities.length} selected` : 'Select amenities'}
           </Button>
         </SheetTrigger>

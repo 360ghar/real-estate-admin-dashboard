@@ -6,10 +6,12 @@ import { Card } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorState } from '@/components/ui/error-state'
 import { toast } from '@/hooks/use-toast'
 import { useGetBlogTagsQuery, useDeleteBlogTagMutation } from '@/features/blog/api/blogsApi'
 import { Plus, Edit2, Trash2, Tag, FileText } from 'lucide-react'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDate } from '@/lib/format'
 import type { BlogTag } from '@/types/blog'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 import TagFormDialog from '../../components/tag/TagFormDialog'
@@ -44,19 +46,19 @@ const TagsPage = () => {
       </div>
       <Card className="p-6">
         {isFetching ? <LoadingState type="card" rows={5} /> : error ? (
-          <EmptyState title="Failed to load tags" description="Please check your connection and try again" action={{ label: 'Retry', onClick: () => { void refetch() }, variant: 'outline' }} />
+          <ErrorState title="Failed to load tags" error={error} onRetry={() => { void refetch() }} />
         ) : !tagsData?.items?.length ? (
           <EmptyState icon={<Tag className="h-12 w-12" />} title="No tags found" description="Create your first tag to label blog posts." action={{ label: 'New Tag', onClick: () => setIsCreateDialogOpen(true) }} />
         ) : (
           <div className="space-y-4">
-            <div className="text-sm text-muted-foreground">{tagsData.total} tags total</div>
+            <div className="text-sm text-muted-foreground">{tagsData.items.length} tags total</div>
             <Table>
               <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Slug</TableHead><TableHead>Created</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
               <TableBody>{tagsData.items.map((tag: BlogTag) => (
                 <TableRow key={tag.id}>
                   <TableCell className="font-medium">{tag.name}</TableCell>
                   <TableCell><code className="px-2 py-1 bg-muted rounded text-sm">{tag.slug}</code></TableCell>
-                  <TableCell>{new Date(tag.created_at || '').toLocaleDateString()}</TableCell>
+                  <TableCell>{formatDate(tag.created_at)}</TableCell>
                   <TableCell className="text-right"><div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(tag)}><Edit2 className="h-4 w-4" /></Button>
                     <ConfirmAlertDialog title="Delete Tag" description={`Are you sure you want to delete "${tag.name}"? This will remove the tag from all posts.`} confirmLabel="Delete" variant="destructive" onConfirm={() => handleDeleteTag(tag)}>

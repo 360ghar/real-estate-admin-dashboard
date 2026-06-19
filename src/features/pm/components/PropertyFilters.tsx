@@ -31,6 +31,7 @@ export default function PropertyFilters({
         value={q}
         onChange={(e) => onQChange(e.target.value)}
         placeholder="Search title/address…"
+        aria-label="Search properties"
       />
       <Select
         value={occupancy || "all"}
@@ -38,7 +39,7 @@ export default function PropertyFilters({
           onOccupancyChange(v === "all" ? "" : (v as "occupied" | "vacant"))
         }
       >
-        <SelectTrigger>
+        <SelectTrigger aria-label="Filter by occupancy">
           <SelectValue placeholder="Occupancy" />
         </SelectTrigger>
         <SelectContent>
@@ -51,7 +52,7 @@ export default function PropertyFilters({
         value={String(limit)}
         onValueChange={(v) => onLimitChange(Number(v))}
       >
-        <SelectTrigger>
+        <SelectTrigger aria-label="Page size">
           <SelectValue placeholder="Page size" />
         </SelectTrigger>
         <SelectContent>

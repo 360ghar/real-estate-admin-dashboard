@@ -37,6 +37,8 @@ import {
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { applyServerValidation } from "@/lib/formErrors";
+import { FormRootError } from "@/components/ui/form-root-error";
 import { pmExpenseCreateSchema, type PmExpenseCreateForm } from "@/features/pm/validations";
 
 interface CreateExpenseDialogProps {
@@ -50,7 +52,7 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
   const [uploadDoc, uploadDocState] = useUploadPmDocumentMutation();
 
   const properties = useListPmPropertiesQuery(
-    { owner_id: ownerId, limit: 200, offset: 0 },
+    { owner_id: ownerId, limit: 200 },
     { skip: role === "agent" && !ownerId },
   );
 
@@ -82,7 +84,7 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
 
   const onSubmit = async (values: PmExpenseCreateForm) => {
     try {
-      const selectedPropertyOwnerId = (properties.data || []).find(
+      const selectedPropertyOwnerId = (properties.data?.items ?? []).find(
         (p) => String(p.id) === values.property_id,
       )?.owner_id;
       const effectiveOwnerId = ownerId ?? selectedPropertyOwnerId ?? null;
@@ -114,6 +116,7 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
       toast({ title: "Added", description: "Expense added." });
       handleOpenChange(false);
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError);
       toast({ title: "Failed", description: getErrorMessage(e, "Could not add expense."), variant: "destructive" });
     }
   };
@@ -126,12 +129,14 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
           Add expense
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="create-expense-desc">
         <DialogHeader>
           <DialogTitle>Add expense</DialogTitle>
         </DialogHeader>
+        <p id="create-expense-desc" className="sr-only">Create a new expense with category, amount, date, and optional receipt.</p>
         <Form {...form}>
           <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2"><FormRootError form={form} /></div>
             <FormField
               control={form.control}
               name="property_id"
@@ -145,7 +150,7 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {(properties.data || []).map((p) => (
+                      {(properties.data?.items ?? []).map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
                           #{p.id} • {p.title}
                         </SelectItem>
@@ -195,14 +200,22 @@ export default function CreateExpenseDialog({ ownerId }: CreateExpenseDialogProp
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Amount</FormLabel>
-                  <FormControl><Input placeholder="e.g. 1200" {...field} /></FormControl>
+                  <FormControl><Input placeholder="e.g. 1200" type="number" step="0.01" inputMode="decimal" {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
             <div className="space-y-2">
               <Label>Receipt (optional)</Label>
-              <Input type="file" onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
+              <Input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (f && f.size > 20 * 1024 * 1024) {
+                  toast({ title: "File too large", description: "Maximum file size is 20 MB.", variant: "destructive" });
+                  e.target.value = "";
+                  return;
+                }
+                setReceiptFile(f);
+              }} />
             </div>
             <FormField
               control={form.control}

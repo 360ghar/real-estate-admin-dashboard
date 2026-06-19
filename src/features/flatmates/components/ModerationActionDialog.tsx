@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { formatCurrency } from '@/lib/format'
 import {
   Select,
   SelectContent,
@@ -84,7 +85,7 @@ export function ModerationActionDialog({
                   {selectedListing.locality}, {selectedListing.city}
                 </p>
                 <p className="text-sm font-medium">
-                  ₹{selectedListing.monthly_rent?.toLocaleString()}/month
+                  {formatCurrency(selectedListing.monthly_rent)}/month
                 </p>
                 <div className="text-xs text-muted-foreground">
                   <p>Owner: {selectedListing.owner?.full_name || 'Unknown'}</p>

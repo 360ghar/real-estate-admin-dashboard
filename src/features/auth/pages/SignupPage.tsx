@@ -10,7 +10,7 @@ import { mapSupabaseAuthError } from '@/lib/authErrors'
 import { fetchUserProfileWithToken } from '@/lib/auth'
 import { useAppDispatch } from '@/hooks/redux'
 import { setCredentials } from '@/features/auth/slices/authSlice'
-import { signupSchema, type SignupFormValues } from '@/features/auth/validations'
+import { signupSchema, otpStepSchema, setPasswordStepSchema, type SignupFormValues, type OtpStepFormValues, type SetPasswordStepFormValues } from '@/features/auth/validations'
 import { useResendTimer } from '@/hooks/useResendTimer'
 
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
@@ -30,9 +30,6 @@ export default function SignupPage() {
 
   // OTP flow state
   const [step, setStep] = useState<'form' | 'otp' | 'setPassword'>('form')
-  const [otp, setOtp] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [confirmNewPassword, setConfirmNewPassword] = useState('')
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const signupDataRef = useRef<SignupFormValues | null>(null)
 
@@ -41,11 +38,18 @@ export default function SignupPage() {
     defaultValues: { terms_accepted: false },
   })
 
+  const otpForm = useForm<OtpStepFormValues>({
+    resolver: zodResolver(otpStepSchema),
+    defaultValues: { otp: '' },
+  })
+
+  const passwordForm = useForm<SetPasswordStepFormValues>({
+    resolver: zodResolver(setPasswordStepSchema),
+    defaultValues: { password: '', confirm_password: '' },
+  })
+
   // 30s cooldown for the "Resend code" control on the OTP step.
   const resendTimer = useResendTimer()
-
-  const isStrongPassword = (value: string) =>
-    value.length >= 8 && /[A-Z]/.test(value) && /[0-9]/.test(value)
 
   const onSubmit = async (values: SignupFormValues) => {
     if (!supabase) {
@@ -105,14 +109,9 @@ export default function SignupPage() {
     }
   }
 
-  const handleOtpSubmit = async () => {
+  const handleOtpSubmit = async (values: OtpStepFormValues) => {
     if (!supabase || !signupDataRef.current) return
-
-    const code = otp.replace(/\D/g, '')
-    if (code.length !== 6) {
-      setErrorMessage('Please enter the complete 6-digit code.')
-      return
-    }
+    const code = values.otp.replace(/\D/g, '')
 
     setErrorMessage(null)
     setIsSubmitting(true)
@@ -131,7 +130,6 @@ export default function SignupPage() {
 
       // OTP verified — move to set-password step.
       setStep('setPassword')
-      setOtp('')
     } catch (err) {
       setErrorMessage(mapSupabaseAuthError(err))
     } finally {
@@ -139,24 +137,15 @@ export default function SignupPage() {
     }
   }
 
-  const handleSetPassword = async () => {
+  const handleSetPassword = async (values: SetPasswordStepFormValues) => {
     if (!supabase || !signupDataRef.current) return
-
-    if (!isStrongPassword(newPassword)) {
-      setErrorMessage('Password must be at least 8 characters with 1 uppercase letter and 1 number.')
-      return
-    }
-    if (newPassword !== confirmNewPassword) {
-      setErrorMessage('Passwords do not match.')
-      return
-    }
 
     setErrorMessage(null)
     setIsSubmitting(true)
 
     try {
       // Set the password while the session is live.
-      const { error } = await supabase.auth.updateUser({ password: newPassword })
+      const { error } = await supabase.auth.updateUser({ password: values.password })
       if (error) throw error
 
       const { data: sessionData } = await supabase.auth.getSession()
@@ -188,7 +177,7 @@ export default function SignupPage() {
 
   const backToForm = () => {
     setStep('form')
-    setOtp('')
+    otpForm.reset()
     setErrorMessage(null)
     setSuccessMessage(null)
     resendTimer.reset()
@@ -196,8 +185,7 @@ export default function SignupPage() {
 
   const backToOtp = () => {
     setStep('otp')
-    setNewPassword('')
-    setConfirmNewPassword('')
+    passwordForm.reset()
     setErrorMessage(null)
     setSuccessMessage(null)
   }
@@ -379,135 +367,165 @@ export default function SignupPage() {
 
             {/* Step 2: OTP verification */}
             {step === 'otp' && (
-              <div className="space-y-5">
-                <div>
-                  <FormLabel className="text-sm font-medium">6-Digit Code</FormLabel>
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="Enter the code"
-                    className="h-11 text-center text-lg tracking-widest"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1 h-11"
-                    onClick={backToForm}
-                    disabled={isSubmitting}
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  <Button
-                    type="button"
-                    className="flex-1 h-11 text-base font-medium"
-                    onClick={() => void handleOtpSubmit()}
-                    disabled={isSubmitting || otp.length !== 6}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Verifying...
-                      </>
-                    ) : (
-                      'Verify Code'
+              <Form {...otpForm}>
+                <form onSubmit={(e) => void otpForm.handleSubmit(handleOtpSubmit)(e)} className="space-y-5">
+                  <FormField
+                    control={otpForm.control}
+                    name="otp"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">6-Digit Code</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            placeholder="Enter the code"
+                            className="h-11 text-center text-lg tracking-widest"
+                            maxLength={6}
+                            autoFocus
+                            {...field}
+                            onChange={(e) => field.onChange(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </Button>
-                </div>
+                  />
 
-                <div className="text-center text-sm">
-                  <button
-                    type="button"
-                    onClick={() => void handleResendOtp()}
-                    disabled={isSubmitting || !resendTimer.canResend}
-                    className="text-primary hover:underline disabled:no-underline disabled:opacity-50 disabled:text-muted-foreground"
-                  >
-                    {resendTimer.isActive ? `Resend code in ${resendTimer.secondsLeft}s` : 'Resend code'}
-                  </button>
-                </div>
-              </div>
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 h-11"
+                      onClick={backToForm}
+                      disabled={isSubmitting}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1 h-11 text-base font-medium"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Verifying...
+                        </>
+                      ) : (
+                        'Verify Code'
+                      )}
+                    </Button>
+                  </div>
+
+                  <div className="text-center text-sm">
+                    <button
+                      type="button"
+                      onClick={() => void handleResendOtp()}
+                      disabled={isSubmitting || !resendTimer.canResend}
+                      className="text-primary hover:underline disabled:no-underline disabled:opacity-50 disabled:text-muted-foreground"
+                    >
+                      {resendTimer.isActive ? `Resend code in ${resendTimer.secondsLeft}s` : 'Resend code'}
+                    </button>
+                  </div>
+                </form>
+              </Form>
             )}
 
             {/* Step 3: Set password */}
             {step === 'setPassword' && (
-              <div className="space-y-5">
-                <div>
-                  <FormLabel className="text-sm font-medium">Password</FormLabel>
-                  <div className="relative">
-                    <Input
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      placeholder="Create a password"
-                      className="h-11 pr-12"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowPassword((s) => !s)}
-                    >
-                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
-                  <div className="relative">
-                    <Input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      autoComplete="new-password"
-                      placeholder="Re-enter password"
-                      className="h-11 pr-12"
-                      value={confirmNewPassword}
-                      onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      onClick={() => setShowConfirmPassword((s) => !s)}
-                    >
-                      {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-1 h-11"
-                    onClick={backToOtp}
-                    disabled={isSubmitting}
-                  >
-                    <ArrowLeft className="h-4 w-4 mr-2" />
-                    Back
-                  </Button>
-                  <Button
-                    type="button"
-                    className="flex-1 h-11 text-base font-medium"
-                    onClick={() => void handleSetPassword()}
-                    disabled={isSubmitting || !isStrongPassword(newPassword) || newPassword !== confirmNewPassword}
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <LoadingSpinner size="sm" className="mr-2" />
-                        Setting up...
-                      </>
-                    ) : (
-                      'Create Account'
+              <Form {...passwordForm}>
+                <form onSubmit={(e) => void passwordForm.handleSubmit(handleSetPassword)(e)} className="space-y-5">
+                  <FormField
+                    control={passwordForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showPassword ? 'text' : 'password'}
+                              autoComplete="new-password"
+                              placeholder="Create a password"
+                              className="h-11 pr-12"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowPassword((s) => !s)}
+                            >
+                              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
-                  </Button>
-                </div>
-              </div>
+                  />
+
+                  <FormField
+                    control={passwordForm.control}
+                    name="confirm_password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm font-medium">Confirm Password</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Input
+                              type={showConfirmPassword ? 'text' : 'password'}
+                              autoComplete="new-password"
+                              placeholder="Re-enter password"
+                              className="h-11 pr-12"
+                              {...field}
+                            />
+                            <button
+                              type="button"
+                              aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              onClick={() => setShowConfirmPassword((s) => !s)}
+                            >
+                              {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                            </button>
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="flex-1 h-11"
+                      onClick={backToOtp}
+                      disabled={isSubmitting}
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Back
+                    </Button>
+                    <Button
+                      type="submit"
+                      className="flex-1 h-11 text-base font-medium"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <LoadingSpinner size="sm" className="mr-2" />
+                          Setting up...
+                        </>
+                      ) : (
+                        'Create Account'
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              </Form>
             )}
 
             <div className="text-center pt-2 text-sm text-muted-foreground">

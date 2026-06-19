@@ -1,11 +1,12 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import { FileText, ShieldCheck, ShieldX } from "lucide-react";
-import DecisionAlertDialog from "@/features/pm/components/DecisionAlertDialog";
+import { DecisionAlertDialog } from "@/features/pm/components/DecisionAlertDialog";
 import {
   useGetApplicationQuery,
   useListPmDocumentsQuery,
 } from "@/features/pm/api/pmApi";
+import { formatDateTime } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,15 +27,9 @@ export default function PmApplicationDetailPage() {
       owner_id: application.data?.owner_id ?? undefined,
       rental_application_id: applicationIdNum,
       limit: 50,
-      offset: 0,
     },
     { skip: !application.data?.owner_id },
   );
-
-  const decisionDialog = DecisionAlertDialog({
-    applicationId: applicationIdNum,
-    applicantName: application.data?.applicant_full_name ?? undefined,
-  });
 
   const answersJson = useMemo(() => {
     if (!application.data?.answers) return null;
@@ -58,12 +53,63 @@ export default function PmApplicationDetailPage() {
     );
   }
 
+  if (application.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-20" />
+            <Skeleton className="h-9 w-24" />
+            <Skeleton className="h-9 w-24" />
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+        <Card>
+          <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-4/6" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+          <CardContent className="space-y-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-            {application.isLoading ? "Loading…" : `Application #${application.data?.id ?? applicationIdNum}`}
+            {`Application #${application.data?.id ?? applicationIdNum}`}
           </h1>
           <p className="text-sm text-muted-foreground">
             Form #{application.data?.form_id} &bull; Property #{application.data?.property_id}
@@ -72,23 +118,31 @@ export default function PmApplicationDetailPage() {
         {application.data ? (
           <div className="flex items-center gap-2">
             <Badge variant="secondary">{application.data.status}</Badge>
-            <Button
-              size="sm"
-              disabled={decisionDialog.isLoading || application.data.status === "approved"}
-              onClick={decisionDialog.openApprove}
-            >
-              <ShieldCheck className="mr-2 h-4 w-4" />
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              disabled={decisionDialog.isLoading || application.data.status === "rejected"}
-              onClick={decisionDialog.openReject}
-            >
-              <ShieldX className="mr-2 h-4 w-4" />
-              Reject
-            </Button>
+            <DecisionAlertDialog
+              applicationId={applicationIdNum}
+              applicantName={application.data?.applicant_full_name ?? undefined}
+              renderTrigger={({ openApprove, openReject, isLoading }) => (
+                <>
+                  <Button
+                    size="sm"
+                    disabled={isLoading || application.data.status === "approved"}
+                    onClick={openApprove}
+                  >
+                    <ShieldCheck className="mr-2 h-4 w-4" />
+                    Approve
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={isLoading || application.data.status === "rejected"}
+                    onClick={openReject}
+                  >
+                    <ShieldX className="mr-2 h-4 w-4" />
+                    Reject
+                  </Button>
+                </>
+              )}
+            />
           </div>
         ) : null}
       </div>
@@ -99,12 +153,7 @@ export default function PmApplicationDetailPage() {
             <CardTitle className="text-base">Applicant</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
-            {application.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-4/6" />
-              </div>
-            ) : application.data ? (
+            {application.data ? (
               <>
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Name</span>
@@ -121,7 +170,7 @@ export default function PmApplicationDetailPage() {
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-muted-foreground">Submitted</span>
                   <span className="font-medium">
-                    {application.data.submitted_at ? new Date(application.data.submitted_at).toLocaleString() : "—"}
+                    {application.data.submitted_at ? formatDateTime(application.data.submitted_at) : "—"}
                   </span>
                 </div>
               </>
@@ -153,13 +202,7 @@ export default function PmApplicationDetailPage() {
           <CardTitle className="text-base">Answers (JSON)</CardTitle>
         </CardHeader>
         <CardContent>
-          {application.isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-5/6" />
-              <Skeleton className="h-4 w-4/6" />
-            </div>
-          ) : answersJson ? (
+          {answersJson ? (
             <pre className="max-h-[520px] overflow-auto rounded-md bg-muted p-4 text-xs">
               {answersJson}
             </pre>
@@ -179,9 +222,9 @@ export default function PmApplicationDetailPage() {
               <Skeleton className="h-4 w-full" />
               <Skeleton className="h-4 w-4/6" />
             </div>
-          ) : docs.data?.length ? (
+          ) : docs.data?.items?.length ? (
             <div className="space-y-2">
-              {docs.data.map((d) => (
+              {docs.data.items.map((d) => (
                 <div key={d.id} className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate font-medium">{d.title}</div>
@@ -204,7 +247,6 @@ export default function PmApplicationDetailPage() {
         </CardContent>
       </Card>
 
-      {decisionDialog.renderDialog()}
     </div>
   );
 }

@@ -137,7 +137,15 @@ export default function ExpenseEditForm({
             />
             <div className="space-y-2">
               <Label>Replace receipt (optional)</Label>
-              <Input type="file" onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)} />
+              <Input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => {
+                const f = e.target.files?.[0] ?? null;
+                if (f && f.size > 20 * 1024 * 1024) {
+                  toast({ title: "File too large", description: "Maximum file size is 20 MB.", variant: "destructive" });
+                  e.target.value = "";
+                  return;
+                }
+                setReceiptFile(f);
+              }} />
             </div>
             <FormField
               control={form.control}

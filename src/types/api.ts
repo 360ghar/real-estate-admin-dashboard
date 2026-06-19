@@ -10,14 +10,17 @@ export interface ApiResponse<T> {
   }
 }
 
+/**
+ * Uniform cursor-paginated response shape returned by every backend list endpoint.
+ * `next_cursor` is an opaque base64 token (null on the terminal page); `has_more`
+ * is the authoritative end-of-list signal. There is no `total` field — the client
+ * never requests `include_total`.
+ */
 export interface PaginatedResponse<T> {
   items: T[]
-  total: number
-  page: number
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  total_pages: number
-  has_next: boolean
-  has_prev: boolean
 }
 
 // User Types
@@ -280,16 +283,10 @@ export interface PropertyUpdate extends Partial<PropertyCreate> {
 }
 
 export interface UnifiedPropertyResponse {
-  properties: Property[]
-  total: number
-  page: number
+  items: Property[]
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  total_pages: number
-  filters_applied: Record<string, unknown>
-  search_center?: {
-    latitude: number
-    longitude: number
-  }
 }
 
 // Visit Types
@@ -313,6 +310,7 @@ export interface Visit {
 
 export interface VisitCreate {
   property_id: number
+  user_id?: number
   scheduled_date: string
   special_requirements?: string
 }
@@ -324,13 +322,9 @@ export interface VisitUpdate {
   feedback?: string
 }
 
-export interface VisitList {
-  visits: Visit[]
-  total: number
-  upcoming: number
-  completed: number
-  cancelled: number
-}
+// Visit list endpoints now return the uniform cursor-paginated shape
+// (PaginatedResponse<Visit>). The legacy aggregate VisitList wrapper has been
+// removed alongside the backend's `total`/`upcoming`/`completed` fields.
 
 // Booking Types
 export interface Booking {
@@ -435,13 +429,9 @@ export interface BookingReview {
   guest_review?: string
 }
 
-export interface BookingList {
-  bookings: Booking[]
-  total: number
-  upcoming: number
-  completed: number
-  cancelled: number
-}
+// Booking list endpoints now return the uniform cursor-paginated shape
+// (PaginatedResponse<Booking>). The legacy aggregate BookingList wrapper has
+// been removed alongside the backend's `total`/`upcoming`/`completed` fields.
 
 // Core System Types
 export interface BugReport {
@@ -500,7 +490,7 @@ export interface BugReportsQuery {
   status?: string
   bug_type?: string
   limit?: number
-  offset?: number
+  cursor?: string | null
 }
 
 // Pages Types
@@ -547,7 +537,7 @@ export interface PagesQuery {
   is_active?: boolean
   is_draft?: boolean
   limit?: number
-  offset?: number
+  cursor?: string | null
 }
 
 // App Updates Types
@@ -610,7 +600,7 @@ export interface AppUpdatesQuery {
   platform?: string
   is_active?: boolean
   limit?: number
-  offset?: number
+  cursor?: string | null
 }
 
 // Health Check
@@ -642,7 +632,7 @@ export interface UploadResponse {
 
 // API Query Types
 export interface UsersQuery {
-  page?: number
+  cursor?: string | null
   limit?: number
   q?: string
   agent_id?: number
@@ -716,15 +706,32 @@ export interface ReportModerationAction {
 }
 
 export interface ModerationQueueResponse {
-  listings: FlatmatesListing[]
-  total: number
+  items: FlatmatesListing[]
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  offset: number
 }
 
 export interface ReportsQueueResponse {
-  reports: FlatmatesReport[]
-  total: number
+  items: FlatmatesReport[]
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  offset: number
+}
+
+// Swipe Types
+export interface Swipe {
+  id: number
+  user_id: number
+  property_id: number
+  is_liked: boolean
+  created_at: string
+  property?: Property
+}
+
+export interface SwipeListResponse {
+  items: Swipe[]
+  next_cursor: string | null
+  has_more: boolean
+  limit: number
 }

@@ -7,7 +7,7 @@ import type { BadgeProps } from '@/components/ui/badge'
 
 type BookingStatus = 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'refunded'
 type BookingPaymentStatus = 'paid' | 'partial' | 'unpaid' | 'refunded'
-type VisitStatus = 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+type VisitStatus = 'scheduled' | 'confirmed' | 'rescheduled' | 'completed' | 'cancelled' | 'no_show'
 
 const BOOKING_STATUS_COLORS: Record<BookingStatus, BadgeProps['variant']> = {
   confirmed: 'default',
@@ -26,6 +26,8 @@ const BOOKING_PAYMENT_STATUS_COLORS: Record<BookingPaymentStatus, BadgeProps['va
 
 const VISIT_STATUS_COLORS: Record<VisitStatus, BadgeProps['variant']> = {
   scheduled: 'default',
+  confirmed: 'default',
+  rescheduled: 'secondary',
   completed: 'default',
   cancelled: 'destructive',
   no_show: 'secondary',

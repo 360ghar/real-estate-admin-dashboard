@@ -105,6 +105,7 @@ export const api = createApi({
     'PmApplicationForm',
     'PmApplication',
     'PmTenant',
+    'PmSettings',
     'Notification',
   ],
   endpoints: () => ({}),

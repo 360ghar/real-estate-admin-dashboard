@@ -39,7 +39,7 @@ export const setPasswordStepSchema = z
       .min(8, 'Password must be at least 8 characters')
       .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
       .regex(/[0-9]/, 'Password must contain at least 1 number'),
-    confirm_password: z.string().min(6, 'Please confirm your password'),
+    confirm_password: z.string().min(1, 'Please confirm your password'),
   })
   .refine((d) => d.password === d.confirm_password, {
     message: 'Passwords do not match',
@@ -86,7 +86,7 @@ export const resetPasswordSchema = z
       .min(8, 'Password must be at least 8 characters')
       .regex(/[A-Z]/, 'Password must contain at least 1 uppercase letter')
       .regex(/[0-9]/, 'Password must contain at least 1 number'),
-    confirm_password: z.string().min(6, 'Please confirm your password'),
+    confirm_password: z.string().min(1, 'Please confirm your password'),
   })
   .refine((d) => d.password === d.confirm_password, {
     message: 'Passwords do not match',

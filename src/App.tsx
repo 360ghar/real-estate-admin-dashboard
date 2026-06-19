@@ -10,13 +10,7 @@ import { clearCredentials, loadUserFromStorage, setCredentials, setInitialized }
 import { supabase } from '@/lib/supabase'
 import { store } from '@/store'
 import { fetchUserProfileWithToken } from '@/lib/auth'
-
-/**
- * Module-level flag set by LoginPage.finishLogin before it dispatches credentials.
- * When true, the onAuthStateChange SIGNED_IN handler skips the redundant profile
- * fetch — the login flow is already handling it.
- */
-export const isLoginInProgress = { current: false }
+import { isLoginInProgress } from '@/lib/loginState'
 
 const LoginPage = lazy(() => import('@/features/auth/pages/LoginPage'))
 const SignupPage = lazy(() => import('@/features/auth/pages/SignupPage'))
@@ -158,75 +152,75 @@ function App() {
             <Route element={<DashboardLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               {/* All users */}
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/users/preferences" element={<UserPreferencesPage />} />
-              <Route path="/users/profile" element={<UserProfilePage />} />
+              <Route path="/profile" element={<ErrorBoundary><ProfilePage /></ErrorBoundary>} />
+              <Route path="/users/preferences" element={<ErrorBoundary><UserPreferencesPage /></ErrorBoundary>} />
+              <Route path="/users/profile" element={<ErrorBoundary><UserProfilePage /></ErrorBoundary>} />
 
               {/* Staff-only (admin + agent) */}
               <Route element={<RoleBasedRoute allowedRoles={["admin", "agent"]} />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/dashboard" element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
 
                 {/* PM Portal */}
                 <Route path="/pm" element={<Navigate to="/pm/dashboard" replace />} />
-                <Route path="/pm/dashboard" element={<PmDashboardPage />} />
-                <Route path="/pm/owners" element={<PmOwnersPage />} />
-                <Route path="/pm/owners/:ownerId" element={<PmOwnerDetailPage />} />
-                <Route path="/pm/properties" element={<PmPropertiesPage />} />
-                <Route path="/pm/properties/:propertyId" element={<PmPropertyDetailPage />} />
-                <Route path="/pm/applications" element={<PmApplicationsPage />} />
-                <Route path="/pm/applications/:applicationId" element={<PmApplicationDetailPage />} />
-                <Route path="/pm/leases" element={<PmLeasesPage />} />
-                <Route path="/pm/leases/:leaseId" element={<PmLeaseDetailPage />} />
-                <Route path="/pm/rent-ledger" element={<PmRentLedgerPage />} />
-                <Route path="/pm/expenses" element={<PmExpensesPage />} />
-                <Route path="/pm/maintenance" element={<PmMaintenancePage />} />
-                <Route path="/pm/documents" element={<PmDocumentsPage />} />
-                <Route path="/pm/inspections" element={<PmInspectionsPage />} />
-                <Route path="/pm/inspections/:inspectionId" element={<PmInspectionDetailPage />} />
-                <Route path="/pm/reports" element={<PmReportsPage />} />
+                <Route path="/pm/dashboard" element={<ErrorBoundary><PmDashboardPage /></ErrorBoundary>} />
+                <Route path="/pm/owners" element={<ErrorBoundary><PmOwnersPage /></ErrorBoundary>} />
+                <Route path="/pm/owners/:ownerId" element={<ErrorBoundary><PmOwnerDetailPage /></ErrorBoundary>} />
+                <Route path="/pm/properties" element={<ErrorBoundary><PmPropertiesPage /></ErrorBoundary>} />
+                <Route path="/pm/properties/:propertyId" element={<ErrorBoundary><PmPropertyDetailPage /></ErrorBoundary>} />
+                <Route path="/pm/applications" element={<ErrorBoundary><PmApplicationsPage /></ErrorBoundary>} />
+                <Route path="/pm/applications/:applicationId" element={<ErrorBoundary><PmApplicationDetailPage /></ErrorBoundary>} />
+                <Route path="/pm/leases" element={<ErrorBoundary><PmLeasesPage /></ErrorBoundary>} />
+                <Route path="/pm/leases/:leaseId" element={<ErrorBoundary><PmLeaseDetailPage /></ErrorBoundary>} />
+                <Route path="/pm/rent-ledger" element={<ErrorBoundary><PmRentLedgerPage /></ErrorBoundary>} />
+                <Route path="/pm/expenses" element={<ErrorBoundary><PmExpensesPage /></ErrorBoundary>} />
+                <Route path="/pm/maintenance" element={<ErrorBoundary><PmMaintenancePage /></ErrorBoundary>} />
+                <Route path="/pm/documents" element={<ErrorBoundary><PmDocumentsPage /></ErrorBoundary>} />
+                <Route path="/pm/inspections" element={<ErrorBoundary><PmInspectionsPage /></ErrorBoundary>} />
+                <Route path="/pm/inspections/:inspectionId" element={<ErrorBoundary><PmInspectionDetailPage /></ErrorBoundary>} />
+                <Route path="/pm/reports" element={<ErrorBoundary><PmReportsPage /></ErrorBoundary>} />
 
-                <Route path="/properties" element={<PropertiesPage />} />
-                <Route path="/properties/new" element={<PropertiesPage mode="create" />} />
-                <Route path="/properties/:id" element={<PropertiesPage mode="edit" />} />
-                <Route path="/properties/:id/view" element={<PropertiesPage mode="view" />} />
-                <Route path="/users" element={<UsersPage />} />
-                <Route path="/users/:id" element={<UsersPage mode="detail" />} />
-                <Route path="/agents/me" element={<AgentProfilePage />} />
-                <Route path="/agents/dashboard" element={<AgentDashboardPage />} />
-                <Route path="/visits" element={<VisitsPage />} />
-                <Route path="/visits/new" element={<VisitsPage mode="create" />} />
-                <Route path="/visits/:id" element={<VisitsPage mode="detail" />} />
-                <Route path="/visits/manage" element={<VisitManagementPage />} />
-                <Route path="/bookings" element={<BookingsPage />} />
-                <Route path="/bookings/:id" element={<BookingsPage mode="detail" />} />
-                <Route path="/bookings/manage" element={<BookingManagementPage />} />
-                <Route path="/swipes" element={<SwipePage />} />
+                <Route path="/properties" element={<ErrorBoundary><PropertiesPage /></ErrorBoundary>} />
+                <Route path="/properties/new" element={<ErrorBoundary><PropertiesPage mode="create" /></ErrorBoundary>} />
+                <Route path="/properties/:id" element={<ErrorBoundary><PropertiesPage mode="edit" /></ErrorBoundary>} />
+                <Route path="/properties/:id/view" element={<ErrorBoundary><PropertiesPage mode="view" /></ErrorBoundary>} />
+                <Route path="/users" element={<ErrorBoundary><UsersPage /></ErrorBoundary>} />
+                <Route path="/users/:id" element={<ErrorBoundary><UsersPage mode="detail" /></ErrorBoundary>} />
+                <Route path="/agents/me" element={<ErrorBoundary><AgentProfilePage /></ErrorBoundary>} />
+                <Route path="/agents/dashboard" element={<ErrorBoundary><AgentDashboardPage /></ErrorBoundary>} />
+                <Route path="/visits" element={<ErrorBoundary><VisitsPage /></ErrorBoundary>} />
+                <Route path="/visits/new" element={<ErrorBoundary><VisitsPage mode="create" /></ErrorBoundary>} />
+                <Route path="/visits/:id" element={<ErrorBoundary><VisitsPage mode="detail" /></ErrorBoundary>} />
+                <Route path="/visits/manage" element={<ErrorBoundary><VisitManagementPage /></ErrorBoundary>} />
+                <Route path="/bookings" element={<ErrorBoundary><BookingsPage /></ErrorBoundary>} />
+                <Route path="/bookings/:id" element={<ErrorBoundary><BookingsPage mode="detail" /></ErrorBoundary>} />
+                <Route path="/bookings/manage" element={<ErrorBoundary><BookingManagementPage /></ErrorBoundary>} />
+                <Route path="/swipes" element={<ErrorBoundary><SwipePage /></ErrorBoundary>} />
 
                 {/* Admin-only nested */}
                 <Route element={<RoleBasedRoute allowedRoles={["admin"]} />}>
-                  <Route path="/agents" element={<AgentsPage />} />
-                  <Route path="/agents/new" element={<AgentsPage mode="create" />} />
-                  <Route path="/agents/:id" element={<AgentsPage mode="edit" />} />
-                  <Route path="/agents/:id/stats" element={<AgentsPage mode="stats" />} />
-                  <Route path="/analytics" element={<AnalyticsPage />} />
-                  <Route path="/flatmates/moderation" element={<ModerationQueuePage />} />
-                  <Route path="/flatmates/reports" element={<ReportsReviewPage />} />
-                  <Route path="/bug-reports" element={<BugReportsPage />} />
-                  <Route path="/blogs" element={<BlogsPage />} />
-                  <Route path="/blogs/new" element={<BlogsPage mode="create" />} />
-                  <Route path="/blogs/:identifier" element={<BlogsPage mode="detail" />} />
-                  <Route path="/blogs/:identifier/edit" element={<BlogsPage mode="edit" />} />
-                  <Route path="/blogs/categories" element={<CategoriesPage />} />
-                  <Route path="/blogs/tags" element={<TagsPage />} />
-                  <Route path="/pages" element={<PagesManagementPage />} />
-                  <Route path="/faqs" element={<FaqsManagementPage />} />
-                  <Route path="/app-updates" element={<AppUpdatesPage />} />
-                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/agents" element={<ErrorBoundary><AgentsPage /></ErrorBoundary>} />
+                  <Route path="/agents/new" element={<ErrorBoundary><AgentsPage mode="create" /></ErrorBoundary>} />
+                  <Route path="/agents/:id" element={<ErrorBoundary><AgentsPage mode="edit" /></ErrorBoundary>} />
+                  <Route path="/agents/:id/stats" element={<ErrorBoundary><AgentsPage mode="stats" /></ErrorBoundary>} />
+                  <Route path="/analytics" element={<ErrorBoundary><AnalyticsPage /></ErrorBoundary>} />
+                  <Route path="/flatmates/moderation" element={<ErrorBoundary><ModerationQueuePage /></ErrorBoundary>} />
+                  <Route path="/flatmates/reports" element={<ErrorBoundary><ReportsReviewPage /></ErrorBoundary>} />
+                  <Route path="/bug-reports" element={<ErrorBoundary><BugReportsPage /></ErrorBoundary>} />
+                  <Route path="/blogs" element={<ErrorBoundary><BlogsPage /></ErrorBoundary>} />
+                  <Route path="/blogs/new" element={<ErrorBoundary><BlogsPage mode="create" /></ErrorBoundary>} />
+                  <Route path="/blogs/:identifier" element={<ErrorBoundary><BlogsPage mode="detail" /></ErrorBoundary>} />
+                  <Route path="/blogs/:identifier/edit" element={<ErrorBoundary><BlogsPage mode="edit" /></ErrorBoundary>} />
+                  <Route path="/blogs/categories" element={<ErrorBoundary><CategoriesPage /></ErrorBoundary>} />
+                  <Route path="/blogs/tags" element={<ErrorBoundary><TagsPage /></ErrorBoundary>} />
+                  <Route path="/pages" element={<ErrorBoundary><PagesManagementPage /></ErrorBoundary>} />
+                  <Route path="/faqs" element={<ErrorBoundary><FaqsManagementPage /></ErrorBoundary>} />
+                  <Route path="/app-updates" element={<ErrorBoundary><AppUpdatesPage /></ErrorBoundary>} />
+                  <Route path="/notifications" element={<ErrorBoundary><NotificationsPage /></ErrorBoundary>} />
                   {/* Reviews module removed */}
 
                   {/* PM admin-only */}
-                  <Route path="/pm/audit" element={<PmAuditLogPage />} />
-                  <Route path="/pm/settings" element={<PmSettingsPage />} />
+                  <Route path="/pm/audit" element={<ErrorBoundary><PmAuditLogPage /></ErrorBoundary>} />
+                  <Route path="/pm/settings" element={<ErrorBoundary><PmSettingsPage /></ErrorBoundary>} />
                 </Route>
               </Route>
             </Route>

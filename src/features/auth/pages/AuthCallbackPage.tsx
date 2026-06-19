@@ -60,8 +60,19 @@ export default function AuthCallbackPage() {
         return
       }
 
+      let timedOut = false
+
       try {
-        const { data, error } = await client.auth.exchangeCodeForSession(code)
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => {
+            timedOut = true
+            reject(new Error('Request timed out. Please try again.'))
+          }, 15000)
+        )
+        const { data, error } = await Promise.race([
+          client.auth.exchangeCodeForSession(code),
+          timeoutPromise,
+        ])
         if (error || !data.session) {
           throw error ?? new Error('Sign-in could not be completed. Please try again.')
         }
@@ -71,7 +82,7 @@ export default function AuthCallbackPage() {
 
         // Staff gate (step 1): optional email-domain allowlist.
         if (!isAllowedGoogleEmail(email)) {
-          await client.auth.signOut()
+          try { await client.auth.signOut() } catch { /* best-effort signout */ }
           failTo('This Google account is not authorized for the admin portal.')
           return
         }
@@ -80,7 +91,7 @@ export default function AuthCallbackPage() {
         const user = await fetchUserProfileWithToken(accessToken)
         if (!user) {
           // No backend profile -> not a provisioned staff member.
-          await client.auth.signOut()
+          try { await client.auth.signOut() } catch { /* best-effort signout */ }
           failTo('Your account is not authorized for the admin portal.')
           return
         }
@@ -93,6 +104,11 @@ export default function AuthCallbackPage() {
         if (!isMounted) return
         navigate('/dashboard', { replace: true })
       } catch (err) {
+        // If the timeout fired, the exchange may still complete in the
+        // background and set a Supabase session. Sign out to be safe.
+        if (timedOut) {
+          try { await client.auth.signOut() } catch { /* best-effort */ }
+        }
         failTo(mapSupabaseAuthError(err))
       }
     }

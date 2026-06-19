@@ -146,7 +146,7 @@ export const useNotifications = (): UseNotificationsReturn => {
     data: serverNotifications,
     isFetching,
   } = useGetUserNotificationsQuery(
-    { userId: userId!, limit: 50, offset: 0 },
+    { userId: userId!, limit: 50, cursor: null },
     { skip: !userId },
   )
 
@@ -158,7 +158,7 @@ export const useNotifications = (): UseNotificationsReturn => {
 
   // ---- Merge server + local into a unified list ----
   const notifications = useMemo<NotificationItem[]>(() => {
-    const serverItems: NotificationItem[] = (serverNotifications ?? []).map((entry) => {
+    const serverItems: NotificationItem[] = (serverNotifications?.items ?? []).map((entry) => {
       const item = toNotificationItem(entry)
       // If we've locally marked this as opened, reflect it immediately
       if (openedServerIds.has(entry.id)) {
@@ -207,17 +207,23 @@ export const useNotifications = (): UseNotificationsReturn => {
     // Mark all local notifications as read
     setLocalNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })))
 
-    // Mark all unread server notifications as opened
+    // Mark all unread server notifications as opened. Deduplicate by rawId
+    // (the merged list may contain the same delivery via multiple sources)
+    // and fire all requests in parallel via Promise.allSettled so one failure
+    // doesn't reject the whole batch. Best-effort — failures are swallowed
+    // because these are analytics-style calls.
     const serverUnread = notifications.filter((n) => n.source === 'server' && !n.isRead)
+    const seenRawIds = new Set<string>()
     const newOpened = new Set(openedServerIds)
+    const promises: Promise<unknown>[] = []
     for (const n of serverUnread) {
-      const rawId = n.rawId
-      newOpened.add(rawId)
-      markDeliveryOpened({ deliveryId: rawId }).catch(() => {
-        // Best-effort: silently ignore failures for analytics-style calls
-      })
+      if (seenRawIds.has(n.rawId)) continue
+      seenRawIds.add(n.rawId)
+      newOpened.add(n.rawId)
+      promises.push(markDeliveryOpened({ deliveryId: n.rawId }).unwrap().catch(() => {}))
     }
     setOpenedServerIds(newOpened)
+    void Promise.allSettled(promises)
   }, [notifications, openedServerIds, markDeliveryOpened])
 
   const addNotification = useCallback(

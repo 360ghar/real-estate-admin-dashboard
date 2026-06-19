@@ -38,14 +38,14 @@ const AgentDashboardPage: React.FC = () => {
   const { data: agentProfile, isLoading: profileLoading } = useGetAgentProfileQuery()
   const { data: agentStats } = useGetAgentStatsQuery(agentProfile?.id || 0, { skip: !agentProfile?.id })
 
-  const { data: systemWorkload } = useGetWorkloadQuery(undefined, {
+  const { data: systemWorkload, isLoading: systemWorkloadLoading } = useGetWorkloadQuery(undefined, {
     skip: user?.role !== 'admin'
   })
   const { data: systemStats } = useGetSystemStatsQuery(undefined, {
     skip: user?.role !== 'admin'
   })
 
-  const { data: visitsData } = useGetUserVisitsQuery()
+  const { data: visitsData } = useGetUserVisitsQuery({ limit: 20 })
   const { data: bookingsData } = useGetUserBookingsQuery()
 
   if (profileLoading) {
@@ -79,13 +79,13 @@ const AgentDashboardPage: React.FC = () => {
         />
         <StatCard
           title="Upcoming Visits"
-          value={visitsData?.upcoming || 0}
+          value={visitsData?.items?.length ?? 0}
           description="Scheduled property visits"
           icon={<Calendar className="h-4 w-4 text-muted-foreground" />}
         />
         <StatCard
           title="Upcoming Bookings"
-          value={bookingsData?.upcoming || 0}
+          value={bookingsData?.items?.length ?? 0}
           description="Bookings in progress"
           icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
         />
@@ -181,14 +181,14 @@ const AgentDashboardPage: React.FC = () => {
               <p className="text-sm text-muted-foreground">Total Users Assigned</p>
             </div>
             <div className="text-center p-4 border rounded-lg">
-              <p className="text-2xl font-bold text-primary">{agentWorkload ? Math.round(agentWorkload.utilization_percentage) : 0}%</p>
+              <p className="text-2xl font-bold text-primary">{systemWorkloadLoading ? '--' : (agentWorkload ? Math.round(agentWorkload.utilization_percentage) + '%' : '--')}</p>
               <p className="text-sm text-muted-foreground">Utilization</p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {agentWorkload && agentWorkload.utilization_percentage > 80 && (
+      {!systemWorkloadLoading && agentWorkload && agentWorkload.utilization_percentage > 80 && (
         <Card className="border-orange-200 bg-orange-50 dark:border-orange-800/40 dark:bg-orange-900/20">
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-orange-800 dark:text-orange-300">

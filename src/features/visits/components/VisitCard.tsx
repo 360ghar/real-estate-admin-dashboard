@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +29,7 @@ const VisitCard = ({
   onReschedule,
   onCancel,
 }: VisitCardProps) => {
+  const [rescheduleDate, setRescheduleDate] = useState(serverTimestampToLocalInput(visit.scheduled_date) || '')
 
   return (
     <Card>
@@ -71,12 +73,13 @@ const VisitCard = ({
             </div>
           </div>
           <div className="flex gap-2">
-            {visit.status === 'scheduled' && (
+            {(visit.status === 'scheduled' || visit.status === 'confirmed') && (
               <>
                 {!isUser && (
                   <Button
                     size="sm"
                     onClick={() => onComplete(visit)}
+                    aria-label="Complete visit"
                   >
                     <Check className="h-4 w-4" />
                   </Button>
@@ -99,15 +102,12 @@ const VisitCard = ({
                         <Label>New Date & Time</Label>
                         <Input
                           type="datetime-local"
-                          id={`reschedule-${visit.id}`}
-                          defaultValue={serverTimestampToLocalInput(visit.scheduled_date)}
+                          value={rescheduleDate}
+                          onChange={(e) => setRescheduleDate(e.target.value)}
                         />
                       </div>
                       <Button
-                        onClick={() => {
-                          const input = document.getElementById(`reschedule-${visit.id}`) as HTMLInputElement
-                          if (input?.value) onReschedule(visit.id, input.value)
-                        }}
+                        onClick={() => { if (rescheduleDate) onReschedule(visit.id, rescheduleDate) }}
                         className="w-full"
                       >
                         Confirm Reschedule

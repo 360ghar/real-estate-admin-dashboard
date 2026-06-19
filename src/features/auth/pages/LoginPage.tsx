@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { GoogleIcon } from '@/components/ui/google-icon'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { mapSupabaseAuthError } from '@/lib/authErrors'
 import {
   fetchUserProfileWithToken,
@@ -23,7 +23,7 @@ import {
   type IdentifierChannel,
   type AuthMethod,
 } from '@/lib/auth'
-import { isLoginInProgress } from '@/App'
+import { isLoginInProgress } from '@/lib/loginState'
 import { getLastAuthMethod, setLastAuthMethod, maskIdentifier } from '@/lib/lastAuthMethod'
 import { useWebOtp } from '@/hooks/useWebOtp'
 import { useResendTimer } from '@/hooks/useResendTimer'
@@ -67,7 +67,6 @@ const LoginPage = () => {
   const [otpAccessToken, setOtpAccessToken] = useState<string | null>(null)
 
   const [otpVersion, setOtpVersion] = useState(0)
-  const isFinishingLogin = useRef(false)
 
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
@@ -128,7 +127,6 @@ const LoginPage = () => {
   }
 
   const finishLogin = async (accessToken: string, method: AuthMethod) => {
-    isFinishingLogin.current = true
     isLoginInProgress.current = true
     try {
       const user = await fetchUserProfileWithToken(accessToken)
@@ -140,8 +138,7 @@ const LoginPage = () => {
       void recordLastAuthMethod(accessToken, method)
       navigate('/dashboard', { replace: true })
     } finally {
-      // Reset the flags if navigation didn't happen (e.g. profile fetch failed).
-      isFinishingLogin.current = false
+      // Reset the flag if navigation didn't happen (e.g. profile fetch failed).
       isLoginInProgress.current = false
     }
   }
@@ -210,7 +207,8 @@ const LoginPage = () => {
 
   const sendOtp = async (canonical: string, ch: IdentifierChannel) => {
     requireSupabase()
-    await sendOtpRequest(canonical, ch)
+    // Login never creates accounts; pass explicit false (helper also defaults to false).
+    await sendOtpRequest(canonical, ch, { shouldCreateUser: false })
     setStep('otp')
     otpForm.reset()
     setOtpVersion((v) => v + 1)
@@ -226,6 +224,7 @@ const LoginPage = () => {
     const sb = requireSupabase()
     setErrorMessage(null)
     setIsSubmitting(true)
+    isLoginInProgress.current = true
     try {
       const result =
         channel === 'email'
@@ -242,6 +241,11 @@ const LoginPage = () => {
       setErrorMessage(error)
     } finally {
       setIsSubmitting(false)
+      // finishLogin resets the flag on its own success/failure path; reset
+      // here too so a failed Supabase auth call (wrong credentials) does not
+      // leave the flag stuck true, which would make App.tsx's SIGNED_IN
+      // handler permanently early-return within this SPA session.
+      isLoginInProgress.current = false
     }
   }
 
@@ -249,6 +253,7 @@ const LoginPage = () => {
     const sb = requireSupabase()
     setErrorMessage(null)
     setIsSubmitting(true)
+    isLoginInProgress.current = true
     try {
       const result =
         channel === 'email'
@@ -278,6 +283,9 @@ const LoginPage = () => {
       setErrorMessage(error)
     } finally {
       setIsSubmitting(false)
+      // See onPasswordSubmit: reset here too so a failed verifyOtp (wrong
+      // code) doesn't leak the flag and stall App.tsx's SIGNED_IN handler.
+      isLoginInProgress.current = false
     }
   }
 
@@ -399,7 +407,7 @@ const LoginPage = () => {
                         <FormControl>
                           <Input
                             type="text"
-                            inputMode="email"
+                            inputMode="text"
                             autoComplete="username"
                             placeholder="+91XXXXXXXXXX or you@360ghar.com"
                             className="h-11 px-4 text-base"
@@ -455,6 +463,7 @@ const LoginPage = () => {
                             />
                             <button
                               type="button"
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                               onClick={() => setShowPassword(!showPassword)}
                             >
@@ -585,6 +594,7 @@ const LoginPage = () => {
                             />
                             <button
                               type="button"
+                              aria-label={showPassword ? 'Hide password' : 'Show password'}
                               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                               onClick={() => setShowPassword(!showPassword)}
                             >
@@ -626,6 +636,20 @@ const LoginPage = () => {
                         'Set Password & Continue'
                       )}
                     </Button>
+                    <div className="pt-2 text-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void import('@/lib/supabase').then(({ supabase: sb }) => {
+                            if (sb) sb.auth.signOut().then(() => resetToIdentifier(), () => resetToIdentifier())
+                            else resetToIdentifier()
+                          })
+                        }}
+                        className="text-sm text-muted-foreground hover:underline"
+                      >
+                        This isn't my account
+                      </button>
+                    </div>
                   </div>
                 </form>
               </Form>

@@ -18,7 +18,7 @@ const AmenityFilters: React.FC<AmenityFiltersProps> = ({ form, availableAmenitie
       {availableAmenities.map(amenity => (
         <div key={amenity.id} className="flex items-center space-x-2">
           <Checkbox id={`amenity-${amenity.id}`}
-            checked={form.getValues('amenities')?.includes(amenity.id) || false}
+            checked={form.watch('amenities')?.includes(amenity.id) || false}
             onCheckedChange={() => toggleAmenity(amenity.id)} />
           <Label htmlFor={`amenity-${amenity.id}`} className="text-sm">{amenity.name}</Label>
         </div>

@@ -8,6 +8,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useCreateBlogTagMutation, useUpdateBlogTagMutation } from '@/features/blog/api/blogsApi'
 import { blogTagSchema, type BlogTagForm } from '@/lib/blogValidation'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import type { BlogTag } from '@/types/blog'
 
 interface TagFormDialogProps {
@@ -28,11 +30,12 @@ const TagFormDialog: React.FC<TagFormDialogProps> = ({ open, onOpenChange, editi
   })
 
   const handleSubmit = async (data: BlogTagForm) => {
+    form.clearErrors()
     try {
       if (editingTag) { await updateTag({ identifier: editingTag.id, data }).unwrap(); toast({ title: 'Success', description: 'Tag updated successfully' }) }
       else { await createTag(data).unwrap(); toast({ title: 'Success', description: 'Tag created successfully' }) }
       form.reset(); onSuccess()
-    } catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, `Failed to ${editingTag ? 'update' : 'create'} tag`), variant: 'destructive' }) }
+    } catch (error: unknown) { applyServerValidation(error, form.setError); toast({ title: 'Error', description: getErrorMessage(error, `Failed to ${editingTag ? 'update' : 'create'} tag`), variant: 'destructive' }) }
   }
 
   return (
@@ -40,7 +43,8 @@ const TagFormDialog: React.FC<TagFormDialogProps> = ({ open, onOpenChange, editi
       <DialogContent>
         <DialogHeader><DialogTitle>{editingTag ? 'Edit Tag' : 'Create New Tag'}</DialogTitle></DialogHeader>
         <Form {...form}><form onSubmit={(e) => void form.handleSubmit(handleSubmit)(e)} className="space-y-4">
-          <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Tag name" {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <FormRootError form={form} />
+          <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Name</FormLabel><FormControl><Input placeholder="Tag name" {...field} disabled={isCreating || isUpdating} /></FormControl><FormMessage /></FormItem>)} />
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
             <Button type="submit" disabled={isCreating || isUpdating}>{(isCreating || isUpdating) ? (editingTag ? 'Updating...' : 'Creating...') : (editingTag ? 'Update Tag' : 'Create Tag')}</Button>

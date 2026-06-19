@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -29,7 +29,9 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({
   removeLocation,
   onSubmit,
   updating,
-}) => (
+}) => {
+  const locationInputRef = useRef<HTMLInputElement>(null)
+  return (
   <Card>
     <CardHeader>
       <CardTitle>Property Preferences</CardTitle>
@@ -48,6 +50,9 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({
                   variant={selectedPropertyTypes.includes(type) ? "default" : "outline"}
                   className="cursor-pointer capitalize"
                   onClick={() => togglePropertyType(type)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') togglePropertyType(type) }}
                 >
                   {type.replace('_', ' ')}
                 </Badge>
@@ -115,8 +120,9 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({
             </div>
             <div className="flex gap-2 mt-2">
               <Input
+                ref={locationInputRef}
                 placeholder="Add a location"
-                onKeyPress={(e) => {
+                onKeyDown={(e) => {
                   if (e.key === 'Enter') { e.preventDefault(); addLocation(e.currentTarget.value); e.currentTarget.value = '' }
                 }}
               />
@@ -124,8 +130,7 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({
                 type="button"
                 variant="outline"
                 onClick={() => {
-                  const input = document.querySelector('input[placeholder="Add a location"]') as HTMLInputElement
-                  if (input?.value) { addLocation(input.value); input.value = '' }
+                  if (locationInputRef.current?.value) { addLocation(locationInputRef.current.value); locationInputRef.current.value = '' }
                 }}
               >
                 Add
@@ -139,6 +144,7 @@ const PreferencesTab: React.FC<PreferencesTabProps> = ({
       </form>
     </CardContent>
   </Card>
-)
+  )
+}
 
 export default PreferencesTab

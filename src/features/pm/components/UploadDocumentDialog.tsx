@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { DocumentType } from "@/types/pm";
 import { useUploadPmDocumentMutation } from "@/features/pm/api/pmApi";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,22 @@ export default function UploadDocumentDialog({
   const [shareAgent, setShareAgent] = useState(true);
   const [shareTenant, setShareTenant] = useState(false);
 
+  const resetState = useCallback(() => {
+    setFile(null);
+    setDocType("other");
+    setTitle("");
+    setPropertyId("");
+    setLeaseId("");
+    setUserId("");
+    setShareAgent(true);
+    setShareTenant(false);
+  }, []);
+
+  const handleOpenChange = useCallback((isOpen: boolean) => {
+    setOpen(isOpen);
+    if (!isOpen) resetState();
+  }, [resetState]);
+
   const submit = async () => {
     if (!file || !title) {
       toast({ title: "Missing fields", description: "File and title are required.", variant: "destructive" });
@@ -63,33 +79,37 @@ export default function UploadDocumentDialog({
       fd.append("shared_with_tenant", String(shareTenant));
       await uploadDoc(fd).unwrap();
       toast({ title: "Uploaded", description: "Document uploaded." });
-      setOpen(false);
-      setFile(null);
-      setTitle("");
-      setPropertyId("");
-      setLeaseId("");
-      setUserId("");
+      handleOpenChange(false);
     } catch (e: unknown) {
       toast({ title: "Upload failed", description: getErrorMessage(e, "Please try again."), variant: "destructive" });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button disabled={!canUpload}>
           <FileUp className="mr-2 h-4 w-4" />
           Upload
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-2xl" aria-describedby="upload-doc-desc">
         <DialogHeader>
           <DialogTitle>Upload document</DialogTitle>
         </DialogHeader>
+        <p id="upload-doc-desc" className="sr-only">Upload a document file with type, title, and sharing preferences.</p>
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
             <Label>File</Label>
-            <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+            <Input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              if (f && f.size > 20 * 1024 * 1024) {
+                toast({ title: "File too large", description: "Maximum file size is 20 MB.", variant: "destructive" });
+                e.target.value = "";
+                return;
+              }
+              setFile(f);
+            }} />
           </div>
           <div className="space-y-2">
             <Label>Type</Label>

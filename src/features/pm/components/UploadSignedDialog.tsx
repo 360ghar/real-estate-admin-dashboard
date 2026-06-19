@@ -61,6 +61,10 @@ export default function UploadSignedDialog({
       toast({ title: "Missing file", description: "Choose a signed lease PDF.", variant: "destructive" });
       return;
     }
+    if (signedFile.size > 10 * 1024 * 1024) {
+      toast({ title: "File too large", description: "File must be under 10MB.", variant: "destructive" });
+      return;
+    }
     try {
       const fd = new FormData();
       fd.append("file", signedFile);

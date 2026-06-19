@@ -10,6 +10,8 @@ import { useScheduleVisitMutation } from '@/features/visits/api/visitsApi'
 import { useSearchPropertiesQuery } from '@/features/properties/api/propertiesApi'
 import { localInputToServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import { useToast } from '@/hooks/use-toast'
 import { scheduleVisitSchema, type ScheduleVisitFormValues } from '@/features/visits/validations'
 
@@ -35,7 +37,7 @@ const ScheduleVisitDialog: React.FC<ScheduleVisitDialogProps> = ({
   })
 
   const [scheduleVisit, { isLoading: scheduling }] = useScheduleVisitMutation()
-  const { data: properties } = useSearchPropertiesQuery({ limit: 100 })
+  const { data: properties, isFetching: propertiesLoading } = useSearchPropertiesQuery({ limit: 100 })
 
   const handleSubmit = async (data: ScheduleVisitFormData) => {
     try {
@@ -50,6 +52,7 @@ const ScheduleVisitDialog: React.FC<ScheduleVisitDialogProps> = ({
       scheduleForm.reset()
       onSuccess?.()
     } catch (error) {
+      applyServerValidation(error, scheduleForm.setError)
       toast({
         title: 'Scheduling Failed',
         description: getErrorMessage(error, 'Failed to schedule visit. Please try again.'),
@@ -66,15 +69,16 @@ const ScheduleVisitDialog: React.FC<ScheduleVisitDialogProps> = ({
           <DialogDescription>Select a property and schedule a visit</DialogDescription>
         </DialogHeader>
         <form onSubmit={(e) => void scheduleForm.handleSubmit(handleSubmit)(e)} className="space-y-4">
+          <FormRootError form={scheduleForm} />
           <div className="space-y-2">
             <Label htmlFor="property_id">Property</Label>
             <Select
               value={scheduleForm.watch('property_id')?.toString()}
               onValueChange={(value) => scheduleForm.setValue('property_id', Number(value))}
             >
-              <SelectTrigger><SelectValue placeholder="Select a property" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder={propertiesLoading ? "Loading properties..." : "Select a property"} /></SelectTrigger>
               <SelectContent>
-                {properties?.properties.map((property) => (
+                {properties?.items.map((property) => (
                   <SelectItem key={property.id} value={property.id.toString()}>
                     {property.title} - {property.city}
                   </SelectItem>

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import type { ReactNode } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,12 +18,14 @@ interface DecisionAlertDialogProps {
   applicationId: number;
   applicantName: string | undefined;
   onDecided?: () => void;
+  renderTrigger: (props: { openApprove: () => void; openReject: () => void; isLoading: boolean }) => ReactNode;
 }
 
-export default function DecisionAlertDialog({
+export function DecisionAlertDialog({
   applicationId,
   applicantName,
   onDecided,
+  renderTrigger,
 }: DecisionAlertDialogProps) {
   const { toast } = useToast();
   const [decide, decideState] = useDecideApplicationMutation();
@@ -57,11 +60,9 @@ export default function DecisionAlertDialog({
   const openApprove = () => setConfirmDialog({ open: true, type: "approve" });
   const openReject = () => setConfirmDialog({ open: true, type: "reject" });
 
-  return {
-    openApprove,
-    openReject,
-    isLoading: decideState.isLoading,
-    renderDialog: () => (
+  return (
+    <>
+      {renderTrigger({ openApprove, openReject, isLoading: decideState.isLoading })}
       <AlertDialog
         open={confirmDialog.open}
         onOpenChange={(open) => {
@@ -105,6 +106,6 @@ export default function DecisionAlertDialog({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    ),
-  };
+    </>
+  );
 }

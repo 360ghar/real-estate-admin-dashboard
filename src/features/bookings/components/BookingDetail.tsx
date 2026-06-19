@@ -1,23 +1,52 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useAddReviewMutation, useCancelBookingMutation, useGetBookingQuery, useProcessPaymentMutation } from '@/features/bookings/api/bookingsApi'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { LoadingState } from '@/components/ui/loading-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { EmptyState } from '@/components/ui/empty-state'
+import { Star } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
+import { formatCurrency, formatDate } from '@/lib/format'
 import type { BookingReview } from '@/types/api'
 
 const BookingDetail = ({ id }: { id: number }) => {
-  const { data } = useGetBookingQuery(id)
+  const navigate = useNavigate()
+  const booking = useGetBookingQuery(id, { skip: !id || Number.isNaN(id) })
   const [open, setOpen] = useState<'cancel' | 'payment' | 'review' | null>(null)
   const [text, setText] = useState('')
+  const [reviewRating, setReviewRating] = useState(5)
+  const [reviewText, setReviewText] = useState('')
   const [payment, setPayment] = useState({ method: 'upi', txn: '', amount: '' })
   const [cancel, cancelState] = useCancelBookingMutation()
   const [pay, payState] = useProcessPaymentMutation()
   const [review, reviewState] = useAddReviewMutation()
   const { toast } = useToast()
+
+  const data = booking.data
+  const isLoading = booking.isLoading
+  const error = booking.error
+
+  if (!id || Number.isNaN(id)) {
+    return <EmptyState title="Invalid booking id" description="The URL does not contain a valid identifier." />
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load booking" error={error} onRetry={() => { void booking.refetch() }} />
+  }
+
+  if (isLoading) {
+    return <LoadingState type="card" rows={8} />
+  }
 
   const doCancel = async () => {
     try {
@@ -39,10 +68,7 @@ const BookingDetail = ({ id }: { id: number }) => {
   }
   const doReview = async () => {
     try {
-      const [ratingStr, ...rest] = text.split(' ')
-      const rating = Number(ratingStr) || 5
-      const reviewText = rest.join(' ') || 'Great stay.'
-      const reviewData: BookingReview = { guest_rating: rating, guest_review: reviewText }
+      const reviewData: BookingReview = { guest_rating: reviewRating, guest_review: reviewText || 'Great stay.' }
       await review({ bookingId: id, reviewData }).unwrap()
       toast({ title: 'Review added', description: 'Thank you' })
       setOpen(null)
@@ -53,7 +79,13 @@ const BookingDetail = ({ id }: { id: number }) => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Booking Details</h1>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} aria-label="Go back">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <h1 className="text-xl font-semibold">Booking Details</h1>
+        {data?.booking_status ? <Badge>{data.booking_status}</Badge> : null}
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Summary</CardTitle>
@@ -62,10 +94,10 @@ const BookingDetail = ({ id }: { id: number }) => {
           <div className="grid gap-2 text-sm">
             <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
             <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
-            <div><span className="text-muted-foreground">Stay:</span> {data ? `${new Date(data.check_in_date).toLocaleDateString()} – ${new Date(data.check_out_date).toLocaleDateString()}` : '-'}</div>
-            <div><span className="text-muted-foreground">Nights:</span> {data?.nights}</div>
-            <div><span className="text-muted-foreground">Amount:</span> ₹{data?.total_amount}</div>
-            <div><span className="text-muted-foreground">Status:</span> {data?.booking_status}</div>
+            <div><span className="text-muted-foreground">Stay:</span> {data ? `${formatDate(data.check_in_date)} – ${formatDate(data.check_out_date)}` : '-'}</div>
+            <div><span className="text-muted-foreground">Nights:</span> {data?.nights ?? '-'}</div>
+            <div><span className="text-muted-foreground">Amount:</span> {data?.total_amount ? formatCurrency(data.total_amount) : '-'}</div>
+            <div><span className="text-muted-foreground">Status:</span> {data?.booking_status ?? '-'}</div>
             <div><span className="text-muted-foreground">Payment:</span> {data?.payment_status || '-'}</div>
           </div>
           <div className="mt-4 flex gap-2">
@@ -103,8 +135,25 @@ const BookingDetail = ({ id }: { id: number }) => {
               <label className="text-sm">Amount</label>
               <Input type="number" value={payment.amount} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPayment({ ...payment, amount: e.target.value })} />
             </div>
+          ) : open === 'cancel' ? (
+            <Input placeholder="Reason" value={text} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setText(e.target.value)} />
           ) : (
-            <Input placeholder={open === 'cancel' ? 'Reason' : 'Rating 1-5 + review'} value={text} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setText(e.target.value)} />
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Overall Rating</Label>
+                <div className="flex gap-1">
+                  {([1, 2, 3, 4, 5] as const).map((rating) => (
+                    <button key={rating} type="button" onClick={() => setReviewRating(rating)} className="cursor-pointer">
+                      <Star className={`h-6 w-6 ${rating <= reviewRating ? 'text-yellow-400 fill-current' : 'text-muted-foreground opacity-30'}`} />
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Review (Optional)</Label>
+                <Textarea value={reviewText} onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setReviewText(e.target.value)} placeholder="Share your experience..." rows={4} />
+              </div>
+            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(null)}>Close</Button>

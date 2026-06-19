@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { MapPin, Bed, Bath, Square, X, Heart, Info } from 'lucide-react'
 import { PropertyResponse } from '@/features/properties/api/propertiesApi'
+import { formatCurrency } from '@/lib/format'
 import { Link } from 'react-router-dom'
 
 interface SwipeCardProps {
@@ -61,7 +62,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                     <div className="space-y-4">
                         <div className="flex justify-between items-center">
                             <span className="text-2xl font-bold text-primary">
-                                ₹{property.base_price.toLocaleString()}
+                                {formatCurrency(property.base_price)}
                             </span>
                             <span className="text-sm text-muted-foreground capitalize">
                                 {property.property_type} • {property.purpose}
@@ -106,6 +107,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                                 setExitX(-200)
                                 onSwipe('left')
                             }}
+                            aria-label="Pass property"
                         >
                             <X className="h-8 w-8" />
                         </Button>
@@ -114,6 +116,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                             variant="outline"
                             className="rounded-full h-14 w-14 border-blue-200 text-blue-500 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 dark:border-blue-800/40 dark:text-blue-400 dark:hover:bg-blue-900/30 dark:hover:text-blue-300 dark:hover:border-blue-700/50"
                             asChild
+                            aria-label="View property details"
                         >
                             <Link to={`/properties/${property.id}`}>
                                 <Info className="h-8 w-8" />
@@ -127,6 +130,7 @@ const SwipeCard = ({ property, onSwipe }: SwipeCardProps) => {
                                 setExitX(200)
                                 onSwipe('right')
                             }}
+                            aria-label="Like property"
                         >
                             <Heart className="h-8 w-8 fill-current" />
                         </Button>

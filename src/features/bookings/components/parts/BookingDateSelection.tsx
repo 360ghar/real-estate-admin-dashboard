@@ -4,6 +4,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { CalendarDays } from 'lucide-react'
 import { isAfter, isBefore, differenceInDays } from 'date-fns'
+import { formatCurrency } from '@/lib/format'
 import type { BookingPricing, AvailabilityInfo } from '@/types/api'
 
 interface BookingDateSelectionProps {
@@ -40,11 +41,11 @@ const BookingDateSelection: React.FC<BookingDateSelectionProps> = ({ selectedDat
       <Card>
         <CardHeader><CardTitle className="text-sm">Pricing Details</CardTitle></CardHeader>
         <CardContent className="space-y-2">
-          <div className="flex justify-between text-sm"><span>Base Price (₹{pricingInfo.base_amount.toLocaleString()} / {pricingInfo.nights} nights)</span><span>₹{pricingInfo.base_amount.toLocaleString()}</span></div>
-          <div className="flex justify-between text-sm"><span>Taxes</span><span>₹{pricingInfo.taxes_amount.toLocaleString()}</span></div>
-          <div className="flex justify-between text-sm"><span>Service Fee</span><span>₹{pricingInfo.service_charges.toLocaleString()}</span></div>
+          <div className="flex justify-between text-sm"><span>Base Price ({formatCurrency(pricingInfo.base_amount)} / {pricingInfo.nights} nights)</span><span>{formatCurrency(pricingInfo.base_amount)}</span></div>
+          <div className="flex justify-between text-sm"><span>Taxes</span><span>{formatCurrency(pricingInfo.taxes_amount)}</span></div>
+          <div className="flex justify-between text-sm"><span>Service Fee</span><span>{formatCurrency(pricingInfo.service_charges)}</span></div>
           <Separator />
-          <div className="flex justify-between font-medium"><span>Total Amount</span><span>₹{pricingInfo.total_amount.toLocaleString()}</span></div>
+          <div className="flex justify-between font-medium"><span>Total Amount</span><span>{formatCurrency(pricingInfo.total_amount)}</span></div>
         </CardContent>
       </Card>
     )}

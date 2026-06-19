@@ -40,6 +40,7 @@ export function ModerationQueuePage() {
       }).unwrap()
       toast({ title: 'Listing moderated successfully' })
       setIsDialogOpen(false)
+      setAction('approve')
       setReason('')
     } catch (err) {
       toast({
@@ -73,7 +74,7 @@ export function ModerationQueuePage() {
     )
   }
 
-  const listings = data?.listings || []
+  const listings = data?.items || []
 
   return (
     <div className="space-y-6">

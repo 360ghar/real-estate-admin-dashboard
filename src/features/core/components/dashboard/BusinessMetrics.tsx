@@ -1,0 +1,67 @@
+import { useMemo } from 'react'
+import { IndianRupee, TrendingUp, Target, Percent } from 'lucide-react'
+import { useGetAllVisitsQuery } from '@/features/visits/api/visitsApi'
+import { useGetAllBookingsQuery } from '@/features/bookings/api/bookingsApi'
+import { formatCurrency, formatPercent, formatNumber } from '@/lib/format'
+import { StatCard } from './StatCard'
+
+/**
+ * Business KPIs for the admin dashboard: monthly revenue, booking conversion,
+ * visit-to-booking conversion, and average booking value. Composed from the
+ * existing list endpoints (no dedicated aggregate endpoint exists).
+ */
+export function BusinessMetrics() {
+  const visits = useGetAllVisitsQuery({ limit: 100 })
+  const bookings = useGetAllBookingsQuery({ limit: 100 })
+
+  const isLoading = visits.isLoading || bookings.isLoading
+
+  const metrics = useMemo(() => {
+    const bookingList = bookings.data?.items ?? []
+    const visitTotal = visits.data?.items?.length ?? 0
+    const bookingTotal = bookingList.length
+
+    // Revenue: sum of total_amount across fetched bookings (best-effort sample).
+    const revenue = bookingList.reduce((sum, b) => sum + (b.total_amount ?? 0), 0)
+
+    // Conversion rates use the sampled array lengths (no `total` field is
+    // returned by the cursor-paginated list endpoints).
+    const visitToBooking = visitTotal > 0 ? (bookingTotal / visitTotal) : 0
+
+    // Average booking value from the sampled bookings.
+    const avgBookingValue = bookingList.length ? revenue / bookingList.length : 0
+
+    return { revenue, visitToBooking, avgBookingValue, bookingTotal, visitTotal }
+  }, [visits.data, bookings.data])
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <StatCard
+        title="Booking Revenue (sample)"
+        value={formatCurrency(metrics.revenue)}
+        icon={IndianRupee}
+        hint={`Across ${formatNumber(metrics.bookingTotal)} bookings`}
+        isLoading={isLoading}
+      />
+      <StatCard
+        title="Avg Booking Value"
+        value={formatCurrency(metrics.avgBookingValue)}
+        icon={TrendingUp}
+        isLoading={isLoading}
+      />
+      <StatCard
+        title="Visit → Booking"
+        value={formatPercent(metrics.visitToBooking * 100)}
+        icon={Target}
+        hint={`${formatNumber(metrics.bookingTotal)} bookings / ${formatNumber(metrics.visitTotal)} visits`}
+        isLoading={isLoading}
+      />
+      <StatCard
+        title="Total Bookings"
+        value={formatNumber(metrics.bookingTotal)}
+        icon={Percent}
+        isLoading={isLoading}
+      />
+    </div>
+  )
+}

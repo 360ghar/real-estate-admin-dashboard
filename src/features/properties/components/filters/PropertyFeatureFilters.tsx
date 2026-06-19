@@ -22,9 +22,9 @@ const PropertyFeatureFilters: React.FC<PropertyFeatureFiltersProps> = ({ form, t
       <div className="space-y-2">
         <Label>Floor Number</Label>
         <div className="flex items-center gap-2">
-          <Input type="number" placeholder="Min" {...form.register('floor_number_min', { valueAsNumber: true })} />
+          <Input type="number" placeholder="Min" aria-label="Minimum floor number" {...form.register('floor_number_min', { valueAsNumber: true })} />
           <span>-</span>
-          <Input type="number" placeholder="Max" {...form.register('floor_number_max', { valueAsNumber: true })} />
+          <Input type="number" placeholder="Max" aria-label="Maximum floor number" {...form.register('floor_number_max', { valueAsNumber: true })} />
         </div>
       </div>
       <div className="space-y-2">
@@ -38,7 +38,7 @@ const PropertyFeatureFilters: React.FC<PropertyFeatureFiltersProps> = ({ form, t
         {PROPERTY_FEATURES.map(feature => (
           <div key={feature} className="flex items-center space-x-2">
             <Checkbox id={`feature-${feature}`}
-              checked={form.getValues('features')?.includes(feature) || false}
+              checked={form.watch('features')?.includes(feature) || false}
               onCheckedChange={() => toggleFeature(feature)} />
             <Label htmlFor={`feature-${feature}`} className="text-sm capitalize">{feature.replace('_', ' ')}</Label>
           </div>

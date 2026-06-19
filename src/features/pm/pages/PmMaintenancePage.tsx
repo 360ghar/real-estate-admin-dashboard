@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, Wrench } from "lucide-react";
+import { AlertCircle, Trash2, Wrench } from "lucide-react";
 import {
   MAINTENANCE_REQUEST_STATUSES,
   PAGE_SIZES,
@@ -20,14 +20,18 @@ import type {
 import {
   useListMaintenanceRequestsQuery,
   useUpdateMaintenanceRequestMutation,
+  useDeleteMaintenanceRequestMutation,
 } from "@/features/pm/api/pmApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { ResponsiveDataTable } from "@/components/ui/responsive-data-table";
+import CursorPager from "@/components/ui/cursor-pager";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
 import {
   Select,
   SelectContent,
@@ -48,7 +52,10 @@ export default function PmMaintenancePage() {
   const [requestStatus, setRequestStatus] = useState<MaintenanceRequestStatus | "">("");
   const [workOrderStatus, setWorkOrderStatus] = useState<WorkOrderStatus | "">("");
   const [limit, setLimit] = useState(50);
-  const [offset, setOffset] = useState(0);
+
+  const pager = useCursorPagination();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, requestStatus, workOrderStatus, limit]);
 
   const requests = useListMaintenanceRequestsQuery(
     {
@@ -56,12 +63,13 @@ export default function PmMaintenancePage() {
       request_status: requestStatus || undefined,
       work_order_status: workOrderStatus || undefined,
       limit,
-      offset,
+      cursor: pager.cursor,
     },
     { skip: role === "agent" && !ownerId },
   );
 
   const [updateRequest, updateState] = useUpdateMaintenanceRequestMutation();
+  const [deleteRequest, deleteState] = useDeleteMaintenanceRequestMutation();
 
   const columns = useMemo<ColumnDef<MaintenanceRequest>[]>(() => {
     return [
@@ -80,11 +88,19 @@ export default function PmMaintenancePage() {
       {
         accessorKey: "urgency",
         header: "Urgency",
-        cell: ({ row }) => (
-          <Badge variant={row.original.urgency === "emergency" ? "destructive" : "secondary"}>
-            {row.original.urgency}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const urgencyMap: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+            emergency: "destructive",
+            urgent: "default",
+            normal: "secondary",
+            low: "outline",
+          };
+          return (
+            <Badge variant={urgencyMap[row.original.urgency] ?? "secondary"}>
+              {row.original.urgency}
+            </Badge>
+          );
+        },
       },
       {
         accessorKey: "request_status",
@@ -100,7 +116,7 @@ export default function PmMaintenancePage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Dialog>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">Update</Button>
@@ -124,14 +140,33 @@ export default function PmMaintenancePage() {
                 />
               </DialogContent>
             </Dialog>
+            <ConfirmAlertDialog
+              title="Delete Request"
+              description={`Are you sure you want to delete "${row.original.title}"? This action cannot be undone.`}
+              confirmLabel="Delete"
+              variant="destructive"
+              onConfirm={async () => {
+                try {
+                  await deleteRequest(row.original.id).unwrap();
+                  toast({ title: "Deleted", description: "Maintenance request deleted." });
+                } catch (e: unknown) {
+                  toast({ title: "Failed", description: getErrorMessage(e, "Could not delete request."), variant: "destructive" });
+                }
+              }}
+            >
+              {(openDialog) => (
+                <Button variant="destructive" size="sm" onClick={openDialog} disabled={deleteState.isLoading} aria-label="Delete">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </ConfirmAlertDialog>
           </div>
         ),
       },
     ];
-  }, [toast, updateRequest, updateState.isLoading, user?.agent_id]);
+  }, [toast, updateRequest, updateState.isLoading, deleteRequest, deleteState.isLoading, user?.agent_id]);
 
-  const canPrev = offset > 0;
-  const canNext = (requests.data?.length ?? 0) >= limit;
+  const requestItems = requests.data?.items ?? [];
 
   return (
     <OwnerScopeGate>
@@ -149,17 +184,14 @@ export default function PmMaintenancePage() {
             <CardTitle className="text-base">Maintenance Queue</CardTitle>
             <Badge variant="secondary" className="h-fit">
               <Wrench className="mr-1 h-3 w-3" />
-              {requests.data?.length ?? 0} shown
+              {requestItems.length} shown
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-3 md:grid-cols-4">
               <Select
                 value={requestStatus || "all"}
-                onValueChange={(v) => {
-                  setRequestStatus(v === "all" ? "" : (v as MaintenanceRequestStatus));
-                  setOffset(0);
-                }}
+                onValueChange={(v) => setRequestStatus(v === "all" ? "" : (v as MaintenanceRequestStatus))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Request status" />
@@ -173,10 +205,7 @@ export default function PmMaintenancePage() {
               </Select>
               <Select
                 value={workOrderStatus || "all"}
-                onValueChange={(v) => {
-                  setWorkOrderStatus(v === "all" ? "" : (v as WorkOrderStatus));
-                  setOffset(0);
-                }}
+                onValueChange={(v) => setWorkOrderStatus(v === "all" ? "" : (v as WorkOrderStatus))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Work order" />
@@ -190,10 +219,7 @@ export default function PmMaintenancePage() {
               </Select>
               <Select
                 value={String(limit)}
-                onValueChange={(v) => {
-                  setLimit(Number(v));
-                  setOffset(0);
-                }}
+                onValueChange={(v) => setLimit(Number(v))}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Page size" />
@@ -216,22 +242,16 @@ export default function PmMaintenancePage() {
               </div>
             ) : requests.isLoading ? (
               <LoadingState type="spinner" />
-            ) : requests.data?.length ? (
+            ) : requestItems.length ? (
               <>
-                <DataTable columns={columns} data={requests.data} />
-                <div className="flex items-center justify-between pt-2">
-                  <div className="text-xs text-muted-foreground">
-                    Offset {offset} &bull; Limit {limit}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" disabled={!canPrev} onClick={() => setOffset(Math.max(0, offset - limit))}>
-                      Prev
-                    </Button>
-                    <Button variant="outline" size="sm" disabled={!canNext} onClick={() => setOffset(offset + limit)}>
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                <ResponsiveDataTable columns={columns} data={requestItems} />
+                <CursorPager
+                  canPrev={pager.canPrev}
+                  hasMore={requests.data?.has_more ?? false}
+                  loading={requests.isFetching}
+                  onPrev={pager.prev}
+                  onNext={() => requests.data && pager.next(requests.data.next_cursor)}
+                />
               </>
             ) : (
               <EmptyState title="No maintenance requests" description="New requests will show up here." />

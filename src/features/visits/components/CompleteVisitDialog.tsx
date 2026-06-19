@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button } from '@/components/ui/button'
@@ -6,6 +7,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCompleteVisitMutation } from '@/features/visits/api/visitsApi'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import { useToast } from '@/hooks/use-toast'
 import type { Visit } from '@/types/api'
 import { completeVisitSchema, type CompleteVisitFormValues } from '@/features/visits/validations'
@@ -30,6 +33,8 @@ const CompleteVisitDialog: React.FC<CompleteVisitDialogProps> = ({
     resolver: zodResolver(completeVisitSchema),
   })
 
+  useEffect(() => { if (open) completeForm.reset() }, [open, completeForm])
+
   const [completeVisit, { isLoading: completing }] = useCompleteVisitMutation()
 
   const handleSubmit = async (data: CompleteVisitFormData) => {
@@ -41,6 +46,7 @@ const CompleteVisitDialog: React.FC<CompleteVisitDialogProps> = ({
       completeForm.reset()
       onSuccess?.()
     } catch (error) {
+      applyServerValidation(error, completeForm.setError)
       toast({
         title: 'Update Failed',
         description: getErrorMessage(error, 'Failed to complete visit. Please try again.'),
@@ -57,6 +63,7 @@ const CompleteVisitDialog: React.FC<CompleteVisitDialogProps> = ({
           <DialogDescription>Add notes and feedback for the completed visit</DialogDescription>
         </DialogHeader>
         <form onSubmit={(e) => void completeForm.handleSubmit(handleSubmit)(e)} className="space-y-4">
+          <FormRootError form={completeForm} />
           <div className="space-y-2">
             <Label htmlFor="notes">Visit Notes</Label>
             <Textarea

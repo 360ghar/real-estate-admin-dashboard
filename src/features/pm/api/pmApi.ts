@@ -1,4 +1,5 @@
 import { api } from '@/store/api'
+import type { PaginatedResponse } from '@/types/api'
 import type {
   ManagedPropertyStatus,
   TenantStatus,
@@ -49,6 +50,8 @@ import type {
   RentalApplicationDecision,
   RentalApplication,
   ManagedPropertyDetail,
+  PmSettings,
+  PmSettingsUpdate,
 } from '@/types/pm'
 
 export const pmApi = api.injectEndpoints({
@@ -62,32 +65,32 @@ export const pmApi = api.injectEndpoints({
       keepUnusedDataFor: 300,
     }),
 
-    getPmDashboardActivity: builder.query<ActivityItem[], { owner_id?: number | null; limit?: number }>({
-      query: ({ owner_id, limit }) => ({
+    getPmDashboardActivity: builder.query<PaginatedResponse<ActivityItem>, { owner_id?: number | null; limit?: number; cursor?: string | null }>({
+      query: ({ owner_id, limit, cursor }) => ({
         url: '/pm/dashboard/activity',
-        params: { owner_id: owner_id || undefined, limit: limit ?? 20 },
+        params: { owner_id: owner_id || undefined, limit: limit ?? 20, cursor: cursor ?? undefined },
       }),
       providesTags: [{type: 'PmDashboard' as const, id: 'LIST'}],
       keepUnusedDataFor: 300,
     }),
 
     listPmProperties: builder.query<
-      PmProperty[],
-      { owner_id?: number | null; occupancy?: 'occupied' | 'vacant'; q?: string; limit?: number; offset?: number }
+      PaginatedResponse<PmProperty>,
+      { owner_id?: number | null; occupancy?: 'occupied' | 'vacant'; q?: string; limit?: number; cursor?: string | null }
     >({
-      query: ({ owner_id, occupancy, q, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, occupancy, q, limit = 50, cursor = null }) => ({
         url: '/pm/properties/',
         params: {
           owner_id: owner_id || undefined,
           occupancy,
           q,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
-          ? [...res.map((p) => ({ type: 'PmProperty' as const, id: p.id })), { type: 'PmProperty' as const, id: 'LIST' }]
+        res?.items
+          ? [...res.items.map((p) => ({ type: 'PmProperty' as const, id: p.id })), { type: 'PmProperty' as const, id: 'LIST' }]
           : [{ type: 'PmProperty' as const, id: 'LIST' }],
     }),
 
@@ -140,7 +143,7 @@ export const pmApi = api.injectEndpoints({
                 'listPmProperties',
                 entry.originalArgs as Parameters<typeof pmApi.endpoints.listPmProperties.initiate>[0],
                 (draft) => {
-                  const item = draft.find((p) => p.id === property_id)
+                  const item = draft.items.find((p) => p.id === property_id)
                   if (item) {
                     if (payload.management_status !== undefined && payload.management_status !== null) item.management_status = payload.management_status
                     if (payload.payment_due_day !== undefined && payload.payment_due_day !== null) item.payment_due_day = payload.payment_due_day
@@ -169,10 +172,10 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listPmLeases: builder.query<
-      Lease[],
-      { owner_id?: number | null; property_id?: number; tenant_user_id?: number; status?: LeaseStatus; limit?: number; offset?: number }
+      PaginatedResponse<Lease>,
+      { owner_id?: number | null; property_id?: number; tenant_user_id?: number; status?: LeaseStatus; limit?: number; cursor?: string | null }
     >({
-      query: ({ owner_id, property_id, tenant_user_id, status, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, property_id, tenant_user_id, status, limit = 50, cursor = null }) => ({
         url: '/pm/leases/',
         params: {
           owner_id: owner_id || undefined,
@@ -180,12 +183,12 @@ export const pmApi = api.injectEndpoints({
           tenant_user_id,
           status,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
-          ? [...res.map((l) => ({ type: 'PmLease' as const, id: l.id })), { type: 'PmLease' as const, id: 'LIST' }]
+        res?.items
+          ? [...res.items.map((l) => ({ type: 'PmLease' as const, id: l.id })), { type: 'PmLease' as const, id: 'LIST' }]
           : [{ type: 'PmLease' as const, id: 'LIST' }],
     }),
 
@@ -253,10 +256,10 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listRentCharges: builder.query<
-      RentChargeWithTotals[],
-      { owner_id?: number | null; lease_id?: number; property_id?: number; status?: RentChargeStatus; limit?: number; offset?: number; as_tenant?: boolean }
+      PaginatedResponse<RentChargeWithTotals>,
+      { owner_id?: number | null; lease_id?: number; property_id?: number; status?: RentChargeStatus; limit?: number; cursor?: string | null; as_tenant?: boolean }
     >({
-      query: ({ owner_id, lease_id, property_id, status, limit = 50, offset = 0, as_tenant = false }) => ({
+      query: ({ owner_id, lease_id, property_id, status, limit = 50, cursor = null, as_tenant = false }) => ({
         url: '/pm/rent/charges',
         params: {
           as_tenant,
@@ -265,13 +268,13 @@ export const pmApi = api.injectEndpoints({
           property_id,
           status,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
+        res?.items
           ? [
-              ...res.map((c) => ({ type: 'PmRentCharge' as const, id: c.charge.id })),
+              ...res.items.map((c) => ({ type: 'PmRentCharge' as const, id: c.charge.id })),
               { type: 'PmRentCharge' as const, id: 'LIST' },
             ]
           : [{ type: 'PmRentCharge' as const, id: 'LIST' }],
@@ -287,10 +290,10 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listRentPayments: builder.query<
-      RentPayment[],
-      { owner_id?: number | null; lease_id?: number; property_id?: number; limit?: number; offset?: number; as_tenant?: boolean }
+      PaginatedResponse<RentPayment>,
+      { owner_id?: number | null; lease_id?: number; property_id?: number; limit?: number; cursor?: string | null; as_tenant?: boolean }
     >({
-      query: ({ owner_id, lease_id, property_id, limit = 50, offset = 0, as_tenant = false }) => ({
+      query: ({ owner_id, lease_id, property_id, limit = 50, cursor = null, as_tenant = false }) => ({
         url: '/pm/rent/payments',
         params: {
           as_tenant,
@@ -298,13 +301,13 @@ export const pmApi = api.injectEndpoints({
           lease_id,
           property_id,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
+        res?.items
           ? [
-              ...res.map((p) => ({ type: 'PmRentPayment' as const, id: p.id })),
+              ...res.items.map((p) => ({ type: 'PmRentPayment' as const, id: p.id })),
               { type: 'PmRentPayment' as const, id: 'LIST' },
             ]
           : [{ type: 'PmRentPayment' as const, id: 'LIST' }],
@@ -320,10 +323,10 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listPmExpenses: builder.query<
-      Expense[],
-      { owner_id?: number | null; property_id?: number; category?: ExpenseCategory; start_date?: string; end_date?: string; limit?: number; offset?: number }
+      PaginatedResponse<Expense>,
+      { owner_id?: number | null; property_id?: number; category?: ExpenseCategory; start_date?: string; end_date?: string; limit?: number; cursor?: string | null }
     >({
-      query: ({ owner_id, property_id, category, start_date, end_date, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, property_id, category, start_date, end_date, limit = 50, cursor = null }) => ({
         url: '/pm/expenses/',
         params: {
           owner_id: owner_id || undefined,
@@ -332,13 +335,21 @@ export const pmApi = api.injectEndpoints({
           start_date,
           end_date,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
-          ? [...res.map((e) => ({ type: 'PmExpense' as const, id: e.id })), { type: 'PmExpense' as const, id: 'LIST' }]
+        res?.items
+          ? [...res.items.map((e) => ({ type: 'PmExpense' as const, id: e.id })), { type: 'PmExpense' as const, id: 'LIST' }]
           : [{ type: 'PmExpense' as const, id: 'LIST' }],
+    }),
+
+    deletePmExpense: builder.mutation<void, number>({
+      query: (expense_id) => ({
+        url: `/pm/expenses/${expense_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, expense_id) => [{ type: 'PmExpense' as const, id: expense_id }, { type: 'PmExpense' as const, id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     updatePmExpense: builder.mutation<Expense, { expense_id: number; payload: ExpenseUpdate }>({
@@ -360,7 +371,7 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listMaintenanceRequests: builder.query<
-      MaintenanceRequest[],
+      PaginatedResponse<MaintenanceRequest>,
       {
         owner_id?: number | null
         property_id?: number
@@ -368,10 +379,10 @@ export const pmApi = api.injectEndpoints({
         request_status?: MaintenanceRequestStatus
         work_order_status?: WorkOrderStatus
         limit?: number
-        offset?: number
+        cursor?: string | null
       }
     >({
-      query: ({ owner_id, property_id, lease_id, request_status, work_order_status, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, property_id, lease_id, request_status, work_order_status, limit = 50, cursor = null }) => ({
         url: '/pm/maintenance/requests',
         params: {
           owner_id: owner_id || undefined,
@@ -380,16 +391,24 @@ export const pmApi = api.injectEndpoints({
           request_status,
           work_order_status,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
+        res?.items
           ? [
-              ...res.map((r) => ({ type: 'PmMaintenanceRequest' as const, id: r.id })),
+              ...res.items.map((r) => ({ type: 'PmMaintenanceRequest' as const, id: r.id })),
               { type: 'PmMaintenanceRequest' as const, id: 'LIST' },
             ]
           : [{ type: 'PmMaintenanceRequest' as const, id: 'LIST' }],
+    }),
+
+    deleteMaintenanceRequest: builder.mutation<void, number>({
+      query: (request_id) => ({
+        url: `/pm/maintenance/requests/${request_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, request_id) => [{ type: 'PmMaintenanceRequest' as const, id: request_id }, { type: 'PmMaintenanceRequest' as const, id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     updateMaintenanceRequest: builder.mutation<
@@ -413,7 +432,7 @@ export const pmApi = api.injectEndpoints({
                 'listMaintenanceRequests',
                 entry.originalArgs as Parameters<typeof pmApi.endpoints.listMaintenanceRequests.initiate>[0],
                 (draft) => {
-                  const item = draft.find((r) => r.id === request_id)
+                  const item = draft.items.find((r) => r.id === request_id)
                   if (item) {
                     if (payload.request_status !== undefined && payload.request_status !== null) item.request_status = payload.request_status
                     if (payload.work_order_status !== undefined && payload.work_order_status !== null) item.work_order_status = payload.work_order_status
@@ -446,7 +465,7 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listPmDocuments: builder.query<
-      Document[],
+      PaginatedResponse<Document>,
       {
         owner_id?: number | null
         property_id?: number
@@ -456,10 +475,10 @@ export const pmApi = api.injectEndpoints({
         rental_application_id?: number
         document_type?: DocumentType
         limit?: number
-        offset?: number
+        cursor?: string | null
       }
     >({
-      query: ({ owner_id, property_id, lease_id, user_id, maintenance_request_id, rental_application_id, document_type, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, property_id, lease_id, user_id, maintenance_request_id, rental_application_id, document_type, limit = 50, cursor = null }) => ({
         url: '/pm/documents/',
         params: {
           owner_id: owner_id || undefined,
@@ -470,13 +489,21 @@ export const pmApi = api.injectEndpoints({
           rental_application_id,
           document_type,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
-          ? [...res.map((d) => ({ type: 'PmDocument' as const, id: d.id })), { type: 'PmDocument' as const, id: 'LIST' }]
+        res?.items
+          ? [...res.items.map((d) => ({ type: 'PmDocument' as const, id: d.id })), { type: 'PmDocument' as const, id: 'LIST' }]
           : [{ type: 'PmDocument' as const, id: 'LIST' }],
+    }),
+
+    deletePmDocument: builder.mutation<void, number>({
+      query: (document_id) => ({
+        url: `/pm/documents/${document_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, document_id) => [{ type: 'PmDocument' as const, id: document_id }, { type: 'PmDocument' as const, id: 'LIST' }],
     }),
 
     updatePmDocument: builder.mutation<Document, { document_id: number; payload: DocumentUpdate }>({
@@ -502,22 +529,22 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listPmInspections: builder.query<
-      InspectionChecklist[],
-      { owner_id?: number | null; lease_id?: number; property_id?: number; limit?: number; offset?: number }
+      PaginatedResponse<InspectionChecklist>,
+      { owner_id?: number | null; lease_id?: number; property_id?: number; limit?: number; cursor?: string | null }
     >({
-      query: ({ owner_id, lease_id, property_id, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, lease_id, property_id, limit = 50, cursor = null }) => ({
         url: '/pm/inspections/',
         params: {
           owner_id: owner_id || undefined,
           lease_id,
           property_id,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: (res) =>
-        res
-          ? [...res.map((i) => ({ type: 'PmInspection' as const, id: i.id })), { type: 'PmInspection' as const, id: 'LIST' }]
+        res?.items
+          ? [...res.items.map((i) => ({ type: 'PmInspection' as const, id: i.id })), { type: 'PmInspection' as const, id: 'LIST' }]
           : [{ type: 'PmInspection' as const, id: 'LIST' }],
     }),
 
@@ -595,13 +622,13 @@ export const pmApi = api.injectEndpoints({
       providesTags: [{type: 'PmDashboard', id: 'REPORTS'}],
     }),
 
-    listPmTenants: builder.query<TenantSummary[], { owner_id?: number | null; limit?: number; offset?: number }>({
-      query: ({ owner_id, limit = 50, offset = 0 }) => ({
+    listPmTenants: builder.query<PaginatedResponse<TenantSummary>, { owner_id?: number | null; limit?: number; cursor?: string | null }>({
+      query: ({ owner_id, limit = 50, cursor = null }) => ({
         url: '/pm/tenants/',
         params: {
           owner_id: owner_id || undefined,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: [{type: 'PmProperty', id: 'TENANTS'}],
@@ -624,12 +651,20 @@ export const pmApi = api.injectEndpoints({
       invalidatesTags: [{type: 'PmAssignment', id: 'LIST'}, { type: 'User', id: 'LIST' }],
     }),
 
-    listRMAssignments: builder.query<OwnerRMAssignmentResponse[], { owner_id?: number | null }>({
-      query: ({ owner_id }) => ({
+    listRMAssignments: builder.query<PaginatedResponse<OwnerRMAssignmentResponse>, { owner_id?: number | null; cursor?: string | null; limit?: number }>({
+      query: ({ owner_id, cursor, limit }) => ({
         url: '/pm/assignments/',
-        params: owner_id ? { owner_id } : undefined,
+        params: { owner_id: owner_id || undefined, cursor: cursor ?? undefined, limit },
       }),
       providesTags: [{type: 'PmAssignment' as const, id: 'LIST'}],
+    }),
+
+    deletePmProperty: builder.mutation<void, number>({
+      query: (property_id) => ({
+        url: `/pm/properties/${property_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, property_id) => [{ type: 'PmProperty' as const, id: property_id }, { type: 'PmProperty' as const, id: 'LIST' }, {type: 'PmDashboard', id: 'LIST'}],
     }),
 
     updateRMAssignment: builder.mutation<
@@ -658,17 +693,17 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listApplicationForms: builder.query<
-      RentalApplicationForm[],
-      { owner_id?: number | null; property_id?: number; q?: string; limit?: number; offset?: number }
+      PaginatedResponse<RentalApplicationForm>,
+      { owner_id?: number | null; property_id?: number; q?: string; limit?: number; cursor?: string | null }
     >({
-      query: ({ owner_id, property_id, q, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, property_id, q, limit = 50, cursor = null }) => ({
         url: '/pm/applications/forms',
         params: {
           owner_id: owner_id || undefined,
           property_id,
           q,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: [{type: 'PmApplicationForm' as const, id: 'LIST'}],
@@ -680,7 +715,7 @@ export const pmApi = api.injectEndpoints({
     }),
 
     listApplications: builder.query<
-      RentalApplication[],
+      PaginatedResponse<RentalApplication>,
       {
         owner_id?: number | null
         property_id?: number
@@ -688,10 +723,10 @@ export const pmApi = api.injectEndpoints({
         submitted_from?: string
         submitted_to?: string
         limit?: number
-        offset?: number
+        cursor?: string | null
       }
     >({
-      query: ({ owner_id, property_id, status, submitted_from, submitted_to, limit = 50, offset = 0 }) => ({
+      query: ({ owner_id, property_id, status, submitted_from, submitted_to, limit = 50, cursor = null }) => ({
         url: '/pm/applications/',
         params: {
           owner_id: owner_id || undefined,
@@ -700,7 +735,7 @@ export const pmApi = api.injectEndpoints({
           submitted_from,
           submitted_to,
           limit,
-          offset,
+          cursor: cursor ?? undefined,
         },
       }),
       providesTags: [{type: 'PmApplication' as const, id: 'LIST'}],
@@ -709,6 +744,22 @@ export const pmApi = api.injectEndpoints({
     getApplication: builder.query<RentalApplication, number>({
       query: (application_id) => `/pm/applications/${application_id}`,
       providesTags: (_res, _e, application_id) => [{ type: 'PmApplication', id: application_id }],
+    }),
+
+    deleteApplicationForm: builder.mutation<void, number>({
+      query: (form_id) => ({
+        url: `/pm/applications/forms/${form_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, form_id) => [{ type: 'PmApplicationForm' as const, id: form_id }, { type: 'PmApplicationForm' as const, id: 'LIST' }],
+    }),
+
+    deleteApplication: builder.mutation<void, number>({
+      query: (application_id) => ({
+        url: `/pm/applications/${application_id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: (_res, _e, application_id) => [{ type: 'PmApplication' as const, id: application_id }, { type: 'PmApplication' as const, id: 'LIST' }],
     }),
 
     decideApplication: builder.mutation<RentalApplication, { application_id: number; payload: RentalApplicationDecision }>({
@@ -729,7 +780,7 @@ export const pmApi = api.injectEndpoints({
                 'listApplications',
                 entry.originalArgs as Parameters<typeof pmApi.endpoints.listApplications.initiate>[0],
                 (draft) => {
-                  const item = draft.find((a) => a.id === application_id)
+                  const item = draft.items.find((a) => a.id === application_id)
                   if (item) {
                     item.status = payload.decision
                     item.decision_at = new Date().toISOString()
@@ -744,6 +795,25 @@ export const pmApi = api.injectEndpoints({
           patches.forEach((p) => p.undo())
         }
       },
+    }),
+
+    // PM Settings
+    getPmSettings: builder.query<PmSettings, { owner_id?: number | null } | void>({
+      query: (args) => ({
+        url: '/pm/settings/',
+        params: args?.owner_id ? { owner_id: args.owner_id } : undefined,
+      }),
+      providesTags: [{ type: 'PmSettings' as const, id: 'LIST' }],
+    }),
+
+    updatePmSettings: builder.mutation<PmSettings, { owner_id?: number | null; payload: PmSettingsUpdate }>({
+      query: ({ owner_id, payload }) => ({
+        url: '/pm/settings/',
+        method: 'PUT',
+        body: payload,
+        params: owner_id ? { owner_id } : undefined,
+      }),
+      invalidatesTags: [{ type: 'PmSettings' as const, id: 'LIST' }],
     }),
   }),
 })
@@ -768,12 +838,15 @@ export const {
   useCreatePmExpenseMutation,
   useListPmExpensesQuery,
   useUpdatePmExpenseMutation,
+  useDeletePmExpenseMutation,
   useCreateMaintenanceRequestMutation,
   useListMaintenanceRequestsQuery,
   useUpdateMaintenanceRequestMutation,
+  useDeleteMaintenanceRequestMutation,
   useUploadPmDocumentMutation,
   useListPmDocumentsQuery,
   useUpdatePmDocumentMutation,
+  useDeletePmDocumentMutation,
   useGetPmDocumentDownloadUrlQuery,
   useCreatePmInspectionMutation,
   useListPmInspectionsQuery,
@@ -790,10 +863,15 @@ export const {
   useCreateRMAssignmentMutation,
   useListRMAssignmentsQuery,
   useUpdateRMAssignmentMutation,
+  useDeletePmPropertyMutation,
   useCreateApplicationFormMutation,
   useListApplicationFormsQuery,
   useGetApplicationFormQuery,
   useListApplicationsQuery,
   useGetApplicationQuery,
+  useDeleteApplicationFormMutation,
+  useDeleteApplicationMutation,
   useDecideApplicationMutation,
+  useGetPmSettingsQuery,
+  useUpdatePmSettingsMutation,
 } = pmApi

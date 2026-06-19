@@ -1,15 +1,23 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
 import { useGetVisitQuery, useRescheduleVisitMutation, useCancelVisitMutation, useCompleteVisitMutation } from '@/features/visits/api/visitsApi'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { LoadingState } from '@/components/ui/loading-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
-import { localInputToServerTimestamp, parseServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
+import { formatDateTime } from '@/lib/format'
+import { localInputToServerTimestamp, serverTimestampToLocalInput } from '@/lib/dateTime'
 
 const VisitDetail = ({ id }: { id: number }) => {
-  const { data } = useGetVisitQuery(id)
+  const navigate = useNavigate()
+  const visit = useGetVisitQuery(id, { skip: !id || Number.isNaN(id) })
   const [open, setOpen] = useState<'reschedule' | 'cancel' | 'complete' | null>(null)
   const [date, setDate] = useState('')
   const [text, setText] = useState('')
@@ -18,13 +26,29 @@ const VisitDetail = ({ id }: { id: number }) => {
   const [complete, compState] = useCompleteVisitMutation()
   const { toast } = useToast()
 
+  const data = visit.data
+  const isLoading = visit.isLoading
+  const error = visit.error
+
+  if (!id || Number.isNaN(id)) {
+    return <EmptyState title="Invalid visit id" description="The URL does not contain a valid identifier." />
+  }
+
+  if (error) {
+    return <ErrorState title="Failed to load visit" error={error} onRetry={() => { void visit.refetch() }} />
+  }
+
+  if (isLoading) {
+    return <LoadingState type="card" rows={6} />
+  }
+
   const doReschedule = async () => {
+    const newDate = localInputToServerTimestamp(date)
+    if (!newDate) {
+      toast({ title: 'Failed', description: 'Enter a valid date and time', variant: 'destructive' })
+      return
+    }
     try {
-      const newDate = localInputToServerTimestamp(date)
-      if (!newDate) {
-        toast({ title: 'Failed', description: 'Enter a valid date and time', variant: 'destructive' })
-        return
-      }
       await reschedule({ visitId: id, newDate, reason: text || 'Rescheduled' }).unwrap()
       toast({ title: 'Rescheduled', description: 'Visit rescheduled' })
       setOpen(null)
@@ -55,7 +79,13 @@ const VisitDetail = ({ id }: { id: number }) => {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-xl font-semibold">Visit Details</h1>
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} aria-label="Go back">
+          <ArrowLeft className="h-4 w-4" /> Back
+        </Button>
+        <h1 className="text-xl font-semibold">Visit Details</h1>
+        {data?.status ? <Badge>{data.status}</Badge> : null}
+      </div>
       <Card>
         <CardHeader>
           <CardTitle>Summary</CardTitle>
@@ -64,13 +94,13 @@ const VisitDetail = ({ id }: { id: number }) => {
           <div className="grid gap-2 text-sm">
             <div><span className="text-muted-foreground">Property:</span> #{data?.property_id}</div>
             <div><span className="text-muted-foreground">User:</span> #{data?.user_id}</div>
-            <div><span className="text-muted-foreground">Scheduled:</span> {data ? parseServerTimestamp(data.scheduled_date)?.toLocaleString() ?? '-' : '-'}</div>
-            <div><span className="text-muted-foreground">Status:</span> {data?.status}</div>
+            <div><span className="text-muted-foreground">Scheduled:</span> {data?.scheduled_date ? formatDateTime(data.scheduled_date) : '-'}</div>
+            <div><span className="text-muted-foreground">Status:</span> {data?.status ?? '-'}</div>
           </div>
           <div className="mt-4 flex gap-2">
             {(data?.status === 'scheduled' || data?.status === 'rescheduled') && (
               <>
-                <Button onClick={() => { setDate(serverTimestampToLocalInput(data?.scheduled_date)); setText(''); setOpen('reschedule') }}>Reschedule</Button>
+                <Button onClick={() => { setDate(serverTimestampToLocalInput(data?.scheduled_date) ?? ''); setText(''); setOpen('reschedule') }}>Reschedule</Button>
                 <Button variant="outline" onClick={() => { setOpen('cancel') }}>Cancel</Button>
                 <Button variant="outline" onClick={() => { setOpen('complete') }}>Mark Completed</Button>
               </>
@@ -82,7 +112,7 @@ const VisitDetail = ({ id }: { id: number }) => {
       <Dialog open={open !== null} onOpenChange={(o) => !o && setOpen(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="capitalize">{open}</DialogTitle>
+            <DialogTitle>{({ reschedule: 'Reschedule Visit', cancel: 'Cancel Visit', complete: 'Complete Visit' } as Record<string, string>)[open ?? ''] || ''}</DialogTitle>
           </DialogHeader>
           {open === 'reschedule' && (
             <Input type="datetime-local" value={date} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDate(e.target.value)} />

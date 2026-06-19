@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -12,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import { formatDateTime } from '@/lib/format'
 import { AlertTriangle, CheckCircle2, Shield, Flag, MessageSquare } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
@@ -43,7 +45,7 @@ export function ReportsReviewPage() {
   const [notes, setNotes] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  const { data, isLoading, error } = useGetPendingReportsQuery({
+  const { data, isLoading, error, refetch } = useGetPendingReportsQuery({
     status: 'open',
   })
   const [moderateReport, { isLoading: isModerating }] =
@@ -102,16 +104,17 @@ export function ReportsReviewPage() {
         <CardHeader>
           <h2 className="text-2xl font-bold">Error Loading Reports</h2>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           <p className="text-destructive">
             {getErrorMessage(error, 'Failed to load reports')}
           </p>
+          <Button variant="outline" onClick={() => void refetch()}><RotateCcw className="mr-2 h-4 w-4" />Retry</Button>
         </CardContent>
       </Card>
     )
   }
 
-  const reports = data?.reports || []
+  const reports = data?.items || []
 
   return (
     <div className="space-y-6">
@@ -186,7 +189,7 @@ export function ReportsReviewPage() {
                     <div>
                       <span className="text-muted-foreground">Reported:</span>
                       <p className="font-medium">
-                        {new Date(report.created_at).toLocaleString()}
+                        {formatDateTime(report.created_at)}
                       </p>
                     </div>
                   </div>

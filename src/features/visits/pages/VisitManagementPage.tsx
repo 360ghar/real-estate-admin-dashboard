@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
@@ -9,8 +9,11 @@ import {
   useCancelVisitMutation,
   useGetAllVisitsQuery
 } from '@/features/visits/api/visitsApi'
-import { Calendar as CalendarIcon, Clock, Check, Plus, AlertCircle } from 'lucide-react'
+import { Calendar as CalendarIcon, Clock, Check, Plus, AlertCircle, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { LoadingState } from '@/components/ui/loading-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import type { Visit } from '@/types/api'
 import { getErrorMessage } from '@/lib/errors'
 import { localInputToServerTimestamp } from '@/lib/dateTime'
@@ -19,6 +22,8 @@ import { VisitFilters } from '@/features/visits/components/VisitFilters'
 import { VisitCard } from '@/features/visits/components/VisitCard'
 import { ScheduleVisitDialog } from '@/features/visits/components/ScheduleVisitDialog'
 import { CompleteVisitDialog } from '@/features/visits/components/CompleteVisitDialog'
+
+const VISITS_PAGE_SIZE = 20
 
 const VisitManagementPage: React.FC = () => {
   const { user } = useAuth()
@@ -30,18 +35,39 @@ const VisitManagementPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // API calls
-  const { data: userVisits, refetch: refetchUserVisits } = useGetUserVisitsQuery()
+  // API calls (cursor-paginated). `userVisits` is loaded only for the
+  // "user" role; admin/agent roles page through `allVisits` instead.
+  const userPager = useCursorPagination()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { userPager.reset() }, [userPager.reset, searchQuery])
+  const { data: userVisits, isLoading: userVisitsLoading, isError: userVisitsError, refetch: refetchUserVisits } = useGetUserVisitsQuery(
+    { cursor: userPager.cursor, limit: VISITS_PAGE_SIZE },
+    { skip: user?.role !== 'user' }
+  )
 
-  const { data: allVisits, refetch: refetchAllVisits } = useGetAllVisitsQuery(
-    { status: statusFilter === 'all' ? undefined : statusFilter },
+  const allPager = useCursorPagination()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { allPager.reset() }, [allPager.reset, statusFilter, searchQuery])
+  const { data: allVisits, isLoading: allVisitsLoading, isError: allVisitsError, refetch: refetchAllVisits } = useGetAllVisitsQuery(
+    { status: statusFilter === 'all' ? undefined : statusFilter, cursor: allPager.cursor, limit: VISITS_PAGE_SIZE },
     { skip: !user || user.role === 'user' }
+  )
+
+  // High-limit query for stats KPI cards (not paginated, no cursor) so counts
+  // reflect the full dataset rather than only the current page.
+  const { data: userVisitsStats } = useGetUserVisitsQuery(
+    { limit: 1000 },
+    { skip: user?.role !== 'user' }
   )
 
   const [rescheduleVisit] = useRescheduleVisitMutation()
   const [cancelVisit] = useCancelVisitMutation()
 
-  const visits = user?.role === 'user' ? userVisits?.visits || [] : allVisits?.items || []
+  const visits = user?.role === 'user' ? userVisits?.items || [] : allVisits?.items || []
+  const isVisitsFetching = user?.role === 'user' ? userVisitsLoading : allVisitsLoading
+  const isVisitsError = user?.role === 'user' ? userVisitsError : allVisitsError
+  const canPrev = user?.role === 'user' ? userPager.canPrev : allPager.canPrev
+  const hasMore = user?.role === 'user' ? (userVisits?.has_more ?? false) : (allVisits?.has_more ?? false)
 
   const filteredVisits = visits.filter(visit => {
     if (searchQuery) {
@@ -58,6 +84,19 @@ const VisitManagementPage: React.FC = () => {
   const refetchAll = () => {
     void refetchUserVisits()
     void refetchAllVisits()
+  }
+
+  const handleLoadMore = () => {
+    if (user?.role === 'user') {
+      if (userVisits?.next_cursor) userPager.next(userVisits.next_cursor)
+    } else {
+      if (allVisits?.next_cursor) allPager.next(allVisits.next_cursor)
+    }
+  }
+
+  const handleLoadPrev = () => {
+    if (user?.role === 'user') userPager.prev()
+    else allPager.prev()
   }
 
   const handleRescheduleVisit = async (visitId: number, newDate: string) => {
@@ -101,28 +140,28 @@ const VisitManagementPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      {user?.role === 'user' && userVisits && (
+      {user?.role === 'user' && userVisitsStats && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisits.total}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.length}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisits.upcoming}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.filter((v) => ['scheduled', 'confirmed'].includes(v.status)).length}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
               <Check className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisits.completed}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.filter((v) => v.status === 'completed').length}</div></CardContent>
           </Card>
         </div>
       )}
@@ -142,24 +181,42 @@ const VisitManagementPage: React.FC = () => {
           />
 
           <div className="space-y-4">
-            {filteredVisits.length === 0 ? (
+            {isVisitsFetching && visits.length === 0 ? (
+              <LoadingState type="cards" />
+            ) : isVisitsError ? (
+              <EmptyState
+                icon={<AlertTriangle className="h-12 w-12" />}
+                title="Failed to load visits"
+                description="There was an error loading visits. Please try again."
+                action={{ label: 'Retry', onClick: () => refetchAll(), variant: 'outline' }}
+              />
+            ) : filteredVisits.length === 0 ? (
               <EmptyState
                 icon={<AlertCircle className="h-12 w-12" />}
                 title="No visits found"
                 description={searchQuery ? 'Try adjusting your search' : 'Schedule your first visit to get started'}
               />
             ) : (
-              filteredVisits.map((visit) => (
-                <VisitCard
-                  key={visit.id}
-                  visit={visit}
-                  isAdmin={user?.role === 'admin'}
-                  isUser={user?.role === 'user'}
-                  onComplete={(v) => { setSelectedVisit(v); setShowCompleteDialog(true) }}
-                  onReschedule={(id, date) => { void handleRescheduleVisit(id, date) }}
-                  onCancel={(id) => { void handleCancelVisit(id) }}
+              <>
+                {filteredVisits.map((visit) => (
+                  <VisitCard
+                    key={visit.id}
+                    visit={visit}
+                    isAdmin={user?.role === 'admin'}
+                    isUser={user?.role === 'user'}
+                    onComplete={(v) => { setSelectedVisit(v); setShowCompleteDialog(true) }}
+                    onReschedule={(id, date) => { void handleRescheduleVisit(id, date) }}
+                    onCancel={(id) => { void handleCancelVisit(id) }}
+                  />
+                ))}
+                <CursorPager
+                  canPrev={canPrev}
+                  hasMore={hasMore}
+                  loading={isVisitsFetching}
+                  onPrev={handleLoadPrev}
+                  onNext={handleLoadMore}
                 />
-              ))
+              </>
             )}
           </div>
         </div>

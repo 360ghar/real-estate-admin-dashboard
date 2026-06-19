@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { MapPin } from 'lucide-react'
+import { formatDate } from '@/lib/format'
 
 interface LocationTabProps {
   profile: {
@@ -20,9 +21,10 @@ interface LocationTabProps {
   } | null | undefined
   updatingLocation: boolean
   handleLocationUpdate: () => void
+  onUpdatePrivacy: (settings: { show_phone?: boolean; show_email?: boolean; allow_location_tracking?: boolean }) => Promise<void>
 }
 
-const LocationTab: React.FC<LocationTabProps> = ({ profile, updatingLocation, handleLocationUpdate }) => (
+const LocationTab: React.FC<LocationTabProps> = ({ profile, updatingLocation, handleLocationUpdate, onUpdatePrivacy }) => (
   <Card>
     <CardHeader>
       <CardTitle>Location Settings</CardTitle>
@@ -52,7 +54,7 @@ const LocationTab: React.FC<LocationTabProps> = ({ profile, updatingLocation, ha
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Member Since</span>
-                <span className="text-sm">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'N/A'}</span>
+                <span className="text-sm">{profile?.created_at ? formatDate(profile.created_at) : 'N/A'}</span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Account Status</span>
@@ -71,15 +73,24 @@ const LocationTab: React.FC<LocationTabProps> = ({ profile, updatingLocation, ha
             <CardContent className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm">Show Phone Number</span>
-                <Switch defaultChecked={profile?.privacy_settings?.show_phone} />
+                <Switch
+                  checked={profile?.privacy_settings?.show_phone ?? false}
+                  onCheckedChange={(checked) => { void onUpdatePrivacy({ show_phone: checked }) }}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Show Email</span>
-                <Switch defaultChecked={profile?.privacy_settings?.show_email} />
+                <Switch
+                  checked={profile?.privacy_settings?.show_email ?? false}
+                  onCheckedChange={(checked) => { void onUpdatePrivacy({ show_email: checked }) }}
+                />
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm">Location Tracking</span>
-                <Switch defaultChecked={profile?.privacy_settings?.allow_location_tracking} />
+                <Switch
+                  checked={profile?.privacy_settings?.allow_location_tracking ?? false}
+                  onCheckedChange={(checked) => { void onUpdatePrivacy({ allow_location_tracking: checked }) }}
+                />
               </div>
             </CardContent>
           </Card>

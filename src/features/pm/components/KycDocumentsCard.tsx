@@ -4,10 +4,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 
 interface KycDocumentsCardProps {
-  kycDocs: { isLoading: boolean; data?: Document[] };
+  kycDocs: { isLoading: boolean; data?: { items: Document[] } };
 }
 
 export default function KycDocumentsCard({ kycDocs }: KycDocumentsCardProps) {
+  const docs = kycDocs.data?.items ?? [];
   return (
     <>
       {kycDocs.isLoading ? (
@@ -15,9 +16,9 @@ export default function KycDocumentsCard({ kycDocs }: KycDocumentsCardProps) {
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />
         </div>
-      ) : kycDocs.data?.length ? (
+      ) : docs.length ? (
         <div className="space-y-2">
-          {kycDocs.data.map((d) => (
+          {docs.map((d) => (
             <div key={d.id} className="flex items-center justify-between gap-3 text-sm">
               <div className="min-w-0">
                 <div className="truncate font-medium">{d.title}</div>
