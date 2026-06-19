@@ -44,7 +44,8 @@ export default function PmInspectionsPage() {
   const [limit, setLimit] = useState(50)
 
   const pager = useCursorPagination()
-  useEffect(() => { pager.reset() }, [pager, limit])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, limit])
 
   const inspections = useListPmInspectionsQuery(
     { owner_id: ownerId, limit, cursor: pager.cursor },

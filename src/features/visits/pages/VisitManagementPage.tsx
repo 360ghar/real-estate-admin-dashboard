@@ -38,17 +38,26 @@ const VisitManagementPage: React.FC = () => {
   // API calls (cursor-paginated). `userVisits` is loaded only for the
   // "user" role; admin/agent roles page through `allVisits` instead.
   const userPager = useCursorPagination()
-  useEffect(() => { userPager.reset() }, [userPager, searchQuery])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { userPager.reset() }, [userPager.reset, searchQuery])
   const { data: userVisits, isLoading: userVisitsLoading, isError: userVisitsError, refetch: refetchUserVisits } = useGetUserVisitsQuery(
     { cursor: userPager.cursor, limit: VISITS_PAGE_SIZE },
     { skip: user?.role !== 'user' }
   )
 
   const allPager = useCursorPagination()
-  useEffect(() => { allPager.reset() }, [allPager, statusFilter, searchQuery])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { allPager.reset() }, [allPager.reset, statusFilter, searchQuery])
   const { data: allVisits, isLoading: allVisitsLoading, isError: allVisitsError, refetch: refetchAllVisits } = useGetAllVisitsQuery(
     { status: statusFilter === 'all' ? undefined : statusFilter, cursor: allPager.cursor, limit: VISITS_PAGE_SIZE },
     { skip: !user || user.role === 'user' }
+  )
+
+  // High-limit query for stats KPI cards (not paginated, no cursor) so counts
+  // reflect the full dataset rather than only the current page.
+  const { data: userVisitsStats } = useGetUserVisitsQuery(
+    { limit: 1000 },
+    { skip: user?.role !== 'user' }
   )
 
   const [rescheduleVisit] = useRescheduleVisitMutation()
@@ -131,28 +140,28 @@ const VisitManagementPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      {user?.role === 'user' && userVisits && (
+      {user?.role === 'user' && userVisitsStats && (
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisits.items.length}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.length}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Upcoming</CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisits.items.filter((v) => ['scheduled', 'confirmed'].includes(v.status)).length}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.filter((v) => ['scheduled', 'confirmed'].includes(v.status)).length}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Completed</CardTitle>
               <Check className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisits.items.filter((v) => v.status === 'completed').length}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.filter((v) => v.status === 'completed').length}</div></CardContent>
           </Card>
         </div>
       )}

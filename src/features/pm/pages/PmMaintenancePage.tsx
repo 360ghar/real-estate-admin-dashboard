@@ -54,7 +54,8 @@ export default function PmMaintenancePage() {
   const [limit, setLimit] = useState(50);
 
   const pager = useCursorPagination();
-  useEffect(() => { pager.reset() }, [pager, requestStatus, workOrderStatus, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, requestStatus, workOrderStatus, limit]);
 
   const requests = useListMaintenanceRequestsQuery(
     {

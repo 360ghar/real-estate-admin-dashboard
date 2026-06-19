@@ -30,7 +30,8 @@ export default function PmOwnersPage() {
   const debouncedQ = useDebounce(q, 300)
   const pager = useCursorPagination()
 
-  useEffect(() => { pager.reset() }, [pager, debouncedQ])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, debouncedQ])
 
   const users = useGetUsersQuery({ cursor: pager.cursor, limit: 20, q: debouncedQ || undefined })
 

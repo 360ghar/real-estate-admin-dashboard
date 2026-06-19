@@ -90,10 +90,11 @@ const PropertyList = () => {
   const dcity = useDebounce(filters.city, 300)
   const dlocality = useDebounce(filters.locality, 300)
 
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     pager.reset()
   }, [
-    pager,
+    pager.reset,
     dq, dcity, dlocality,
     filters.propertyType, filters.purpose, filters.status,
     filters.priceMin, filters.priceMax,
@@ -101,6 +102,7 @@ const PropertyList = () => {
     selectedAmenities, filters.radius,
     filters.sortBy, pageSize,
   ])
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const params = useMemo((): PropertySearchParams => {
     const base: PropertySearchParams = {

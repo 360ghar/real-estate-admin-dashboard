@@ -53,7 +53,8 @@ export default function PmExpensesPage() {
   const validDateRange = !startDate || !endDate || startDate <= endDate;
 
   const pager = useCursorPagination();
-  useEffect(() => { pager.reset() }, [pager, category, startDate, endDate, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, category, startDate, endDate, limit]);
 
   const expenses = useListPmExpensesQuery(
     {

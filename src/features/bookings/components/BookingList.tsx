@@ -152,7 +152,8 @@ const BookingList = () => {
   const [pageSize, setPageSize] = useState(10)
   const pager = useCursorPagination()
 
-  useEffect(() => { pager.reset() }, [pager, status, dq, paymentStatus])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, status, dq, paymentStatus])
 
   const params = useMemo(() => {
     const base: BookingsQuery & { q?: string; payment_status?: string } = {}

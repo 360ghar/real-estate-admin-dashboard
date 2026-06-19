@@ -40,8 +40,10 @@ export default function PmRentLedgerPage() {
 
   const chargesPager = useCursorPagination();
   const paymentsPager = useCursorPagination();
-  useEffect(() => { chargesPager.reset() }, [chargesPager, chargeStatus, limit]);
-  useEffect(() => { paymentsPager.reset() }, [paymentsPager, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { chargesPager.reset() }, [chargesPager.reset, chargeStatus, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { paymentsPager.reset() }, [paymentsPager.reset, limit]);
 
   const charges = useListRentChargesQuery(
     { owner_id: ownerId, status: chargeStatus || undefined, limit, cursor: chargesPager.cursor },

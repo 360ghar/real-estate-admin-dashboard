@@ -42,7 +42,8 @@ export default function PmApplicationsPage() {
   const debouncedFormsQ = useDebounce(formsQ, 300);
   const [formsLimit, setFormsLimit] = useState(50);
   const formsPager = useCursorPagination();
-  useEffect(() => { formsPager.reset() }, [formsPager, debouncedFormsQ, formsLimit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { formsPager.reset() }, [formsPager.reset, debouncedFormsQ, formsLimit]);
   const forms = useListApplicationFormsQuery(
     {
       owner_id: ownerId,
@@ -59,7 +60,8 @@ export default function PmApplicationsPage() {
   const [status, setStatus] = useState<TenantStatus | "">("");
   const [appsLimit, setAppsLimit] = useState(50);
   const appsPager = useCursorPagination();
-  useEffect(() => { appsPager.reset() }, [appsPager, status, appsLimit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { appsPager.reset() }, [appsPager.reset, status, appsLimit]);
   const applications = useListApplicationsQuery(
     {
       owner_id: ownerId,

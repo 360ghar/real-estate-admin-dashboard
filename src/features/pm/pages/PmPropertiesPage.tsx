@@ -43,7 +43,8 @@ export default function PmPropertiesPage() {
   const ownerId = selectedOwnerId;
 
   const pager = useCursorPagination();
-  useEffect(() => { pager.reset() }, [pager, debouncedQ, occupancy, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, debouncedQ, occupancy, limit]);
 
   const properties = useListPmPropertiesQuery(
     {

@@ -53,7 +53,8 @@ const BlogList = () => {
     downloadCsv(csvFilename('blog-posts'), rows)
   }
 
-  useEffect(() => { pager.reset() }, [pager, dq, categoriesText, tagsText])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, dq, categoriesText, tagsText])
   const [deleteBlogPost, { isLoading: isDeleting }] = useDeleteBlogPostMutation()
   const [updateBlogPost, { isLoading: isTogglingStatus }] = useUpdateBlogPostMutation()
 

@@ -48,7 +48,8 @@ const UserList = () => {
   const [pageSize, setPageSize] = useState(10)
   const pager = useCursorPagination()
 
-  useEffect(() => { pager.reset() }, [pager, dq, agentId])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, dq, agentId])
 
   const params = useMemo(() => {
     const base: UsersQuery = {}

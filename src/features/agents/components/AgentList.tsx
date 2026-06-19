@@ -52,7 +52,8 @@ const AgentList = () => {
   const [pageSize, setPageSize] = useState(20)
   const pager = useCursorPagination()
 
-  useEffect(() => { pager.reset() }, [pager, dq, status])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, dq, status])
 
   const includeInactive = status === 'all' || status === 'inactive'
   const { data, isFetching, isLoading, error, refetch } = useListAgentsQuery({ include_inactive: includeInactive, cursor: pager.cursor, limit: pageSize })

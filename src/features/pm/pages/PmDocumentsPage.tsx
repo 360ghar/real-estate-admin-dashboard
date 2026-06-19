@@ -47,7 +47,8 @@ export default function PmDocumentsPage() {
   const [limit, setLimit] = useState(50);
 
   const pager = useCursorPagination();
-  useEffect(() => { pager.reset() }, [pager, docTypeFilter, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, docTypeFilter, limit]);
 
   const docs = useListPmDocumentsQuery(
     { owner_id: ownerId, document_type: docTypeFilter || undefined, limit, cursor: pager.cursor },

@@ -44,7 +44,8 @@ export default function PmLeasesPage() {
   const ownerId = selectedOwnerId;
 
   const pager = useCursorPagination();
-  useEffect(() => { pager.reset() }, [pager, status, limit]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, status, limit]);
 
   const leases = useListPmLeasesQuery(
     { owner_id: ownerId, status: status || undefined, limit, cursor: pager.cursor },

@@ -48,7 +48,8 @@ const VisitList = () => {
   const [pageSize, setPageSize] = useState(10)
   const pager = useCursorPagination()
 
-  useEffect(() => { pager.reset() }, [pager, status, dq])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, status, dq])
 
   const params = useMemo(() => {
     const base: VisitsQuery & { q?: string } = {}
