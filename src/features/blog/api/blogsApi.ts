@@ -40,6 +40,7 @@ export const blogsApi = api.injectEndpoints({
         if (Array.isArray(p.categories)) p.categories.forEach((c) => search.append('categories', c))
         if (Array.isArray(p.tags)) p.tags.forEach((t) => search.append('tags', t))
         if (Array.isArray(p.keywords)) p.keywords.forEach((k) => search.append('keywords', k))
+        if (p.status) search.set('status', String(p.status))
         return { url: '/blog/posts', params: search }
       },
       providesTags: (res) =>

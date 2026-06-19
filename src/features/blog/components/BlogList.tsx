@@ -4,6 +4,7 @@ import { DataTable, SortableHeader } from '@/components/ui/data-table'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import CursorPager from '@/components/ui/cursor-pager'
 import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { LoadingState } from '@/components/ui/loading-state'
@@ -12,7 +13,8 @@ import { Link } from 'react-router-dom'
 import { useDebounce } from '@/hooks/useDebounce'
 import { useGetBlogPostsQuery, useDeleteBlogPostMutation, useUpdateBlogPostMutation } from '@/features/blog/api/blogsApi'
 import { toast } from '@/hooks/use-toast'
-import type { BlogPost, BlogPostFilters } from '@/types/blog'
+import type { BlogPost, BlogPostFilters, BlogPostStatus } from '@/types/blog'
+import { blogStatusBadgeClass, blogStatusLabel, resolveBlogStatus } from '@/features/blog/constants'
 import { Search, Edit2, Trash2, Eye, CheckCircle, EyeOff, Download } from 'lucide-react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { getErrorMessage } from '@/lib/errors'
@@ -25,6 +27,7 @@ const BlogList = () => {
   const dq = useDebounce(q, 300)
   const [categoriesText, setCategoriesText] = useState('')
   const [tagsText, setTagsText] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | BlogPostStatus>('all')
   const pageSize = 20
   const pager = useCursorPagination()
 
@@ -35,8 +38,9 @@ const BlogList = () => {
     const tags = tagsText.split(',').map((s) => s.trim()).filter(Boolean)
     if (cats.length) p.categories = cats
     if (tags.length) p.tags = tags
+    if (statusFilter !== 'all') p.status = statusFilter
     return p
-  }, [dq, categoriesText, tagsText, pager.cursor, pageSize])
+  }, [dq, categoriesText, tagsText, statusFilter, pager.cursor, pageSize])
 
   const { data, isFetching, error, refetch } = useGetBlogPostsQuery(params)
 
@@ -45,7 +49,9 @@ const BlogList = () => {
       id: p.id,
       title: p.title,
       slug: p.slug,
+      status: resolveBlogStatus(p),
       active: p.active,
+      scheduled_at: p.scheduled_at ?? '',
       created_at: p.created_at,
       categories: (p.categories ?? []).map((c) => c.slug).join('|'),
       tags: (p.tags ?? []).map((t) => t.slug).join('|'),
@@ -54,7 +60,7 @@ const BlogList = () => {
   }
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { pager.reset() }, [pager.reset, dq, categoriesText, tagsText])
+  useEffect(() => { pager.reset() }, [pager.reset, dq, categoriesText, tagsText, statusFilter])
   const [deleteBlogPost, { isLoading: isDeleting }] = useDeleteBlogPostMutation()
   const [updateBlogPost, { isLoading: isTogglingStatus }] = useUpdateBlogPostMutation()
 
@@ -65,13 +71,20 @@ const BlogList = () => {
     } catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, 'Failed to delete blog post'), variant: 'destructive' }) }
   }, [deleteBlogPost])
 
+  // Toggle a post between draft and published via the lifecycle `status` field.
+  // The backend derives `active` from `status`, so we no longer send `active`.
   const handleToggleStatus = useCallback(async (post: BlogPost) => {
-    const nextActive = !post.active
+    const currentStatus = resolveBlogStatus(post)
+    const nextStatus: BlogPostStatus = currentStatus === 'published' ? 'draft' : 'published'
+    const isPublishing = nextStatus === 'published'
     try {
-      await updateBlogPost({ identifier: post.id, data: { active: nextActive } }).unwrap()
+      await updateBlogPost({
+        identifier: post.id,
+        data: { status: nextStatus, scheduled_at: null },
+      }).unwrap()
       toast({
-        title: nextActive ? 'Post published' : 'Post unpublished',
-        description: nextActive
+        title: isPublishing ? 'Post published' : 'Post unpublished',
+        description: isPublishing
           ? 'The blog post is now visible to users.'
           : 'The blog post has been moved back to drafts.',
       })
@@ -127,16 +140,31 @@ const BlogList = () => {
     {
       accessorKey: 'active',
       header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>,
-      cell: ({ row }) => (
-        <Badge variant={row.original.active ? 'default' : 'outline'}>
-          {row.original.active ? 'Published' : 'Draft'}
-        </Badge>
-      ),
+      cell: ({ row }) => {
+        const post = row.original
+        const status = resolveBlogStatus(post)
+        return (
+          <div className="flex flex-col gap-1">
+            <Badge variant="outline" className={blogStatusBadgeClass(status)}>
+              {blogStatusLabel(status)}
+            </Badge>
+            {status === 'scheduled' && post.scheduled_at && (
+              <span className="text-xs text-muted-foreground">
+                {formatDateTime(post.scheduled_at)}
+              </span>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'actions',
       header: 'Actions',
-      cell: ({ row }) => (
+      cell: ({ row }) => {
+        const post = row.original
+        const status = resolveBlogStatus(post)
+        const isPublished = status === 'published'
+        return (
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
@@ -144,7 +172,7 @@ const BlogList = () => {
             asChild
             aria-label="View"
           >
-            <Link to={`/blogs/${row.original.slug}`}>
+            <Link to={`/blogs/${post.slug}`}>
               <Eye className="h-4 w-4" />
             </Link>
           </Button>
@@ -154,17 +182,17 @@ const BlogList = () => {
             asChild
             aria-label="Edit"
           >
-            <Link to={`/blogs/${row.original.slug}/edit`}>
+            <Link to={`/blogs/${post.slug}/edit`}>
               <Edit2 className="h-4 w-4" />
             </Link>
           </Button>
           <Button
-            variant={row.original.active ? 'outline' : 'default'}
+            variant={isPublished ? 'outline' : 'default'}
             size="sm"
-            onClick={() => { void handleToggleStatus(row.original) }}
+            onClick={() => { void handleToggleStatus(post) }}
             disabled={isTogglingStatus}
           >
-            {row.original.active ? (
+            {isPublished ? (
               <>
                 <EyeOff className="h-4 w-4 mr-1" />
                 Unpublish
@@ -178,10 +206,10 @@ const BlogList = () => {
           </Button>
           <ConfirmAlertDialog
             title="Delete Blog Post"
-            description={`Are you sure you want to delete "${row.original.title}"? This action cannot be undone.`}
+            description={`Are you sure you want to delete "${post.title}"? This action cannot be undone.`}
             confirmLabel="Delete"
             variant="destructive"
-            onConfirm={() => handleDeletePost(row.original)}
+            onConfirm={() => handleDeletePost(post)}
           >
             {(openDialog) => (
               <Button variant="outline" size="sm" onClick={openDialog} disabled={isDeleting} aria-label="Delete">
@@ -190,14 +218,15 @@ const BlogList = () => {
             )}
           </ConfirmAlertDialog>
         </div>
-      ),
+        )
+      },
     },
   ], [handleDeletePost, handleToggleStatus, isDeleting, isTogglingStatus])
 
   return (
     <div className="space-y-6">
       <Card className="p-6">
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -217,6 +246,18 @@ const BlogList = () => {
             value={tagsText}
             onChange={(e) => setTagsText(e.target.value)}
           />
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | BlogPostStatus)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All statuses</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="archived">Archived</SelectItem>
+              <SelectItem value="scheduled">Scheduled</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="mt-3 flex justify-end">
           <Button variant="outline" size="sm" onClick={handleExport} disabled={isFetching} className="gap-2">

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import RichTextEditor from '@/components/ui/rich-text-editor'
 import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import MultiSelect from '@/components/ui/multi-select'
 import ImageUpload from '@/components/common/media/ImageUpload'
 import { useCreateBlogPostMutation, useGetBlogCategoriesQuery, useGetBlogTagsQuery } from '@/features/blog/api/blogsApi'
@@ -35,7 +35,8 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
       cover_image_url: '',
       categories: [],
       tags: [],
-      active: false,
+      status: 'draft',
+      scheduled_at: '',
     },
   })
 
@@ -56,7 +57,8 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
         cover_image_url: values.cover_image_url || undefined,
         categories: values.categories?.length ? values.categories : undefined,
         tags: values.tags?.length ? values.tags : undefined,
-        active: values.active ?? false,
+        status: values.status,
+        scheduled_at: values.status === 'scheduled' ? values.scheduled_at || undefined : undefined,
       }
 
       const res = await createBlogPost(payload).unwrap()
@@ -177,28 +179,56 @@ const BlogEditor = ({ onSuccess }: { onSuccess?: (slug: string) => void }) => {
                   )}
                 />
               </div>
-              <div className="md:col-span-2">
+              <div>
                 <FormField
                   control={form.control}
-                  name="active"
+                  name="status"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between rounded-md border p-4">
-                      <div className="space-y-1">
-                        <FormLabel>Publish immediately</FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Turn this on to publish the post as soon as it is created. Leave it off to keep it as a draft.
-                        </p>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value ?? false}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select
+                        value={field.value}
+                        onValueChange={(value) => {
+                          field.onChange(value)
+                          if (value !== 'scheduled') form.setValue('scheduled_at', '')
+                        }}
+                      >
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="published">Published</SelectItem>
+                          <SelectItem value="archived">Archived</SelectItem>
+                          <SelectItem value="scheduled">Scheduled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="scheduled_at"
+                render={({ field }) => (
+                  <FormItem className={form.watch('status') === 'scheduled' ? '' : 'hidden'}>
+                    <FormLabel>Scheduled Publish Date &amp; Time</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="datetime-local"
+                        placeholder="Pick a future date and time"
+                        value={field.value ?? ''}
+                        onChange={(e) => field.onChange(e.target.value)}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">Required when status is Scheduled.</p>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <div>
                 <FormField
                   control={form.control}

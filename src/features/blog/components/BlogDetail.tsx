@@ -13,6 +13,8 @@ import { getErrorMessage } from '@/lib/errors'
 import { formatDateTime } from '@/lib/format'
 import { ConfirmAlertDialog } from '@/components/ui/confirm-alert-dialog'
 import { SanitizedHtml } from '@/components/ui/sanitized-html'
+import { resolveBlogStatus, blogStatusBadgeClass, blogStatusLabel } from '@/features/blog/constants'
+import type { BlogPostStatus } from '@/types/blog'
 
 const getErrorStatus = (error: unknown) => {
   if (!error || typeof error !== 'object') return undefined
@@ -53,12 +55,13 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
 
   const handleToggleStatus = async () => {
     if (!post) return
-    const nextActive = !post.active
+    const currentStatus = resolveBlogStatus(post)
+    const nextStatus: BlogPostStatus = currentStatus === 'published' ? 'draft' : 'published'
     try {
-      await updateBlogPost({ identifier: post.id, data: { active: nextActive } }).unwrap()
+      await updateBlogPost({ identifier: post.id, data: { status: nextStatus, scheduled_at: null } }).unwrap()
       toast({
-        title: nextActive ? 'Post published' : 'Post unpublished',
-        description: nextActive
+        title: nextStatus === 'published' ? 'Post published' : 'Post unpublished',
+        description: nextStatus === 'published'
           ? 'The blog post is now visible to users.'
           : 'The blog post has been moved back to drafts.',
       })
@@ -170,8 +173,8 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant={post.active ? 'default' : 'outline'}>
-            {post.active ? 'Published' : 'Draft'}
+          <Badge className={blogStatusBadgeClass(resolveBlogStatus(post))}>
+            {blogStatusLabel(resolveBlogStatus(post))}
           </Badge>
           <Button
             variant="outline"
@@ -182,12 +185,12 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
             Edit
           </Button>
           <Button
-            variant={post.active ? 'outline' : 'default'}
+            variant={resolveBlogStatus(post) === 'published' ? 'outline' : 'default'}
             size="sm"
             onClick={() => { void handleToggleStatus() }}
             disabled={isTogglingStatus}
           >
-            {post.active ? (
+            {resolveBlogStatus(post) === 'published' ? (
               <>
                 <EyeOff className="mr-2 h-4 w-4" />
                 Unpublish
@@ -215,12 +218,15 @@ const BlogDetail = ({ identifier }: { identifier: string }) => {
         </div>
       </div>
 
-      {!post.active && (
+      {resolveBlogStatus(post) !== 'published' && (
         <Alert>
-          <AlertTitle>This post is a draft</AlertTitle>
+          <AlertTitle>
+            {resolveBlogStatus(post) === 'scheduled' ? 'This post is scheduled' : 'This post is a draft'}
+          </AlertTitle>
           <AlertDescription>
-            Draft posts are only visible to admins. Publish the post when you&apos;re ready for it to appear on the
-            site.
+            {resolveBlogStatus(post) === 'scheduled' && post.scheduled_at
+              ? `This post will be published on ${formatDateTime(post.scheduled_at)}.`
+              : 'Draft posts are only visible to admins. Publish the post when you\'re ready for it to appear on the site.'}
           </AlertDescription>
         </Alert>
       )}

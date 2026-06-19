@@ -15,6 +15,11 @@ export interface BlogTag {
   updated_at?: string | null
 }
 
+// Blog lifecycle status (kept in sync with backend BlogPostStatus enum).
+export type BlogPostStatus = 'draft' | 'published' | 'archived' | 'scheduled'
+
+export const BLOG_POST_STATUSES: BlogPostStatus[] = ['draft', 'published', 'archived', 'scheduled']
+
 export interface BlogPost {
   id: number
   title: string
@@ -22,6 +27,19 @@ export interface BlogPost {
   content: string
   excerpt?: string | null
   cover_image_url?: string | null
+  /**
+   * Lifecycle status of the post. Newer posts always carry this; legacy posts
+   * may lack it, in which case callers should fall back to `active`.
+   * Known values: 'draft' | 'published' | 'archived' | 'scheduled'.
+   */
+  status: string
+  /** ISO timestamp the post is scheduled to go live (required when status === 'scheduled'). */
+  scheduled_at?: string | null
+  /** ISO timestamp the post was published (set by backend when status flips to published). */
+  published_at?: string | null
+  /** Shared secret token allowing unauthenticated preview of draft/scheduled posts. */
+  preview_token?: string | null
+  /** @deprecated Replaced by `status`. Backend keeps it in sync: `active === (status === 'published')`. */
   active: boolean
   categories?: BlogCategory[]
   tags?: BlogTag[]
@@ -58,6 +76,7 @@ export interface BlogPostFilters {
   categories?: string[]
   tags?: string[]
   keywords?: string[]
+  status?: string
   cursor?: string | null
   limit?: number
 }
@@ -80,6 +99,15 @@ export interface BlogPostCreate {
   cover_image_url?: string
   categories?: string[]
   tags?: string[]
+  /**
+   * New lifecycle status. When provided, the backend derives `active`
+   * (`active === (status === 'published')`) and overrides any `active` value.
+   * Known values: 'draft' | 'published' | 'archived' | 'scheduled'.
+   */
+  status?: string
+  /** ISO timestamp, required when `status === 'scheduled'`. */
+  scheduled_at?: string | null
+  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
   active?: boolean
 }
 
@@ -90,6 +118,15 @@ export interface BlogPostUpdate {
   cover_image_url?: string
   categories?: string[]
   tags?: string[]
+  /**
+   * New lifecycle status. When provided, the backend derives `active`
+   * (`active === (status === 'published')`) and overrides any `active` value.
+   * Known values: 'draft' | 'published' | 'archived' | 'scheduled'.
+   */
+  status?: string
+  /** ISO timestamp, required when `status === 'scheduled'`. Send `null` to clear. */
+  scheduled_at?: string | null
+  /** @deprecated Use `status` instead. Kept for backwards compatibility. */
   active?: boolean
 }
 

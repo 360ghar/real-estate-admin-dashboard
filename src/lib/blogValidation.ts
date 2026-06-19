@@ -1,34 +1,69 @@
 import { z } from 'zod'
 
 // Blog Post validation schema
-export const blogPostSchema = z.object({
-  title: z
-    .string()
-    .min(1, 'Title is required')
-    .max(500, 'Title must be less than 500 characters'),
-  content: z
-    .string()
-    .min(10, 'Content must be at least 10 characters'),
-  excerpt: z
-    .string()
-    .max(1000, 'Excerpt must be less than 1000 characters')
-    .optional()
-    .or(z.literal('')),
-  cover_image_url: z
-    .string()
-    .url('Invalid URL format')
-    .optional()
-    .or(z.literal('')),
-  active: z
-    .boolean()
-    .optional(),
-  categories: z
-    .array(z.string())
-    .optional(),
-  tags: z
-    .array(z.string())
-    .optional(),
-})
+export const blogPostSchema = z
+  .object({
+    title: z
+      .string()
+      .min(1, 'Title is required')
+      .max(500, 'Title must be less than 500 characters'),
+    content: z
+      .string()
+      .min(10, 'Content must be at least 10 characters'),
+    excerpt: z
+      .string()
+      .max(1000, 'Excerpt must be less than 1000 characters')
+      .optional()
+      .or(z.literal('')),
+    cover_image_url: z
+      .string()
+      .url('Invalid URL format')
+      .optional()
+      .or(z.literal('')),
+    status: z
+      .enum(['draft', 'published', 'archived', 'scheduled'])
+      .default('draft'),
+    scheduled_at: z
+      .string()
+      .optional()
+      .or(z.literal('')),
+    categories: z
+      .array(z.string())
+      .optional(),
+    tags: z
+      .array(z.string())
+      .optional(),
+  })
+  .superRefine((data, ctx) => {
+    // When the post is scheduled, a future scheduled_at timestamp is required.
+    if (data.status === 'scheduled') {
+      const raw = data.scheduled_at?.trim()
+      if (!raw) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scheduled_at'],
+          message: 'A publish date is required when status is Scheduled',
+        })
+        return
+      }
+      const parsed = new Date(raw)
+      if (Number.isNaN(parsed.getTime())) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scheduled_at'],
+          message: 'Enter a valid date and time',
+        })
+        return
+      }
+      if (parsed.getTime() <= Date.now()) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['scheduled_at'],
+          message: 'Scheduled date must be in the future',
+        })
+      }
+    }
+  })
 
 // Blog Category validation schema
 export const blogCategorySchema = z.object({
