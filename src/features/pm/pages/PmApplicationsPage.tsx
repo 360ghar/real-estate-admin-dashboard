@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useUserRole } from "@/hooks/useUserRole";
 import { useAppSelector } from "@/hooks/redux";
 import { selectSelectedOwnerId } from "@/features/pm/slices/pmSlice";
@@ -6,6 +6,7 @@ import { useDebounce } from "@/hooks/useDebounce";
 import type { RentalApplication, TenantStatus } from "@/types/pm";
 import {
   useDecideApplicationMutation,
+  useDeleteApplicationMutation,
   useListApplicationFormsQuery,
   useListApplicationsQuery,
 } from "@/features/pm/api/pmApi";
@@ -25,6 +26,7 @@ import { getErrorMessage } from "@/lib/errors";
 import OwnerScopeGate from "@/features/pm/components/OwnerScopeGate";
 import { ApplicationTable } from "@/features/pm/components/ApplicationTable";
 import { CreateApplicationFormDialog } from "@/features/pm/components/CreateApplicationFormDialog";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
 
 export default function PmApplicationsPage() {
   const { role } = useUserRole();
@@ -39,32 +41,39 @@ export default function PmApplicationsPage() {
   const [formsQ, setFormsQ] = useState("");
   const debouncedFormsQ = useDebounce(formsQ, 300);
   const [formsLimit, setFormsLimit] = useState(50);
-  const [formsOffset, setFormsOffset] = useState(0);
+  const formsPager = useCursorPagination();
+  useEffect(() => { formsPager.reset() }, [formsPager, debouncedFormsQ, formsLimit]);
   const forms = useListApplicationFormsQuery(
     {
       owner_id: ownerId,
       q: debouncedFormsQ || undefined,
       limit: formsLimit,
-      offset: formsOffset,
+      cursor: formsPager.cursor,
     },
-    { skip: role === "agent" && !ownerId },
+    { skip: tab !== "forms" || (role === "agent" && !ownerId) },
   );
+
+  const formsDisplayData = forms.data?.items;
 
   // Inbox list
   const [status, setStatus] = useState<TenantStatus | "">("");
   const [appsLimit, setAppsLimit] = useState(50);
-  const [appsOffset, setAppsOffset] = useState(0);
+  const appsPager = useCursorPagination();
+  useEffect(() => { appsPager.reset() }, [appsPager, status, appsLimit]);
   const applications = useListApplicationsQuery(
     {
       owner_id: ownerId,
       status: status || undefined,
       limit: appsLimit,
-      offset: appsOffset,
+      cursor: appsPager.cursor,
     },
-    { skip: role === "agent" && !ownerId },
+    { skip: tab !== "inbox" || (role === "agent" && !ownerId) },
   );
 
+  const appsDisplayData = applications.data?.items;
+
   const [decideApplication, decideState] = useDecideApplicationMutation();
+  const [deleteApplication] = useDeleteApplicationMutation();
 
   // Confirmation dialog state for approve/reject actions
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -123,11 +132,6 @@ export default function PmApplicationsPage() {
     [],
   );
 
-  const formsCanPrev = formsOffset > 0;
-  const formsCanNext = (forms.data?.length ?? 0) >= formsLimit;
-  const appsCanPrev = appsOffset > 0;
-  const appsCanNext = (applications.data?.length ?? 0) >= appsLimit;
-
   return (
     <OwnerScopeGate>
       <div className="space-y-6">
@@ -163,38 +167,44 @@ export default function PmApplicationsPage() {
 
         <ApplicationTable
           tab={tab}
-          formsData={forms.data}
+          formsData={formsDisplayData}
           formsIsLoading={forms.isLoading}
           formsIsError={forms.isError}
           formsRefetch={() => { void forms.refetch() }}
-          formsOffset={formsOffset}
           formsLimit={formsLimit}
-          formsCanPrev={formsCanPrev}
-          formsCanNext={formsCanNext}
-          onFormsPrev={() => setFormsOffset(Math.max(0, formsOffset - formsLimit))}
-          onFormsNext={() => setFormsOffset(formsOffset + formsLimit)}
+          formsCanPrev={formsPager.canPrev}
+          formsCanNext={forms.data?.has_more ?? false}
+          onFormsPrev={formsPager.prev}
+          onFormsNext={() => forms.data && formsPager.next(forms.data.next_cursor)}
           formsQ={formsQ}
-          onFormsQChange={(q) => { setFormsQ(q); setFormsOffset(0) }}
+          onFormsQChange={setFormsQ}
           formsLimitValue={formsLimit}
-          onFormsLimitChange={(l) => { setFormsLimit(l); setFormsOffset(0) }}
+          onFormsLimitChange={setFormsLimit}
           toast={toast}
-          applicationsData={applications.data}
+          applicationsData={appsDisplayData}
           applicationsIsLoading={applications.isLoading}
           applicationsIsError={applications.isError}
           applicationsRefetch={() => { void applications.refetch() }}
-          appsOffset={appsOffset}
           appsLimit={appsLimit}
-          appsCanPrev={appsCanPrev}
-          appsCanNext={appsCanNext}
-          onAppsPrev={() => setAppsOffset(Math.max(0, appsOffset - appsLimit))}
-          onAppsNext={() => setAppsOffset(appsOffset + appsLimit)}
+          appsCanPrev={appsPager.canPrev}
+          appsCanNext={applications.data?.has_more ?? false}
+          onAppsPrev={appsPager.prev}
+          onAppsNext={() => applications.data && appsPager.next(applications.data.next_cursor)}
           status={status}
-          onStatusChange={(s) => { setStatus(s); setAppsOffset(0) }}
+          onStatusChange={setStatus}
           appsLimitValue={appsLimit}
-          onAppsLimitChange={(l) => { setAppsLimit(l); setAppsOffset(0) }}
+          onAppsLimitChange={setAppsLimit}
           decideIsLoading={decideState.isLoading}
           onApprove={(app) => openConfirmDialog("approve", app)}
           onReject={(app) => openConfirmDialog("reject", app)}
+          onDeleteApplication={async (applicationId) => {
+            try {
+              await deleteApplication(applicationId).unwrap();
+              toast({ title: "Deleted", description: "Application deleted." });
+            } catch (e: unknown) {
+              toast({ title: "Failed", description: getErrorMessage(e, "Could not delete application."), variant: "destructive" });
+            }
+          }}
         />
       </div>
 

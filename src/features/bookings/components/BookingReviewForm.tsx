@@ -6,7 +6,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Star } from 'lucide-react'
 import { bookingReviewSchema, type BookingReviewFormValues } from '@/features/bookings/validations'
 
-const BookingReviewForm: React.FC<{ onSubmit: (data: BookingReviewFormValues) => void }> = ({ onSubmit }) => {
+const BookingReviewForm: React.FC<{ onSubmit: (data: BookingReviewFormValues) => void; onCancel?: () => void }> = ({ onSubmit, onCancel }) => {
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch } = useForm<BookingReviewFormValues>({
     resolver: zodResolver(bookingReviewSchema),
     defaultValues: {
@@ -56,7 +56,7 @@ const BookingReviewForm: React.FC<{ onSubmit: (data: BookingReviewFormValues) =>
         <Button type="submit" disabled={isSubmitting} className="flex-1">
           {isSubmitting ? 'Submitting...' : 'Submit Review'}
         </Button>
-        <Button type="button" variant="outline">
+        <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>
       </div>

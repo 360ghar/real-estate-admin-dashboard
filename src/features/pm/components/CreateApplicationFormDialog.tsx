@@ -34,7 +34,7 @@ const CreateApplicationFormDialog: React.FC<CreateApplicationFormDialogProps> = 
   const [questionsJson, setQuestionsJson] = useState('{}')
 
   const properties = useListPmPropertiesQuery(
-    { owner_id: ownerId, limit: 200, offset: 0 },
+    { owner_id: ownerId, limit: 200 },
     { skip: isAgentWithoutOwner },
   )
 
@@ -55,7 +55,7 @@ const CreateApplicationFormDialog: React.FC<CreateApplicationFormDialogProps> = 
       return
     }
 
-    const selectedPropertyOwnerId = (properties.data || []).find(
+    const selectedPropertyOwnerId = (properties.data?.items ?? []).find(
       (p) => String(p.id) === String(propertyId),
     )?.owner_id
     const effectiveOwnerId = ownerId ?? selectedPropertyOwnerId ?? null
@@ -128,7 +128,7 @@ const CreateApplicationFormDialog: React.FC<CreateApplicationFormDialogProps> = 
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="any">Any</SelectItem>
-                {(properties.data || []).map((p) => (
+                {(properties.data?.items ?? []).map((p) => (
                   <SelectItem key={p.id} value={String(p.id)}>
                     #{p.id} • {p.title}
                   </SelectItem>

@@ -39,6 +39,7 @@ const VisitForm = () => {
       }
       await scheduleVisit({
         property_id: values.property_id,
+        user_id: values.user_id,
         scheduled_date: scheduledDate,
       }).unwrap()
       toast({ title: 'Scheduled', description: 'Visit scheduled' })
@@ -104,7 +105,7 @@ const VisitForm = () => {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {properties.data?.properties?.map((p) => (
+                        {properties.data?.items?.map((p) => (
                           <SelectItem key={p.id} value={String(p.id)}>
                             {p.title}
                           </SelectItem>

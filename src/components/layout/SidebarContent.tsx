@@ -86,7 +86,6 @@ export const SidebarContent = () => {
 
     const propertiesNav: NavItemConfig[] = [
         { name: 'All Properties', href: '/properties', icon: Building },
-        pmNav,
     ]
 
     const engagementNav: NavItemConfig[] = [
@@ -131,25 +130,27 @@ export const SidebarContent = () => {
             { items: [{ name: 'Dashboard', href: '/dashboard', icon: Home }] },
             { label: 'Properties', items: propertiesNav },
             { label: 'Engagement', items: engagementNav },
+            { label: 'Property Management', items: [pmNav] },
             { label: 'Admin', items: [
                 { name: 'Users', href: '/users', icon: Users },
                 { name: 'Agents', href: '/agents', icon: User },
                 { name: 'Analytics', href: '/analytics', icon: BarChart3 },
                 adminToolsNav
             ]},
-            { items: [profileItem] }
+            { items: [profileItem] },
         ]
         : role === 'agent'
             ? [
                 { items: [{ name: 'Dashboard', href: '/dashboard', icon: Home }] },
                 { label: 'Properties', items: propertiesNav },
                 { label: 'Engagement', items: engagementNav },
-                { items: [{ name: 'Users', href: '/users', icon: Users }, profileItem] }
+                { label: 'Property Management', items: [pmNav] },
+                { items: [{ name: 'Users', href: '/users', icon: Users }, profileItem] },
             ]
             : [
                 { items: [{ name: 'Dashboard', href: '/dashboard', icon: Home }] },
                 { label: 'Engagement', items: engagementNav },
-                { items: [profileItem] }
+                { items: [profileItem] },
             ]
 
     return (

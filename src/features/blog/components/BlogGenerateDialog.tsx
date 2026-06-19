@@ -13,6 +13,7 @@ import {
 import type { BlogGenerationResult } from '@/types/blog'
 import { Sparkles, ListOrdered } from 'lucide-react'
 import { getErrorMessage } from '@/lib/errors'
+import { formatDateTime } from '@/lib/format'
 
 interface BlogGenerateDialogProps {
   open: boolean
@@ -35,6 +36,8 @@ const BlogGenerateDialog = ({ open, onOpenChange }: BlogGenerateDialogProps) => 
   const handleModeChange = (nextMode: 'single' | 'bulk') => {
     setMode(nextMode)
     setResults([])
+    setTopic('')
+    setCount(3)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,7 +196,7 @@ const BlogGenerateDialog = ({ open, onOpenChange }: BlogGenerateDialogProps) => 
                         <span>
                           Created{' '}
                           {res.blog.created_at
-                            ? new Date(res.blog.created_at).toLocaleString()
+                            ? formatDateTime(res.blog.created_at)
                             : 'just now'}
                         </span>
                       </div>

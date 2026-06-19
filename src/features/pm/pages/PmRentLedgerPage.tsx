@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Download } from "lucide-react";
 import { formatINR, downloadCsv } from "@/features/pm/utils";
+import { formatDate, formatDateTime } from "@/lib/format";
 import OwnerScopeGate from "@/features/pm/components/OwnerScopeGate";
 import GenerateChargesDialog from "@/features/pm/components/GenerateChargesDialog";
 import ChargesTab from "@/features/pm/components/ChargesTab";
@@ -18,6 +19,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
 
 export default function PmRentLedgerPage() {
   const { role } = useUserRole();
@@ -27,7 +29,6 @@ export default function PmRentLedgerPage() {
   const [tab, setTab] = useState<"charges" | "payments">("charges");
   const [chargeStatus, setChargeStatus] = useState<RentChargeStatus | "">("");
   const [limit, setLimit] = useState(50);
-  const [offset, setOffset] = useState(0);
 
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [selectedCharge, setSelectedCharge] = useState<RentChargeWithTotals | null>(null);
@@ -37,15 +38,24 @@ export default function PmRentLedgerPage() {
     setPaymentOpen(true);
   };
 
+  const chargesPager = useCursorPagination();
+  const paymentsPager = useCursorPagination();
+  useEffect(() => { chargesPager.reset() }, [chargesPager, chargeStatus, limit]);
+  useEffect(() => { paymentsPager.reset() }, [paymentsPager, limit]);
+
   const charges = useListRentChargesQuery(
-    { owner_id: ownerId, status: chargeStatus || undefined, limit, offset },
+    { owner_id: ownerId, status: chargeStatus || undefined, limit, cursor: chargesPager.cursor },
     { skip: role === "agent" && !ownerId },
   );
 
+  const chargesDisplayData = charges.data?.items;
+
   const payments = useListRentPaymentsQuery(
-    { owner_id: ownerId, limit, offset },
+    { owner_id: ownerId, limit, cursor: paymentsPager.cursor },
     { skip: role === "agent" && !ownerId },
   );
+
+  const paymentsDisplayData = payments.data?.items;
 
   const chargeColumns = useMemo<ColumnDef<RentChargeWithTotals>[]>(() => {
     return [
@@ -55,10 +65,10 @@ export default function PmRentLedgerPage() {
         cell: ({ row }) => (
           <div className="min-w-0">
             <div className="font-medium">
-              {new Date(row.original.charge.billing_month).toLocaleDateString()}
+              {formatDate(row.original.charge.billing_month)}
             </div>
             <div className="text-xs text-muted-foreground">
-              Due {new Date(row.original.charge.due_date).toLocaleDateString()}
+              Due {formatDate(row.original.charge.due_date)}
             </div>
           </div>
         ),
@@ -101,7 +111,7 @@ export default function PmRentLedgerPage() {
       {
         accessorKey: "paid_at",
         header: "Paid at",
-        cell: ({ row }) => new Date(row.original.paid_at).toLocaleString(),
+        cell: ({ row }) => formatDateTime(row.original.paid_at),
       },
       {
         accessorKey: "amount_paid",
@@ -131,9 +141,8 @@ export default function PmRentLedgerPage() {
     ];
   }, []);
 
-  const canPrev = offset > 0;
-  const canNextCharges = (charges.data?.length ?? 0) >= limit;
-  const canNextPayments = (payments.data?.length ?? 0) >= limit;
+  const goPrev = () => chargesPager.prev();
+  const goPrevPayments = () => paymentsPager.prev();
 
   return (
     <OwnerScopeGate>
@@ -167,7 +176,7 @@ export default function PmRentLedgerPage() {
               size="sm"
               onClick={() => {
                 if (tab === "charges") {
-                  const rows = (charges.data || []).map((c) => ({
+                  const rows = (chargesDisplayData || []).map((c) => ({
                     charge_id: c.charge.id,
                     billing_month: c.charge.billing_month,
                     due_date: c.charge.due_date,
@@ -180,7 +189,7 @@ export default function PmRentLedgerPage() {
                   }));
                   downloadCsv(`rent_charges_${new Date().toISOString().slice(0, 10)}.csv`, rows);
                 } else {
-                  const rows = (payments.data || []).map((p) => ({
+                  const rows = (paymentsDisplayData || []).map((p) => ({
                     payment_id: p.id,
                     paid_at: p.paid_at,
                     amount_paid: p.amount_paid,
@@ -203,35 +212,27 @@ export default function PmRentLedgerPage() {
           <CardContent className="space-y-4">
             {tab === "charges" ? (
               <ChargesTab
-                charges={charges}
+                charges={{ isLoading: charges.isLoading, isError: charges.isError, error: charges.error, refetch: () => { void charges.refetch() }, data: chargesDisplayData }}
                 chargeColumns={chargeColumns}
                 chargeStatus={chargeStatus}
-                onChargeStatusChange={(s) => {
-                  setChargeStatus(s);
-                  setOffset(0);
-                }}
+                onChargeStatusChange={setChargeStatus}
                 limit={limit}
-                onLimitChange={(l) => {
-                  setLimit(l);
-                  setOffset(0);
-                }}
-                offset={offset}
-                canPrev={canPrev}
-                canNext={canNextCharges}
-                onPrev={() => setOffset(Math.max(0, offset - limit))}
-                onNext={() => setOffset(offset + limit)}
+                onLimitChange={setLimit}
+                canPrev={chargesPager.canPrev}
+                canNext={charges.data?.has_more ?? false}
+                onPrev={goPrev}
+                onNext={() => charges.data && chargesPager.next(charges.data.next_cursor)}
                 onRecordPayment={openPayment}
               />
             ) : (
               <PaymentsTab
-                payments={payments}
+                payments={{ isLoading: payments.isLoading, isError: payments.isError, error: payments.error, refetch: () => { void payments.refetch() }, data: paymentsDisplayData }}
                 paymentColumns={paymentColumns}
-                offset={offset}
                 limit={limit}
-                canPrev={canPrev}
-                canNext={canNextPayments}
-                onPrev={() => setOffset(Math.max(0, offset - limit))}
-                onNext={() => setOffset(offset + limit)}
+                canPrev={paymentsPager.canPrev}
+                canNext={payments.data?.has_more ?? false}
+                onPrev={goPrevPayments}
+                onNext={() => payments.data && paymentsPager.next(payments.data.next_cursor)}
               />
             )}
           </CardContent>

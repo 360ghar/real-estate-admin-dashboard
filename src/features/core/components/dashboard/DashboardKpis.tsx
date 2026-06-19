@@ -65,7 +65,7 @@ export function AgentKpis({ agentId }: { agentId?: number | null }) {
       />
       <StatCard
         title="Satisfaction"
-        value={stats?.user_satisfaction_rating != null ? `${stats.user_satisfaction_rating.toFixed(1)}/5` : '—'}
+        value={(() => { const r = typeof stats?.user_satisfaction_rating === 'number' ? stats.user_satisfaction_rating : Number(stats?.user_satisfaction_rating); return !Number.isNaN(r) ? `${r.toFixed(1)}/5` : '—' })()}
         icon={Star}
         isLoading={isLoading}
       />

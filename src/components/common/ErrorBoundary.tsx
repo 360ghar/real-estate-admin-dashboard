@@ -5,6 +5,14 @@ import { AlertTriangle, RefreshCw } from 'lucide-react'
 
 interface Props {
   children: ReactNode
+  /**
+   * When any value in this array changes, a caught error is cleared so the
+   * boundary re-renders its children. Lets a crashed page recover on
+   * navigation WITHOUT remounting the subtree (which would wipe state and
+   * re-trigger data fetches). Consumer should pass a primitive/array of
+   * primitives (e.g. [location.pathname]).
+   */
+  resetKeys?: unknown[]
 }
 
 interface State {
@@ -28,6 +36,22 @@ class ErrorBoundary extends Component<Props, State> {
       error,
       errorInfo
     })
+  }
+
+  public componentDidUpdate(prevProps: Props) {
+    // Clear a caught error when resetKeys change (e.g. navigation) so the
+    // boundary recovers without unmounting its children. We compare by
+    // reference of each element; callers should pass stable primitives.
+    if (this.state.hasError && prevProps.resetKeys !== this.props.resetKeys) {
+      const prev = prevProps.resetKeys ?? []
+      const next = this.props.resetKeys ?? []
+      const changed =
+        prev.length !== next.length ||
+        prev.some((v, i) => !Object.is(v, next[i]))
+      if (changed) {
+        this.setState({ hasError: false, error: undefined, errorInfo: undefined })
+      }
+    }
   }
 
   private handleReload = () => {

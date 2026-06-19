@@ -5,10 +5,11 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useToast } from '@/hooks/use-toast'
 import { useGetPropertyQuery, useCreatePropertyMutation, useUpdatePropertyMutation } from '@/features/properties/api/propertiesApi'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
-import { useAuth } from '@/hooks/useAuth'
 import { LoadingState } from '@/components/ui/loading-state'
 import { PropertyFormFields } from '@/features/properties/components/PropertyFormFields'
 import { propertyFormPageSchema, type PropertyFormPageValues } from '@/features/properties/validations'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 
 const propertySchema = propertyFormPageSchema
 
@@ -30,14 +31,11 @@ const PropertyFormPage: React.FC = () => {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { toast } = useToast()
-  const { user } = useAuth()
   const isEditing = !!id
 
   const [location, setLocation] = useState<Location | null>(null)
   const [uploadedImages, setUploadedImages] = useState<string[]>([])
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([])
-  const [ownerId] = useState<number | undefined>()
-
   // Fetch property data if editing
   const { data: property, isLoading: propertyLoading } = useGetPropertyQuery(Number(id), {
     skip: !isEditing,
@@ -77,6 +75,12 @@ const PropertyFormPage: React.FC = () => {
       owner_contact: '',
     },
   })
+
+  useEffect(() => {
+    const handler = (e: BeforeUnloadEvent) => { if (form.formState.isDirty) e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [form.formState.isDirty])
 
   useEffect(() => {
     if (property && isEditing) {
@@ -120,12 +124,11 @@ const PropertyFormPage: React.FC = () => {
   }
 
   const toggleFeature = (feature: string) => {
-    setSelectedFeatures(prev =>
-      prev.includes(feature)
-        ? prev.filter(f => f !== feature)
-        : [...prev, feature]
-    )
-    form.setValue('features', selectedFeatures)
+    setSelectedFeatures(prev => {
+      const next = prev.includes(feature) ? prev.filter(f => f !== feature) : [...prev, feature]
+      form.setValue('features', next)
+      return next
+    })
   }
 
   const toggleAmenity = (amenityId: number) => {
@@ -164,7 +167,7 @@ const PropertyFormPage: React.FC = () => {
       } else {
         await createProperty({
           data: propertyData,
-          ownerId: user?.role === 'admin' ? ownerId : undefined,
+          ownerId: undefined,
         }).unwrap()
         toast({
           title: 'Property Created',
@@ -173,6 +176,7 @@ const PropertyFormPage: React.FC = () => {
       }
       navigate('/properties')
     } catch (error) {
+      applyServerValidation(error, form.setError)
       toast({
         title: 'Operation Failed',
         description: isEditing
@@ -212,7 +216,18 @@ const PropertyFormPage: React.FC = () => {
         </div>
       </div>
 
-      <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
+      <form onSubmit={(e) => {
+        if (!location) {
+          toast({
+            title: 'Location Required',
+            description: 'Please select a location on the map.',
+            variant: 'destructive',
+          })
+          return
+        }
+        void form.handleSubmit(onSubmit)(e)
+      }} className="space-y-6">
+        <FormRootError form={form} />
         <PropertyFormFields
           form={form}
           location={location}

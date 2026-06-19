@@ -15,6 +15,7 @@ import type { ColumnDef } from '@tanstack/react-table'
 import type { PropertyResponse } from '@/features/properties/api/propertiesApi'
 import type { PropertyStatus } from '@/types/pm'
 import { formatCurrency } from '@/lib/format'
+import { SortableHeader } from '@/components/ui/data-table'
 import { PROPERTY_STATUS_OPTIONS, PropertyStatusBadge } from './PropertyStatusBadge'
 
 interface PropertyColumnsProps {
@@ -62,7 +63,7 @@ const PropertyColumns = ({ setConfirmId, onSetStatus }: PropertyColumnsProps): C
   },
   {
     accessorKey: 'title',
-    header: 'Property',
+    header: ({ column }) => <SortableHeader column={column}>Property</SortableHeader>,
     cell: ({ row }) => (
       <div className="space-y-1">
         <div className="font-medium">{row.original.title}</div>
@@ -89,7 +90,7 @@ const PropertyColumns = ({ setConfirmId, onSetStatus }: PropertyColumnsProps): C
   },
   {
     accessorKey: 'base_price',
-    header: 'Price',
+    header: ({ column }) => <SortableHeader column={column}>Price</SortableHeader>,
     cell: ({ row }) => <div className="font-medium tabular-nums">{formatCurrency(row.original.base_price)}</div>,
   },
   {
@@ -147,7 +148,7 @@ const renderPropertyCard = (property: PropertyResponse, setConfirmId: (id: numbe
     <div className="flex gap-3">
       <div className="w-24 h-24 flex-shrink-0 rounded-cohere-sm overflow-hidden bg-muted">
         {property.main_image_url ? (
-          <img src={property.main_image_url} alt={property.title} className="w-full h-full object-cover" />
+          <img src={property.main_image_url} alt={property.title} loading="lazy" decoding="async" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-muted-foreground">
             <Square className="h-8 w-8" />

@@ -1,4 +1,5 @@
 import { api } from '@/store/api'
+import type { PaginatedResponse } from '@/types/api'
 
 export interface UserNotificationLogEntry {
   id: string
@@ -65,18 +66,23 @@ export interface NotificationSendBulkPayload extends NotificationSendPayload {
 export const notificationsApi = api.injectEndpoints({
   endpoints: (builder) => ({
     getUserNotifications: builder.query<
-      UserNotificationLogEntry[],
-      number | { userId: number; limit?: number; offset?: number }
+      PaginatedResponse<UserNotificationLogEntry>,
+      number | { userId: number; limit?: number; cursor?: string | null }
     >({
       query: (params) => {
         const userId = typeof params === 'number' ? params : params.userId
-        const queryParams = typeof params === 'number' ? undefined : { limit: params.limit, offset: params.offset }
+        const queryParams =
+          typeof params === 'number'
+            ? undefined
+            : { limit: params.limit, cursor: params.cursor ?? undefined }
         return {
           url: `/notifications/users/${userId}/`,
           params: queryParams,
         }
       },
-      providesTags: (res) => res ? [...res.map((n) => ({type: 'Notification' as const, id: n.id})), {type: 'Notification', id: 'LIST'}] : [{type: 'Notification', id: 'LIST'}],
+      providesTags: (res) => res?.items
+        ? [...res.items.map((n) => ({type: 'Notification' as const, id: n.id})), {type: 'Notification', id: 'LIST'}]
+        : [{type: 'Notification', id: 'LIST'}],
     }),
 
     registerDeviceToken: builder.mutation<void, DeviceRegistrationPayload>({

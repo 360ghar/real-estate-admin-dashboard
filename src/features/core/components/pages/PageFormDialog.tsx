@@ -1,25 +1,31 @@
+import { useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import { useCreatePageMutation, useUpdatePageMutation } from '@/features/core/api/coreApi'
 import { useToast } from '@/hooks/use-toast'
+import { cmsPageSchema, type CmsPageFormValues } from '@/features/core/validations'
 import type { Page, PageCreate, PageUpdate } from '@/types/api'
 
-interface PageFormData {
-  unique_name: string; title: string; content: string; format: 'html' | 'markdown'
-  custom_config_text?: string; is_active: boolean; is_draft: boolean
-}
+// Backwards-compatible alias used by the parent page; the canonical type
+// now lives in @/features/core/validations as CmsPageFormValues.
+type PageFormValues = CmsPageFormValues
 
 interface PageFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   editingPage: Page | null
-  formData: PageFormData
-  setFormData: React.Dispatch<React.SetStateAction<PageFormData>>
+  formData: PageFormValues
+  setFormData: React.Dispatch<React.SetStateAction<PageFormValues>>
   onSuccess: () => void
 }
 
@@ -36,29 +42,34 @@ const PageFormDialog: React.FC<PageFormDialogProps> = ({ open, onOpenChange, edi
   const [createPage, { isLoading: isCreating }] = useCreatePageMutation()
   const [updatePage, { isLoading: isUpdating }] = useUpdatePageMutation()
 
-  const handleInputChange = (field: keyof PageFormData, value: string | boolean) => {
-    setFormData(prev => { const newData = { ...prev, [field]: value }; if (field === 'title' && !editingPage) newData.unique_name = generateSlug(value as string); return newData })
-  }
+  const form = useForm<PageFormValues>({
+    resolver: zodResolver(cmsPageSchema),
+    defaultValues: formData,
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  useEffect(() => {
+    if (open) form.reset(formData)
+  }, [open, form, formData])
+
+  const handleSubmit = async (values: PageFormValues) => {
     try {
       if (editingPage) {
-        const updateData: PageUpdate = { title: formData.title, content: formData.content, format: formData.format, is_active: formData.is_active, is_draft: formData.is_draft }
-        const updateConfig = parseCustomConfig(formData.custom_config_text)
+        const updateData: PageUpdate = { title: values.title, content: values.content, format: values.format, is_active: values.is_active, is_draft: values.is_draft }
+        const updateConfig = parseCustomConfig(values.custom_config_text)
         if (updateConfig) updateData.custom_config = updateConfig
         await updatePage({ uniqueName: editingPage.unique_name, data: updateData }).unwrap()
         toast({ title: 'Success', description: 'Page updated successfully' })
       } else {
-        const createData: PageCreate = { unique_name: formData.unique_name, title: formData.title, content: formData.content, format: formData.format, is_active: formData.is_active, is_draft: formData.is_draft }
-        const createConfig = parseCustomConfig(formData.custom_config_text)
+        const createData: PageCreate = { unique_name: values.unique_name, title: values.title, content: values.content, format: values.format, is_active: values.is_active, is_draft: values.is_draft }
+        const createConfig = parseCustomConfig(values.custom_config_text)
         if (createConfig) createData.custom_config = createConfig
         await createPage(createData).unwrap()
         toast({ title: 'Success', description: 'Page created successfully' })
       }
+      setFormData(values)
       onOpenChange(false)
       onSuccess()
-    } catch (error: unknown) { toast({ title: 'Error', description: getErrorMessage(error, 'Failed to save page'), variant: 'destructive' }) }
+    } catch (error: unknown) { applyServerValidation(error, form.setError); toast({ title: 'Error', description: getErrorMessage(error, 'Failed to save page'), variant: 'destructive' }) }
   }
 
   return (
@@ -68,34 +79,50 @@ const PageFormDialog: React.FC<PageFormDialogProps> = ({ open, onOpenChange, edi
           <DialogTitle>{editingPage ? 'Edit Page' : 'Create New Page'}</DialogTitle>
           <DialogDescription>{editingPage ? 'Update the page content and metadata' : 'Create a new content page for the application'}</DialogDescription>
         </DialogHeader>
-        <form onSubmit={(e) => { void handleSubmit(e) }} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label htmlFor="title">Title *</Label><Input id="title" value={formData.title} onChange={(e) => handleInputChange('title', e.target.value)} placeholder="Enter page title" required /></div>
-            <div className="space-y-2"><Label htmlFor="unique_name">Unique Name *</Label><Input id="unique_name" value={formData.unique_name} onChange={(e) => handleInputChange('unique_name', e.target.value)} placeholder="privacy-policy" required /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label htmlFor="format">Format</Label>
-              <Select value={formData.format} onValueChange={(value) => handleInputChange('format', value)}>
-                <SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="html">HTML</SelectItem><SelectItem value="markdown">Markdown</SelectItem></SelectContent>
-              </Select>
+        <Form {...form}>
+          <form onSubmit={(e) => void form.handleSubmit(handleSubmit)(e)} className="space-y-4">
+            <FormRootError form={form} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="title" render={({ field }) => (
+                <FormItem><FormLabel>Title *</FormLabel><FormControl><Input placeholder="Enter page title" {...field} onChange={(e) => { field.onChange(e); if (!editingPage) form.setValue('unique_name', generateSlug(e.target.value)) }} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="unique_name" render={({ field }) => (
+                <FormItem><FormLabel>Unique Name *</FormLabel><FormControl><Input placeholder="privacy-policy" {...field} /></FormControl><FormMessage /></FormItem>
+              )} />
             </div>
-            <div className="space-y-2" />
-          </div>
-          <div className="space-y-2"><Label htmlFor="content">Content *</Label><Textarea id="content" value={formData.content} onChange={(e) => handleInputChange('content', e.target.value)} placeholder="Enter page content (supports HTML)" rows={10} required /></div>
-          <div className="space-y-2"><Label htmlFor="custom_config">Custom Config (JSON)</Label><Textarea id="custom_config" value={formData.custom_config_text} onChange={(e) => handleInputChange('custom_config_text', e.target.value)} placeholder='{ "show_footer": true }' rows={4} /></div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2"><Label htmlFor="is_active">Active</Label><div className="flex items-center space-x-2"><input type="checkbox" id="is_active" checked={formData.is_active} onChange={(e) => handleInputChange('is_active', e.target.checked)} className="h-4 w-4" /><Label htmlFor="is_active">This page is active</Label></div></div>
-            <div className="space-y-2"><Label htmlFor="is_draft">Draft</Label><div className="flex items-center space-x-2"><input type="checkbox" id="is_draft" checked={formData.is_draft} onChange={(e) => handleInputChange('is_draft', e.target.checked)} className="h-4 w-4" /><Label htmlFor="is_draft">Save as draft</Label></div></div>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" disabled={isCreating || isUpdating}>{isCreating || isUpdating ? 'Saving...' : (editingPage ? 'Update' : 'Create')}</Button>
-          </DialogFooter>
-        </form>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="format" render={({ field }) => (
+                <FormItem><FormLabel>Format</FormLabel><Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                  <SelectContent><SelectItem value="html">HTML</SelectItem><SelectItem value="markdown">Markdown</SelectItem></SelectContent>
+                </Select><FormMessage /></FormItem>
+              )} />
+              <div />
+            </div>
+            <FormField control={form.control} name="content" render={({ field }) => (
+              <FormItem><FormLabel>Content *</FormLabel><FormControl><Textarea placeholder="Enter page content (supports HTML)" rows={10} {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="custom_config_text" render={({ field }) => (
+              <FormItem><FormLabel>Custom Config (JSON)</FormLabel><FormControl><Textarea placeholder='{ "show_footer": true }' rows={4} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <div className="grid grid-cols-2 gap-4">
+              <FormField control={form.control} name="is_active" render={({ field }) => (
+                <FormItem className="flex items-center space-x-2"><FormControl><input type="checkbox" id="is_active" checked={field.value} onChange={field.onChange} className="h-4 w-4" /></FormControl><Label htmlFor="is_active">This page is active</Label></FormItem>
+              )} />
+              <FormField control={form.control} name="is_draft" render={({ field }) => (
+                <FormItem className="flex items-center space-x-2"><FormControl><input type="checkbox" id="is_draft" checked={field.value} onChange={field.onChange} className="h-4 w-4" /></FormControl><Label htmlFor="is_draft">Save as draft</Label></FormItem>
+              )} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit" disabled={isCreating || isUpdating}>{isCreating || isUpdating ? 'Saving...' : (editingPage ? 'Update' : 'Create')}</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )
 }
 
 export default PageFormDialog
-export type { PageFormData }
+export type { PageFormValues as PageFormData }

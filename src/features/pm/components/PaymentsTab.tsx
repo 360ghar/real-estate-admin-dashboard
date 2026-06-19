@@ -1,14 +1,14 @@
 import type { ColumnDef } from "@tanstack/react-table";
 import type { RentPayment } from "@/types/pm";
-import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table";
+import { ResponsiveDataTable } from "@/components/ui/responsive-data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { ErrorState } from "@/components/ui/error-state";
+import CursorPager from "@/components/ui/cursor-pager";
 
 interface PaymentsTabProps {
-  payments: { isLoading: boolean; data?: RentPayment[] };
+  payments: { isLoading: boolean; isError: boolean; error: unknown; refetch: () => void; data?: RentPayment[] };
   paymentColumns: ColumnDef<RentPayment>[];
-  offset: number;
   limit: number;
   canPrev: boolean;
   canNext: boolean;
@@ -19,8 +19,7 @@ interface PaymentsTabProps {
 export default function PaymentsTab({
   payments,
   paymentColumns,
-  offset,
-  limit,
+  limit: _limit,
   canPrev,
   canNext,
   onPrev,
@@ -28,24 +27,14 @@ export default function PaymentsTab({
 }: PaymentsTabProps) {
   return (
     <>
-      {payments.isLoading ? (
+      {payments.isError ? (
+        <ErrorState error={payments.error} onRetry={payments.refetch} />
+      ) : payments.isLoading ? (
         <LoadingState type="spinner" />
       ) : payments.data?.length ? (
         <>
-          <DataTable columns={paymentColumns} data={payments.data} />
-          <div className="flex items-center justify-between pt-2">
-            <div className="text-xs text-muted-foreground">
-              Offset {offset} &bull; Limit {limit}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={!canPrev} onClick={onPrev}>
-                Prev
-              </Button>
-              <Button variant="outline" size="sm" disabled={!canNext} onClick={onNext}>
-                Next
-              </Button>
-            </div>
-          </div>
+          <ResponsiveDataTable columns={paymentColumns} data={payments.data} />
+          <CursorPager canPrev={canPrev} hasMore={canNext} onPrev={onPrev} onNext={onNext} />
         </>
       ) : (
         <EmptyState title="No payments" description="Record a payment to see it here." />

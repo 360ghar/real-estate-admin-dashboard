@@ -9,6 +9,8 @@ import { useGetUsersQuery } from '@/features/users/api/usersApi'
 import { useUserRole } from '@/hooks/useUserRole'
 import { useGetAmenitiesQuery } from '@/features/core/api/amenitiesApi'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import { Form } from '@/components/ui/form'
 import { useDebounce } from '@/hooks/useDebounce'
 import { propertyFormSchema, type PropertyFormValues } from '@/features/properties/validations'
@@ -25,7 +27,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
   const [ownerSearch, setOwnerSearch] = useState('')
   const dq = useDebounce(ownerSearch, 300)
   const users = useGetUsersQuery(
-    { page: 1, limit: 20, q: dq || undefined, ...(role === 'agent' && me?.agent_id ? { agent_id: me.agent_id } : {}) },
+    { limit: 20, q: dq || undefined, ...(role === 'agent' && me?.agent_id ? { agent_id: me.agent_id } : {}) },
     { skip: ownerMode !== 'search' }
   )
   const amenities = useGetAmenitiesQuery()
@@ -90,6 +92,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         onSuccess?.(res.id)
       }
     } catch (err: unknown) {
+      applyServerValidation(err, form.setError)
       toast({ title: 'Save failed', description: getErrorMessage(err, 'Please check inputs'), variant: 'destructive' })
     }
   }
@@ -102,6 +105,7 @@ const PropertyForm = ({ id, onSuccess }: { id?: number; onSuccess?: (id: number)
         <CardContent>
           <Form {...form}>
             <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+              <div className="md:col-span-2"><FormRootError form={form} /></div>
               <PropertyBasicInfo form={form} images={images} setImages={setImages} primaryImage={primaryImage} setPrimaryImage={setPrimaryImage} />
               <PropertyOwnerSection form={form} ownerMode={ownerMode} setOwnerMode={setOwnerMode} ownerSearch={ownerSearch} setOwnerSearch={setOwnerSearch} users={users} role={role} />
               <PropertyAmenitiesSection form={form} amenities={amenities} />

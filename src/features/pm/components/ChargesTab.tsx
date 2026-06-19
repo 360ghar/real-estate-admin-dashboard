@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import type { ColumnDef } from "@tanstack/react-table";
 import type { RentChargeWithTotals, RentChargeStatus } from "@/types/pm";
 import { Button } from "@/components/ui/button";
@@ -8,14 +9,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DataTable } from "@/components/ui/data-table";
+import { ResponsiveDataTable } from "@/components/ui/responsive-data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { ErrorState } from "@/components/ui/error-state";
+import CursorPager from "@/components/ui/cursor-pager";
 import { RENT_CHARGE_STATUSES, PAGE_SIZES } from "@/features/pm/constants";
 
 interface ChargesTabProps {
   charges: {
     isLoading: boolean;
+    isError: boolean;
+    error: unknown;
+    refetch: () => void;
     data?: RentChargeWithTotals[];
   };
   chargeColumns: ColumnDef<RentChargeWithTotals>[];
@@ -23,7 +29,6 @@ interface ChargesTabProps {
   onChargeStatusChange: (status: RentChargeStatus | "") => void;
   limit: number;
   onLimitChange: (limit: number) => void;
-  offset: number;
   canPrev: boolean;
   canNext: boolean;
   onPrev: () => void;
@@ -38,14 +43,13 @@ export default function ChargesTab({
   onChargeStatusChange,
   limit,
   onLimitChange,
-  offset,
   canPrev,
   canNext,
   onPrev,
   onNext,
   onRecordPayment,
 }: ChargesTabProps) {
-  const columnsWithActions: ColumnDef<RentChargeWithTotals>[] = [
+  const columnsWithActions = useMemo<ColumnDef<RentChargeWithTotals>[]>(() => [
     ...chargeColumns.filter((c) => c.id !== "actions"),
     {
       id: "actions",
@@ -62,22 +66,22 @@ export default function ChargesTab({
         </div>
       ),
     },
-  ];
+  ], [chargeColumns, onRecordPayment]);
 
   return (
     <>
       <div className="grid gap-3 md:grid-cols-3">
         <Select
-          value={chargeStatus}
+          value={chargeStatus || 'all'}
           onValueChange={(v) => {
-            onChargeStatusChange(v as RentChargeStatus | "");
+            onChargeStatusChange(v === 'all' ? '' : v as RentChargeStatus);
           }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">All</SelectItem>
+            <SelectItem value="all">All</SelectItem>
             {RENT_CHARGE_STATUSES.map((s) => (
               <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
             ))}
@@ -98,24 +102,14 @@ export default function ChargesTab({
         </Select>
       </div>
 
-      {charges.isLoading ? (
+      {charges.isError ? (
+        <ErrorState error={charges.error} onRetry={charges.refetch} />
+      ) : charges.isLoading ? (
         <LoadingState type="spinner" />
       ) : charges.data?.length ? (
         <>
-          <DataTable columns={columnsWithActions} data={charges.data} />
-          <div className="flex items-center justify-between pt-2">
-            <div className="text-xs text-muted-foreground">
-              Offset {offset} &bull; Limit {limit}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" disabled={!canPrev} onClick={onPrev}>
-                Prev
-              </Button>
-              <Button variant="outline" size="sm" disabled={!canNext} onClick={onNext}>
-                Next
-              </Button>
-            </div>
-          </div>
+          <ResponsiveDataTable columns={columnsWithActions} data={charges.data} />
+          <CursorPager canPrev={canPrev} hasMore={canNext} onPrev={onPrev} onNext={onNext} />
         </>
       ) : (
         <EmptyState title="No charges" description="Generate charges or adjust filters." />

@@ -4,13 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
-import { useGetProfileQuery, useUpdateProfileMutation, useUpdatePreferencesMutation, useUpdateLocationMutation } from '@/features/users/api/usersApi'
+import { useGetProfileQuery, useUpdateProfileMutation, useUpdatePreferencesMutation, useUpdateLocationMutation, useUpdatePrivacySettingsMutation } from '@/features/users/api/usersApi'
 import { useGetAssignedAgentQuery } from '@/features/agents/api/agentsApi'
 import { Mail, Phone } from 'lucide-react'
 import { userProfileSchema, userPreferencesSchema, type UserProfileFormValues, type UserPreferencesFormValues } from '@/features/users/validations'
 import ProfileTab from '@/features/users/components/ProfileTab'
 import PreferencesTab from '@/features/users/components/PreferencesTab'
 import LocationTab from '@/features/users/components/LocationTab'
+import { LoadingState } from '@/components/ui/loading-state'
 
 const UserProfilePage: React.FC = () => {
   const { toast } = useToast()
@@ -26,6 +27,16 @@ const UserProfilePage: React.FC = () => {
   const [updateProfile, { isLoading: updatingProfile }] = useUpdateProfileMutation()
   const [updatePreferences, { isLoading: updatingPreferences }] = useUpdatePreferencesMutation()
   const [updateLocation, { isLoading: updatingLocation }] = useUpdateLocationMutation()
+  const [updatePrivacySettings] = useUpdatePrivacySettingsMutation()
+  const handleUpdatePrivacy = async (settings: { show_phone?: boolean; show_email?: boolean; allow_location_tracking?: boolean }) => {
+    await updatePrivacySettings({
+      profile_visibility: profile?.privacy_settings?.profile_visibility || 'public',
+      show_phone: settings.show_phone ?? profile?.privacy_settings?.show_phone ?? false,
+      show_email: settings.show_email ?? profile?.privacy_settings?.show_email ?? false,
+      allow_location_tracking: settings.allow_location_tracking ?? profile?.privacy_settings?.allow_location_tracking ?? false,
+      data_sharing_consent: profile?.privacy_settings?.data_sharing_consent ?? false,
+    }).unwrap()
+  }
 
   const profileForm = useForm<UserProfileFormValues>({
     resolver: zodResolver(userProfileSchema),
@@ -81,12 +92,30 @@ const UserProfilePage: React.FC = () => {
     } else { toast({ title: 'Not Supported', description: 'Geolocation is not supported by your browser.', variant: 'destructive' }) }
   }
 
-  const addLocation = (location: string) => { if (location && !selectedLocations.includes(location)) setSelectedLocations([...selectedLocations, location]) }
-  const removeLocation = (location: string) => setSelectedLocations(selectedLocations.filter(l => l !== location))
-  const togglePropertyType = (type: string) => setSelectedPropertyTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type])
+  const addLocation = (location: string) => {
+    if (location && !selectedLocations.includes(location)) {
+      const next = [...selectedLocations, location]
+      setSelectedLocations(next)
+      preferencesForm.setValue('location_preference', next, { shouldValidate: true })
+    }
+  }
+  const removeLocation = (location: string) => {
+    const next = selectedLocations.filter(l => l !== location)
+    setSelectedLocations(next)
+    preferencesForm.setValue('location_preference', next, { shouldValidate: true })
+  }
+  const togglePropertyType = (type: string) => {
+    setSelectedPropertyTypes(prev => {
+      const next = prev.includes(type)
+        ? prev.filter(t => t !== type)
+        : [...prev, type];
+      preferencesForm.setValue('property_type', next, { shouldValidate: true });
+      return next;
+    });
+  }
 
   if (profileLoading) {
-    return <div className="flex items-center justify-center h-full"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div></div>
+    return <LoadingState type="spinner" />
   }
 
   return (
@@ -112,28 +141,39 @@ const UserProfilePage: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-      <div className="flex space-x-1 border-b">
+      <div className="flex space-x-1 border-b" role="tablist">
         {(['profile', 'preferences', 'location'] as const).map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
+          <button
+            key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            aria-controls={`${tab}-panel`}
+            onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 text-sm font-medium transition-colors ${activeTab === tab ? 'border-b-2 border-primary text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
             {tab === 'profile' ? 'Profile Information' : tab === 'preferences' ? 'Preferences' : 'Location Settings'}
           </button>
         ))}
       </div>
       {activeTab === 'profile' && (
-        <ProfileTab profileForm={profileForm}
-          onSubmit={(e) => { e.preventDefault(); void profileForm.handleSubmit(handleProfileSubmit)(e) }}
-          updating={updatingProfile} />
+        <div role="tabpanel" id="profile-panel" aria-labelledby="profile-tab">
+          <ProfileTab profileForm={profileForm}
+            onSubmit={(e) => { e.preventDefault(); void profileForm.handleSubmit(handleProfileSubmit)(e) }}
+            updating={updatingProfile} />
+        </div>
       )}
       {activeTab === 'preferences' && (
-        <PreferencesTab preferencesForm={preferencesForm} selectedPropertyTypes={selectedPropertyTypes}
-          selectedLocations={selectedLocations} isPurpose={isPurpose} togglePropertyType={togglePropertyType}
-          addLocation={addLocation} removeLocation={removeLocation}
-          onSubmit={(e) => { e.preventDefault(); void preferencesForm.handleSubmit(handlePreferencesSubmit)(e) }}
-          updating={updatingPreferences} />
+        <div role="tabpanel" id="preferences-panel" aria-labelledby="preferences-tab">
+          <PreferencesTab preferencesForm={preferencesForm} selectedPropertyTypes={selectedPropertyTypes}
+            selectedLocations={selectedLocations} isPurpose={isPurpose} togglePropertyType={togglePropertyType}
+            addLocation={addLocation} removeLocation={removeLocation}
+            onSubmit={(e) => { e.preventDefault(); void preferencesForm.handleSubmit(handlePreferencesSubmit)(e) }}
+            updating={updatingPreferences} />
+        </div>
       )}
       {activeTab === 'location' && (
-        <LocationTab profile={profile} updatingLocation={updatingLocation} handleLocationUpdate={handleLocationUpdate} />
+        <div role="tabpanel" id="location-panel" aria-labelledby="location-tab">
+          <LocationTab profile={profile} updatingLocation={updatingLocation} handleLocationUpdate={handleLocationUpdate} onUpdatePrivacy={handleUpdatePrivacy} />
+        </div>
       )}
     </div>
   )

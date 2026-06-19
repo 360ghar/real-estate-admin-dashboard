@@ -33,6 +33,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
+import { applyServerValidation } from "@/lib/formErrors";
+import { FormRootError } from "@/components/ui/form-root-error";
 import { pmMaintenanceRequestSchema, type PmMaintenanceRequestForm } from "@/features/pm/validations";
 
 interface CreateRequestDialogProps {
@@ -45,7 +47,7 @@ export default function CreateRequestDialog({ ownerId }: CreateRequestDialogProp
   const [createRequest, createState] = useCreateMaintenanceRequestMutation();
 
   const properties = useListPmPropertiesQuery(
-    { owner_id: ownerId, limit: 200, offset: 0 },
+    { owner_id: ownerId, limit: 200 },
     { skip: role === "agent" && !ownerId },
   );
 
@@ -87,6 +89,7 @@ export default function CreateRequestDialog({ ownerId }: CreateRequestDialogProp
       toast({ title: "Created", description: "Maintenance request created." });
       setOpen(false);
     } catch (e: unknown) {
+      applyServerValidation(e, form.setError);
       toast({ title: "Failed", description: getErrorMessage(e, "Could not create request."), variant: "destructive" });
     }
   };
@@ -105,6 +108,7 @@ export default function CreateRequestDialog({ ownerId }: CreateRequestDialogProp
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+            <div className="md:col-span-2"><FormRootError form={form} /></div>
             <FormField
               control={form.control}
               name="property_id"
@@ -118,7 +122,7 @@ export default function CreateRequestDialog({ ownerId }: CreateRequestDialogProp
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {(properties.data || []).map((p) => (
+                      {(properties.data?.items ?? []).map((p) => (
                         <SelectItem key={p.id} value={String(p.id)}>
                           #{p.id} • {p.title}
                         </SelectItem>

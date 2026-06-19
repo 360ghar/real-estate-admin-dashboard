@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 
+import { formatCurrency, formatDateTime } from '@/lib/format'
 import type { FlatmatesListing } from '../types'
 import { getPrescreenFlags, getPrescreenReason, getPrescreenResult } from './moderationUtils'
 
@@ -72,7 +73,7 @@ export function ModerationListingCard({ listing, onReview }: ModerationListingCa
               {listing.locality && <span>{listing.locality}</span>}
               {listing.city && <span>, {listing.city}</span>}
               {listing.monthly_rent && (
-                <span className="ml-2">• ₹{listing.monthly_rent.toLocaleString()}/mo</span>
+                <span className="ml-2">• {formatCurrency(listing.monthly_rent)}/mo</span>
               )}
             </p>
           </div>
@@ -128,7 +129,7 @@ export function ModerationListingCard({ listing, onReview }: ModerationListingCa
               <div className="flex items-center gap-4 text-xs text-muted-foreground mt-3">
                 <span className="flex items-center gap-1">
                   <Clock className="h-3 w-3" />
-                  Submitted {new Date(listing.created_at).toLocaleString()}
+                  Submitted {formatDateTime(listing.created_at)}
                 </span>
                 {listing.bedrooms && <span>{listing.bedrooms} BHK</span>}
                 {listing.area_sqft && <span>{listing.area_sqft} sqft</span>}

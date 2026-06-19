@@ -11,8 +11,9 @@ import {
   useAddReviewMutation,
   useGetAllBookingsQuery
 } from '@/features/bookings/api/bookingsApi'
-import { CalendarIcon, Clock, Check, AlertCircle } from 'lucide-react'
+import { CalendarIcon, Clock, Check, AlertCircle, AlertTriangle } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { LoadingState } from '@/components/ui/loading-state'
 import type { Booking, BookingReview } from '@/types/api'
 import { BookingCard } from '@/features/bookings/components/BookingCard'
 import { CreateBookingDialog } from '@/features/bookings/components/CreateBookingDialog'
@@ -24,10 +25,10 @@ const BookingManagementPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('')
 
   // API calls
-  const { data: userBookings, refetch: refetchUserBookings } = useGetUserBookingsQuery()
+  const { data: userBookings, isLoading: userBookingsLoading, isError: userBookingsError, refetch: refetchUserBookings } = useGetUserBookingsQuery()
 
   // Admin/Agent view
-  const { data: allBookings, refetch: refetchAllBookings } = useGetAllBookingsQuery(
+  const { data: allBookings, isLoading: allBookingsLoading, isError: allBookingsError, refetch: refetchAllBookings } = useGetAllBookingsQuery(
     { status: statusFilter === 'all' ? undefined : statusFilter },
     { skip: user?.role === 'user' }
   )
@@ -37,7 +38,7 @@ const BookingManagementPage: React.FC = () => {
   const [processPayment] = useProcessPaymentMutation()
   const [addReview] = useAddReviewMutation()
 
-  const bookings = user?.role === 'user' ? userBookings?.bookings || [] : allBookings?.bookings || []
+  const bookings = user?.role === 'user' ? userBookings?.items || [] : allBookings?.items || []
 
   const filteredBookings = bookings.filter(booking => {
     if (searchQuery) {
@@ -135,7 +136,7 @@ const BookingManagementPage: React.FC = () => {
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userBookings.total}</div>
+              <div className="text-2xl font-bold">{userBookings.items.length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -144,7 +145,7 @@ const BookingManagementPage: React.FC = () => {
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userBookings.upcoming}</div>
+              <div className="text-2xl font-bold">{userBookings.items.filter((b) => ['pending', 'confirmed'].includes(b.booking_status)).length}</div>
             </CardContent>
           </Card>
           <Card>
@@ -153,7 +154,7 @@ const BookingManagementPage: React.FC = () => {
               <Check className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{userBookings.completed}</div>
+              <div className="text-2xl font-bold">{userBookings.items.filter((b) => b.booking_status === 'completed').length}</div>
             </CardContent>
           </Card>
         </div>
@@ -191,7 +192,16 @@ const BookingManagementPage: React.FC = () => {
 
       {/* Booking List */}
       <div className="space-y-4">
-        {filteredBookings.length === 0 ? (
+        {(userBookingsLoading || allBookingsLoading) ? (
+          <LoadingState type="cards" />
+        ) : (userBookingsError || allBookingsError) ? (
+          <EmptyState
+            icon={<AlertTriangle className="h-12 w-12" />}
+            title="Failed to load bookings"
+            description="There was an error loading bookings. Please try again."
+            action={{ label: 'Retry', onClick: () => { void refetchUserBookings(); void refetchAllBookings() }, variant: 'outline' }}
+          />
+        ) : filteredBookings.length === 0 ? (
           <EmptyState
             icon={<AlertCircle className="h-12 w-12" />}
             title="No bookings found"

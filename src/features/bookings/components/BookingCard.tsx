@@ -8,6 +8,7 @@ import { format, parseISO } from 'date-fns'
 import { MapPin, Star, CreditCard } from 'lucide-react'
 import type { Booking, BookingReview } from '@/types/api'
 import { getBookingStatusColor, getBookingPaymentStatusColor } from '@/lib/statusColors'
+import { formatCurrency } from '@/lib/format'
 import { BookingReviewForm } from './BookingReviewForm'
 
 interface BookingCardProps {
@@ -20,6 +21,7 @@ interface BookingCardProps {
 
 const BookingCard = ({ booking, onUpdate, onCancel, onReview, showActions = true }: BookingCardProps) => {
   const [showDetails, setShowDetails] = useState(false)
+  const [showReviewDialog, setShowReviewDialog] = useState(false)
 
   return (
     <Card className={`transition-all ${booking.booking_status === 'cancelled' ? 'opacity-60' : ''}`}>
@@ -63,7 +65,7 @@ const BookingCard = ({ booking, onUpdate, onCancel, onReview, showActions = true
               </div>
               <div>
                 <span className="text-muted-foreground">Total:</span>
-                <p className="font-medium">₹{booking.total_amount.toLocaleString()}</p>
+                <p className="font-medium">{formatCurrency(booking.total_amount)}</p>
               </div>
             </div>
 
@@ -99,15 +101,15 @@ const BookingCard = ({ booking, onUpdate, onCancel, onReview, showActions = true
                 <div className="grid gap-3 md:grid-cols-3 text-sm">
                   <div>
                     <span className="text-muted-foreground">Base Price:</span>
-                    <p>₹{booking.base_amount.toLocaleString()} × {booking.nights} nights</p>
+                    <p>{formatCurrency(booking.base_amount)} × {booking.nights} nights</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Taxes & Fees:</span>
-                    <p>₹{(booking.taxes_amount + booking.service_charges).toLocaleString()}</p>
+                    <p>{formatCurrency(booking.taxes_amount + booking.service_charges)}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Total Amount:</span>
-                    <p className="font-semibold">₹{booking.total_amount.toLocaleString()}</p>
+                    <p className="font-semibold">{formatCurrency(booking.total_amount)}</p>
                   </div>
                 </div>
 
@@ -155,7 +157,7 @@ const BookingCard = ({ booking, onUpdate, onCancel, onReview, showActions = true
             )}
 
             {showActions && booking.booking_status === 'confirmed' && !booking.guest_rating && (
-              <Dialog>
+                  <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
                 <DialogTrigger asChild>
                   <Button size="sm" variant="outline">
                     <Star className="h-4 w-4 mr-2" />
@@ -170,7 +172,8 @@ const BookingCard = ({ booking, onUpdate, onCancel, onReview, showActions = true
                     </DialogDescription>
                   </DialogHeader>
                   <BookingReviewForm
-                    onSubmit={(review) => onReview?.(booking.id, review)}
+                    onSubmit={(review) => { onReview?.(booking.id, review); setShowReviewDialog(false) }}
+                    onCancel={() => setShowReviewDialog(false)}
                   />
                 </DialogContent>
               </Dialog>

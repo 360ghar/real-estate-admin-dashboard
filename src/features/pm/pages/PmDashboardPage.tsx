@@ -5,6 +5,7 @@ import { useAppSelector } from '@/hooks/redux'
 import { selectSelectedOwner } from '@/features/pm/slices/pmSlice'
 import { useGetPmDashboardActivityQuery, useGetPmDashboardOverviewQuery } from '@/features/pm/api/pmApi'
 import { formatINR } from '@/features/pm/utils'
+import { formatDateTime } from '@/lib/format'
 import { EmptyState } from '@/components/ui/empty-state'
 import { ErrorState } from '@/components/ui/error-state'
 import { Badge } from '@/components/ui/badge'
@@ -36,13 +37,14 @@ export default function PmDashboardPage() {
         <Badge variant="secondary">{role === 'admin' ? 'Admin' : 'Agent'}</Badge>
       </div>
 
-      {overview.isError && (
+      {overview.isError ? (
         <ErrorState
           error={overview.error}
           onRetry={() => void overview.refetch()}
         />
-      )}
+      ) : null}
 
+      {!overview.isError ? (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -126,6 +128,7 @@ export default function PmDashboardPage() {
           </CardContent>
         </Card>
       </div>
+      ) : null}
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -148,9 +151,9 @@ export default function PmDashboardPage() {
               <Skeleton className="h-4 w-5/6" />
               <Skeleton className="h-4 w-4/6" />
             </div>
-          ) : activity.data?.length ? (
+          ) : activity.data?.items?.length ? (
             <div className="space-y-2">
-              {activity.data.map((a, idx) => (
+              {activity.data.items.map((a, idx) => (
                 <div key={`${a.type}-${a.at}-${idx}`} className="flex items-center justify-between gap-4 text-sm">
                   <div className="min-w-0">
                     <span className="font-medium">{a.type}</span>
@@ -158,7 +161,7 @@ export default function PmDashboardPage() {
                     {a.amount ? <span className="text-muted-foreground"> • {formatINR(a.amount)}</span> : null}
                   </div>
                   <div className="shrink-0 text-xs text-muted-foreground">
-                    {new Date(a.at).toLocaleString()}
+                    {formatDateTime(a.at)}
                   </div>
                 </div>
               ))}

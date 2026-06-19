@@ -29,6 +29,7 @@ const UserDetail = ({ id }: { id: number }) => {
     isFetching: notificationsLoading,
     refetch: refetchNotifications,
   } = useGetUserNotificationsQuery(id)
+  const notifItems = notifications?.items ?? []
 
   const [notifType, setNotifType] = useState<string>('promotion_generic')
   const [notifTitle, setNotifTitle] = useState<string>('Message from 360 Ghar')
@@ -207,11 +208,12 @@ const UserDetail = ({ id }: { id: number }) => {
           </CardHeader>
           <CardContent>
             {notificationsLoading && <p className="text-sm text-muted-foreground">Loading notifications…</p>}
-            {!notificationsLoading && (!notifications || notifications.length === 0) && (
+            {!notificationsLoading && notifItems.length === 0 && (
               <p className="text-sm text-muted-foreground">No notifications have been sent to this user yet.</p>
             )}
-            {!notificationsLoading && notifications && notifications.length > 0 && (
-              <div className="space-y-3">
+            {!notificationsLoading && notifItems.length > 0 && (
+              <div className="flex justify-between items-start">
+                <div />
                 <Button
                   type="button"
                   variant="outline"
@@ -222,7 +224,7 @@ const UserDetail = ({ id }: { id: number }) => {
                   Refresh
                 </Button>
                 <div className="space-y-2 max-h-80 overflow-y-auto">
-                  {notifications.map((n) => (
+                  {notifItems.map((n) => (
                     <div
                       key={n.id}
                       className="rounded-md border bg-muted/40 px-3 py-2 text-sm"

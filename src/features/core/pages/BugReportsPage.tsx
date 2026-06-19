@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { useAuth } from '@/hooks/useAuth'
 import { getErrorMessage } from '@/lib/errors'
@@ -9,11 +10,14 @@ import {
   useGetBugReportsQuery,
   useUpdateBugReportMutation,
 } from '@/features/core/api/coreApi'
-import { Bug, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { Bug, AlertTriangle, CheckCircle, Clock, Download } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { LoadingState } from '@/components/ui/loading-state'
+import { ErrorState } from '@/components/ui/error-state'
 import type { BugReportUpdate } from '@/types/api'
 import { BugReportCard } from '@/features/core/components/bug-reports/BugReportCard'
 import { CreateBugReportDialog } from '@/features/core/components/bug-reports/CreateBugReportDialog'
+import { downloadCsv, csvFilename } from '@/lib/csv'
 
 const BugReportsPage: React.FC = () => {
   const { user } = useAuth()
@@ -22,14 +26,16 @@ const BugReportsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const { data: bugReports, refetch } = useGetBugReportsQuery({
+  const { data: bugReports, isLoading, isError, refetch } = useGetBugReportsQuery({
     status: statusFilter === 'all' ? undefined : statusFilter,
     bug_type: typeFilter === 'all' ? undefined : typeFilter,
   })
 
   const [updateBugReport] = useUpdateBugReportMutation()
 
-  const filteredReports = (bugReports || []).filter(report => {
+  const reports = bugReports?.items ?? []
+
+  const filteredReports = reports.filter(report => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       return (
@@ -39,7 +45,7 @@ const BugReportsPage: React.FC = () => {
       )
     }
     return true
-  }) || []
+  })
 
   const handleUpdateBugReport = async (id: number, data: BugReportUpdate) => {
     try {
@@ -60,12 +66,30 @@ const BugReportsPage: React.FC = () => {
 
   // Statistics
   const stats = {
-    total: bugReports?.length || 0,
-    open: (bugReports || []).filter(r => r.status === 'open').length || 0,
-    inProgress: (bugReports || []).filter(r => r.status === 'in_progress').length || 0,
-    resolved: (bugReports || []).filter(r => r.status === 'resolved').length || 0,
-    critical: (bugReports || []).filter(r => r.severity === 'critical').length || 0,
+    total: reports.length,
+    open: reports.filter(r => r.status === 'open').length,
+    inProgress: reports.filter(r => r.status === 'in_progress').length,
+    resolved: reports.filter(r => r.status === 'resolved').length,
+    critical: reports.filter(r => r.severity === 'critical').length,
   }
+
+  const handleExport = () => {
+    const rows = reports.map((r) => ({
+      id: r.id,
+      title: r.title,
+      status: r.status,
+      severity: r.severity,
+      bug_type: r.bug_type,
+      source: r.source,
+      user_id: r.user_id,
+      app_version: r.app_version,
+      created_at: r.created_at,
+    }))
+    downloadCsv(csvFilename('bug-reports'), rows)
+  }
+
+  if (isLoading) return <LoadingState type="card" rows={5} />
+  if (isError) return <ErrorState title="Failed to load bug reports" onRetry={() => void refetch()} />
 
   return (
     <div className="space-y-6">
@@ -166,6 +190,9 @@ const BugReportsPage: React.FC = () => {
                 <SelectItem value="other">Other</SelectItem>
               </SelectContent>
             </Select>
+            <Button variant="outline" size="sm" onClick={handleExport} disabled={isLoading} className="gap-2 self-end">
+              <Download className="h-4 w-4" />Export
+            </Button>
           </div>
         </CardContent>
       </Card>

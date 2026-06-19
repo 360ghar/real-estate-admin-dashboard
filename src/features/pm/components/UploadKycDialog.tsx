@@ -69,10 +69,11 @@ export default function UploadKycDialog({
           Upload
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg" aria-describedby="upload-kyc-desc">
         <DialogHeader>
           <DialogTitle>Upload KYC Document</DialogTitle>
         </DialogHeader>
+        <p id="upload-kyc-desc" className="sr-only">Upload a KYC document with type and title.</p>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Document type</Label>
@@ -94,7 +95,15 @@ export default function UploadKycDialog({
           </div>
           <div className="space-y-2">
             <Label>File</Label>
-            <Input type="file" onChange={(e) => setDocFile(e.target.files?.[0] ?? null)} />
+            <Input type="file" accept="image/*,.pdf,.doc,.docx" onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              if (f && f.size > 20 * 1024 * 1024) {
+                toast({ title: "File too large", description: "Maximum file size is 20 MB.", variant: "destructive" });
+                e.target.value = "";
+                return;
+              }
+              setDocFile(f);
+            }} />
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>

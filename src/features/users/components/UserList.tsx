@@ -7,16 +7,22 @@ import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
 import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
-import Pagination from '@/components/ui/pagination'
+import CursorPager from '@/components/ui/cursor-pager'
 import { useDebounce } from '@/hooks/useDebounce'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import Combobox from '@/components/ui/combobox'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ErrorState } from '@/components/ui/error-state'
+import { LoadingState } from '@/components/ui/loading-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
   ColumnDef 
 } from '@tanstack/react-table'
 import { useFilterPersistence } from '@/hooks/useFilterPersistence'
-import { DataTable } from '@/components/ui/data-table'
+import { DataTable, SortableHeader } from '@/components/ui/data-table'
+import { Button } from '@/components/ui/button'
+import { Download } from 'lucide-react'
+import { downloadCsv, csvFilename } from '@/lib/csv'
 
 const UserList = () => {
   const { user: me, role } = useUserRole()
@@ -38,6 +44,12 @@ const UserList = () => {
   }, [q, agentId, setFilters])
 
   const dq = useDebounce(q)
+
+  const [pageSize, setPageSize] = useState(10)
+  const pager = useCursorPagination()
+
+  useEffect(() => { pager.reset() }, [pager, dq, agentId])
+
   const params = useMemo(() => {
     const base: UsersQuery = {}
     if (dq) base.q = dq
@@ -46,18 +58,30 @@ const UserList = () => {
     return base
   }, [dq, agentId, role, me?.agent_id])
 
-  const [page, setPage] = useState(1)
-  const [pageSize, setPageSize] = useState(10)
-  const { data, isFetching, refetch } = useGetUsersQuery({ ...params, page, limit: pageSize })
+  const { data, isFetching, isLoading, error, refetch } = useGetUsersQuery({ ...params, cursor: pager.cursor, limit: pageSize })
   const agents = useListAgentsQuery(
     { include_inactive: false },
     { skip: role !== 'admin' }
   )
 
-  const columns: ColumnDef<User>[] = [
-    {
+  const handleExport = () => {
+    const rows = (data?.items ?? []).map((u) => ({
+      id: u.id,
+      full_name: u.full_name,
+      email: u.email,
+      phone: u.phone,
+      role: u.role,
+      is_active: u.is_active,
+      is_verified: u.is_verified,
+      phone_verified: u.phone_verified,
+      created_at: u.created_at,
+    }))
+    downloadCsv(csvFilename('users'), rows)
+  }
+
+  const columns = useMemo<ColumnDef<User>[]>(() => [    {
       accessorKey: 'full_name',
-      header: 'Name',
+      header: ({ column }) => <SortableHeader column={column}>Name</SortableHeader>,
       cell: ({ row }) => row.original.full_name ?? '-',
     },
     {
@@ -83,7 +107,7 @@ const UserList = () => {
         </Link>
       ),
     },
-  ]
+  ], [])
 
   return (
     <Card>
@@ -91,22 +115,29 @@ const UserList = () => {
         <Input placeholder="Search name, phone, email" value={q} onChange={(e) => setQ(e.target.value)} />
         {role === 'admin' && (
           <Combobox
-            items={[{ value: '', label: 'All Agents' }, ...(agents.data?.results || []).map((a) => ({ value: a.id, label: a.name }))]}
+            items={[{ value: '', label: 'All Agents' }, ...(agents.data?.items || []).map((a) => ({ value: a.id, label: a.name }))]}
             value={agentId}
             onChange={(v) => setAgentId(v !== '' ? Number(v) : '')}
             placeholder="Filter agents…"
           />
         )}
         <div>
-          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setPage(1) }}>
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)) }}>
             <SelectTrigger><SelectValue placeholder="Rows" /></SelectTrigger>
             <SelectContent>
               {[10,20,50].map(n => (<SelectItem key={n} value={String(n)}>{n} / page</SelectItem>))}
             </SelectContent>
           </Select>
         </div>
+        <Button variant="outline" size="sm" onClick={handleExport} disabled={isFetching || isLoading} className="gap-2 justify-self-start md:justify-self-end">
+          <Download className="h-4 w-4" />Export
+        </Button>
       </div>
-      {(!isFetching && (!data?.items || data.items.length === 0)) ? (
+      {error ? (
+        <ErrorState title="Failed to load users" onRetry={() => { void refetch() }} />
+      ) : isLoading ? (
+        <LoadingState type="card" rows={5} />
+      ) : (!isFetching && (!data?.items || data.items.length === 0)) ? (
         <EmptyState
           title="No users found"
           description={q || agentId ? 'Try adjusting search or filters.' : 'Users will appear here once available.'}
@@ -114,8 +145,14 @@ const UserList = () => {
         />
       ) : (
         <>
-          <DataTable columns={columns} data={data?.items || []} />
-          <Pagination page={page} pageSize={pageSize} total={data?.total} onChange={setPage} />
+          <DataTable columns={columns} data={data?.items || []} enableSorting />
+          <CursorPager
+            canPrev={pager.canPrev}
+            hasMore={data?.has_more ?? false}
+            loading={isFetching}
+            onPrev={pager.prev}
+            onNext={() => data && pager.next(data.next_cursor)}
+          />
         </>
       )}
     </Card>

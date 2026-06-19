@@ -28,6 +28,50 @@ export const profileSchema = z.object({
   email: z.string().email().optional().or(z.literal('')),
 })
 
+// FAQ form validation (used in FaqsManagementPage.tsx)
+export const faqSchema = z.object({
+  question: z.string().trim().min(1, 'Question is required').max(500, 'Keep the question under 500 characters'),
+  answer: z.string().trim().min(1, 'Answer is required'),
+  category: z.string().trim().max(100).optional(),
+  tags: z.string().trim().optional(),
+  display_order: z.coerce.number().int('Must be a whole number').min(0, 'Must be 0 or greater'),
+  is_active: z.boolean(),
+})
+
+// App update form validation (used in AppUpdateFormDialog.tsx)
+export const appUpdateSchema = z.object({
+  platform: z.enum(['ios', 'android', 'web']),
+  version: z.string().min(1, 'Version is required').regex(/^\d+\.\d+\.\d+$/, 'Must be a valid semver (e.g. 1.0.0)'),
+  build_number: z.string().min(1, 'Build number is required').regex(/^\d+$/, 'Must be a number'),
+  release_notes: z.string().optional(),
+  download_url: z.string().min(1, 'Download URL is required').url('Must be a valid URL'),
+  is_mandatory: z.boolean(),
+  is_active: z.boolean(),
+  min_supported_version: z.string().optional(),
+})
+
+// CMS page form validation (used in PageFormDialog.tsx)
+export const cmsPageSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  unique_name: z.string().min(1, 'Unique name is required').regex(/^[a-z0-9-]+$/, 'Only lowercase letters, numbers, and hyphens'),
+  content: z.string().min(1, 'Content is required'),
+  format: z.enum(['html', 'markdown'], { required_error: 'Format is required' }),
+  custom_config_text: z.string().optional(),
+  is_active: z.boolean(),
+  is_draft: z.boolean(),
+}).superRefine((data, ctx) => {
+  if (data.custom_config_text) {
+    try {
+      JSON.parse(data.custom_config_text)
+    } catch {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid JSON', path: ['custom_config_text'] })
+    }
+  }
+})
+
 // Export inferred types
 export type BugReportFormData = z.infer<typeof bugReportSchema>
 export type ProfileFormValues = z.infer<typeof profileSchema>
+export type FaqFormValues = z.infer<typeof faqSchema>
+export type AppUpdateFormValues = z.infer<typeof appUpdateSchema>
+export type CmsPageFormValues = z.infer<typeof cmsPageSchema>

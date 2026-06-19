@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
+import { LoadingState } from '@/components/ui/loading-state'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import RichTextEditor from '@/components/ui/rich-text-editor'
 import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import MultiSelect from '@/components/ui/multi-select'
@@ -15,12 +18,14 @@ import { blogPostSchema, type BlogPostForm } from '@/lib/blogValidation'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Save } from 'lucide-react'
 import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import type { BlogCategory, BlogTag } from '@/types/blog'
 
 const BlogPostContentForm: React.FC<{ form: ReturnType<typeof useForm<BlogPostForm>> }> = ({ form }) => (
   <>
     <div className="md:col-span-2"><FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="Finding Your Dream Home in Mumbai" {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
-    <div className="md:col-span-2"><FormField control={form.control} name="content" render={({ field }) => (<FormItem><FormLabel>Content (HTML or Markdown)</FormLabel><FormControl><Textarea rows={12} placeholder="<h1>Introduction</h1>..." {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
+    <div className="md:col-span-2"><FormField control={form.control} name="content" render={({ field }) => (<FormItem><FormLabel>Content (HTML or Markdown)</FormLabel><FormControl><RichTextEditor value={field.value} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} /></div>
     <div className="md:col-span-2"><FormField control={form.control} name="excerpt" render={({ field }) => (<FormItem><FormLabel>Excerpt</FormLabel><FormControl><Textarea rows={3} placeholder="Short summary (optional)" {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
   </>
 )
@@ -29,7 +34,7 @@ const BlogPostMetaForm: React.FC<{ form: ReturnType<typeof useForm<BlogPostForm>
   <>
     <div className="md:col-span-2">
       <FormLabel>Cover Image</FormLabel>
-      <ImageUpload value={images} onChange={setImages} multiple={false} primary={images[0] || null} onPrimaryChange={(u) => { setImages(u ? [u] : []) }} />
+      <ImageUpload value={images} onChange={setImages} multiple={false} primary={images[0] || null} onPrimaryChange={(u) => { setImages(u ? [u, ...images.filter(i => i !== u)] : images.filter(i => i !== u)) }} />
       <div className="mt-2"><FormField control={form.control} name="cover_image_url" render={({ field }) => (<FormItem><FormLabel className="text-xs text-muted-foreground">Cover Image URL</FormLabel><FormControl><Input placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
     </div>
     <div><FormField control={form.control} name="categories" render={({ field }) => (<FormItem><FormLabel>Categories</FormLabel><FormControl><MultiSelect options={categoryOptions} selected={field.value || []} onChange={field.onChange} placeholder="Select categories..." emptyMessage="No categories found. Create some first!" /></FormControl><FormMessage /></FormItem>)} /></div>
@@ -69,20 +74,21 @@ const BlogEdit: React.FC<BlogEditProps> = ({ identifier, onSuccess }) => {
       const payload = { title: values.title, content: values.content, excerpt: values.excerpt || undefined, cover_image_url: values.cover_image_url || undefined, categories: values.categories?.length ? values.categories : undefined, tags: values.tags?.length ? values.tags : undefined, active: values.active ?? post.active }
       const res = await updateBlogPost({ identifier: post.id, data: payload }).unwrap()
       toast({ title: 'Updated', description: 'Blog post updated successfully' }); onSuccess?.(res.slug)
-    } catch (e: unknown) { toast({ title: 'Update failed', description: getErrorMessage(e, 'Please check inputs'), variant: 'destructive' }) }
+    } catch (e: unknown) { applyServerValidation(e, form.setError); toast({ title: 'Update failed', description: getErrorMessage(e, 'Please check inputs'), variant: 'destructive' }) }
   }
 
   const categoryOptions = categoriesData?.items.map((cat: BlogCategory) => ({ value: cat.slug, label: cat.name })) || []
   const tagOptions = tagsData?.items.map((tag: BlogTag) => ({ value: tag.slug, label: tag.name })) || []
 
-  if (isFetchingPost) return <div className="space-y-4"><div className="flex items-center gap-4"><Button variant="outline" size="sm" onClick={() => navigate('/blogs')}><ArrowLeft className="h-4 w-4 mr-2" />Back to Blog Posts</Button></div><Card><CardContent className="p-6"><div>Loading post...</div></CardContent></Card></div>
-  if (!post) return <div className="space-y-4"><div className="flex items-center gap-4"><Button variant="outline" size="sm" onClick={() => navigate('/blogs')}><ArrowLeft className="h-4 w-4 mr-2" />Back to Blog Posts</Button></div><Card><CardContent className="p-6"><div>Post not found</div></CardContent></Card></div>
+  if (isFetchingPost) return <div className="space-y-4"><div className="flex items-center gap-4"><Button variant="outline" size="sm" onClick={() => navigate('/blogs')}><ArrowLeft className="h-4 w-4 mr-2" />Back to Blog Posts</Button></div><Card><CardContent className="p-6"><LoadingState type="card" rows={6} /></CardContent></Card></div>
+  if (!post) return <div className="space-y-4"><div className="flex items-center gap-4"><Button variant="outline" size="sm" onClick={() => navigate('/blogs')}><ArrowLeft className="h-4 w-4 mr-2" />Back to Blog Posts</Button></div><Card><CardContent className="p-6"><EmptyState title="Post not found" /></CardContent></Card></div>
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between"><div className="flex items-center gap-4"><Button variant="outline" size="sm" onClick={() => navigate('/blogs')}><ArrowLeft className="h-4 w-4 mr-2" />Back to Blog Posts</Button><h1 className="text-xl font-semibold">Edit Blog Post</h1></div></div>
       <Card><CardHeader><CardTitle>Edit Post Details</CardTitle></CardHeader>
         <CardContent><Form {...form}><form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="grid gap-4 md:grid-cols-2">
+          <div className="md:col-span-2"><FormRootError form={form} /></div>
           <BlogPostContentForm form={form} />
           <BlogPostMetaForm form={form} images={images} setImages={setImages} categoryOptions={categoryOptions} tagOptions={tagOptions} />
           <div className="md:col-span-2 flex justify-end gap-2">

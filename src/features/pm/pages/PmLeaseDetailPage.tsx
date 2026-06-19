@@ -1,9 +1,9 @@
-import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import UploadSignedDialog from "@/features/pm/components/UploadSignedDialog";
 import RenewLeaseDialog from "@/features/pm/components/RenewLeaseDialog";
 import TerminateLeaseDialog from "@/features/pm/components/TerminateLeaseDialog";
 import { useGetPmLeaseQuery } from "@/features/pm/api/pmApi";
+import { formatCurrency, formatDate } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -19,12 +19,6 @@ export default function PmLeaseDetailPage() {
 
   const canTerminate = lease.data?.status !== "terminated";
 
-  const headerTitle = useMemo(() => {
-            if (lease.isLoading) return "Loading…";
-    if (!lease.data) return `Lease #${leaseIdNum}`;
-    return `Lease #${lease.data.id}`;
-  }, [lease.data, lease.isLoading, leaseIdNum]);
-
   if (!leaseIdNum || Number.isNaN(leaseIdNum)) {
     return <EmptyState title="Invalid lease id" />;
   }
@@ -38,11 +32,51 @@ export default function PmLeaseDetailPage() {
     );
   }
 
+  if (lease.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-64" />
+            <Skeleton className="h-4 w-48" />
+          </div>
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-9 w-32" />
+            <Skeleton className="h-9 w-32" />
+            <Skeleton className="h-9 w-32" />
+          </div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-3">
+          <Card className="lg:col-span-2">
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-3">
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-2/3" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-4 w-3/4" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader><Skeleton className="h-5 w-24" /></CardHeader>
+            <CardContent className="space-y-2">
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-9 w-full" />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">{headerTitle}</h1>
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Lease #{lease.data?.id ?? leaseIdNum}</h1>
           <p className="text-sm text-muted-foreground">
             Property #{lease.data?.property_id} &bull; Owner #{lease.data?.owner_id}
           </p>
@@ -73,12 +107,7 @@ export default function PmLeaseDetailPage() {
             <CardTitle className="text-base">Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
-            {lease.isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-              </div>
-            ) : lease.data ? (
+            {lease.data ? (
               <>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Tenant</span>
@@ -89,20 +118,20 @@ export default function PmLeaseDetailPage() {
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Term</span>
                   <span className="font-medium">
-                    {new Date(lease.data.start_date).toLocaleDateString()} →{" "}
-                    {new Date(lease.data.end_date).toLocaleDateString()}
+                    {formatDate(lease.data.start_date)} →{" "}
+                    {formatDate(lease.data.end_date)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Monthly rent</span>
                   <span className="font-medium">
-                    ₹{lease.data.monthly_rent.toLocaleString("en-IN")}
+                    {formatCurrency(lease.data.monthly_rent)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Security deposit</span>
                   <span className="font-medium">
-                    ₹{lease.data.security_deposit.toLocaleString("en-IN")}
+                    {formatCurrency(lease.data.security_deposit)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
@@ -133,7 +162,13 @@ export default function PmLeaseDetailPage() {
             <CardTitle className="text-base">Quick Links</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
-            {lease.data ? (
+            {lease.isLoading ? (
+              <div className="space-y-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-9 w-full" />
+              </div>
+            ) : lease.data ? (
               <>
                 <Button asChild variant="outline" className="w-full justify-start">
                   <Link to={`/pm/properties/${lease.data.property_id}`}>Open property</Link>

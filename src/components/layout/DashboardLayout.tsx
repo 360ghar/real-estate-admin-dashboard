@@ -4,9 +4,11 @@ import TopBar from './TopBar'
 import BottomNav from './BottomNav'
 import { Toaster } from '@/components/ui/toaster'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
+import { useRealtimeInvalidation } from '@/hooks/useRealtimeInvalidation'
 
 const DashboardLayout = () => {
   const location = useLocation()
+  useRealtimeInvalidation()
   return (
     <div className="flex h-dvh w-full overflow-hidden">
       <a
@@ -22,9 +24,11 @@ const DashboardLayout = () => {
           id="main-content"
           className="min-w-0 flex-1 overflow-y-auto bg-muted/40 p-4 pb-20 md:pb-4 lg:p-6 lg:pb-6"
         >
-          {/* Keyed by route so a crash in one page is isolated and the
-              boundary resets when the user navigates elsewhere. */}
-          <ErrorBoundary key={location.pathname}>
+          {/* resetKeys clears the boundary's error state when the user
+              navigates away from a crashed page, without remounting the
+              whole subtree on every route change (which caused full-page
+              state loss and data refetches on every navigation). */}
+          <ErrorBoundary resetKeys={[location.pathname]}>
             <Outlet />
           </ErrorBoundary>
         </main>

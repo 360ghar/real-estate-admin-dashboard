@@ -18,3 +18,10 @@ pnpm-debug.log*
 # Env
 .env
 
+# Build artifacts
+*.tsbuildinfo
+vite.config.d.ts
+
+# Claude Code
+skills-lock.json
+

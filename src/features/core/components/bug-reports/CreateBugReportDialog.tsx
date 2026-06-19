@@ -7,6 +7,9 @@ import { useToast } from '@/hooks/use-toast'
 import { useCreateBugReportMutation, useCreateBugReportWithMediaMutation } from '@/features/core/api/coreApi'
 import { Plus } from 'lucide-react'
 import { bugReportSchema, type BugReportFormData } from '@/features/core/validations'
+import { getErrorMessage } from '@/lib/errors'
+import { applyServerValidation } from '@/lib/formErrors'
+import { FormRootError } from '@/components/ui/form-root-error'
 import BugReportFormFields from './parts/BugReportFormFields'
 
 const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess }) => {
@@ -37,7 +40,7 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
       } else { await createBugReport(data).unwrap() }
       toast({ title: 'Bug Report Created', description: 'Thank you for reporting this issue. We will look into it.' })
       setIsOpen(false); form.reset(); setAttachments([]); onSuccess?.()
-    } catch { toast({ title: 'Report Failed', description: 'Failed to create bug report. Please try again.', variant: 'destructive' }) }
+    } catch (error) { applyServerValidation(error, form.setError); toast({ title: 'Report Failed', description: getErrorMessage(error, 'Failed to create bug report. Please try again.'), variant: 'destructive' }) }
   }
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => { setAttachments(prev => [...prev, ...Array.from(e.target.files || [])]) }
@@ -49,6 +52,7 @@ const CreateBugReportDialog: React.FC<{ onSuccess?: () => void }> = ({ onSuccess
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>Report a Bug</DialogTitle><DialogDescription>Help us improve by reporting issues you encounter</DialogDescription></DialogHeader>
         <form onSubmit={(e) => void form.handleSubmit(onSubmit)(e)} className="space-y-6">
+          <FormRootError form={form} />
           <BugReportFormFields form={form} attachments={attachments} fileInputRef={fileInputRef} handleFileSelect={handleFileSelect} removeAttachment={removeAttachment} />
           <div className="flex gap-2">
             <Button type="submit" className="flex-1">Submit Report</Button>

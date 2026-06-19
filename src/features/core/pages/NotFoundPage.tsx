@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Compass } from 'lucide-react'
 
 const NotFoundPage = () => (
-  <div className="flex min-h-screen flex-col items-center justify-center gap-6 p-6 text-center">
+  <div className="flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center gap-6 p-6 text-center">
     <div className="space-y-2">
       <p className="text-6xl font-semibold tracking-tight text-muted-foreground">404</p>
       <h1 className="text-2xl font-semibold tracking-tight">Page not found</h1>

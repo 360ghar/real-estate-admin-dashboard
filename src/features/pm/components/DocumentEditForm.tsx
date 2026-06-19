@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Document, DocumentUpdate } from "@/types/pm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,12 @@ export default function DocumentEditForm({
   const [title, setTitle] = useState(doc.title);
   const [shareAgent, setShareAgent] = useState(doc.shared_with_agent);
   const [shareTenant, setShareTenant] = useState(doc.shared_with_tenant);
+
+  useEffect(() => {
+    setTitle(doc.title);
+    setShareAgent(doc.shared_with_agent);
+    setShareTenant(doc.shared_with_tenant);
+  }, [doc]);
 
   return (
     <div className="space-y-4">

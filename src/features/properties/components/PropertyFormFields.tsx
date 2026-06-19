@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
+import { formatDate } from '@/lib/format'
 import ImageUpload from '@/components/common/media/ImageUpload'
 import LocationPicker from '@/components/common/map/LocationPicker'
 import { X, MapPin } from 'lucide-react'
@@ -138,7 +139,7 @@ const PropertyAmenitiesFeaturesFields: React.FC<{ form: UseFormReturn<PropertyFo
         <div className="grid gap-2 md:grid-cols-3 mt-2">
           {amenities?.map((amenity) => (
             <div key={amenity.id} className="flex items-center space-x-2">
-              <Switch id={`amenity-${amenity.id}`} checked={(form.getValues('amenity_ids') as number[] | undefined)?.includes(amenity.id) ?? false} onCheckedChange={() => toggleAmenity(amenity.id)} />
+              <Switch id={`amenity-${amenity.id}`} checked={(form.watch('amenity_ids') as number[] | undefined)?.includes(amenity.id) ?? false} onCheckedChange={() => toggleAmenity(amenity.id)} />
               <Label htmlFor={`amenity-${amenity.id}`} className="text-sm">{amenity.title || amenity.name}</Label>
             </div>
           ))}
@@ -210,7 +211,7 @@ const PropertySidebar: React.FC<{ form: UseFormReturn<PropertyFormPageValues>; u
         <CardContent>
           <div className="space-y-2">
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Status</span><Badge variant={property.status === 'available' ? 'default' : 'secondary'}>{property.status}</Badge></div>
-            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Created</span><span className="text-sm">{new Date(property.created_at).toLocaleDateString()}</span></div>
+            <div className="flex justify-between"><span className="text-sm text-muted-foreground">Created</span><span className="text-sm">{formatDate(property.created_at)}</span></div>
             <div className="flex justify-between"><span className="text-sm text-muted-foreground">Owner ID</span><span className="text-sm">{property.owner_id}</span></div>
           </div>
         </CardContent>

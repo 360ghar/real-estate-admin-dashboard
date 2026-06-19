@@ -34,8 +34,8 @@ export const blogsApi = api.injectEndpoints({
       query: (params) => {
         const p = params || {}
         const search = new URLSearchParams()
-        search.set('page', String(p.page || 1))
         search.set('limit', String(p.limit || 20))
+        if (p.cursor) search.set('cursor', p.cursor)
         if (p.q) search.set('q', p.q)
         if (Array.isArray(p.categories)) p.categories.forEach((c) => search.append('categories', c))
         if (Array.isArray(p.tags)) p.tags.forEach((t) => search.append('tags', t))
@@ -104,9 +104,11 @@ export const blogsApi = api.injectEndpoints({
     getBlogCategories: builder.query<BlogCategoryListResponse, BlogCategoryFilters | void>({
       query: (params) => {
         const p = params || {}
+        const queryParams: Record<string, string | null> = { limit: String(p.limit || 20) }
+        if (p.cursor) queryParams.cursor = p.cursor
         return {
           url: '/blog/categories',
-          params: { page: p.page || 1, limit: p.limit || 20 },
+          params: queryParams,
         }
       },
       providesTags: (res) =>
@@ -153,9 +155,11 @@ export const blogsApi = api.injectEndpoints({
     getBlogTags: builder.query<BlogTagListResponse, BlogTagFilters | void>({
       query: (params) => {
         const p = params || {}
+        const queryParams: Record<string, string | null> = { limit: String(p.limit || 20) }
+        if (p.cursor) queryParams.cursor = p.cursor
         return {
           url: '/blog/tags',
-          params: { page: p.page || 1, limit: p.limit || 20 },
+          params: queryParams,
         }
       },
       providesTags: (res) =>

@@ -16,10 +16,10 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({ form, togglePropertyType })
   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     <div className="space-y-2">
       <Label>Purpose</Label>
-      <Select value={form.watch('purpose') || ''} onValueChange={(value) => form.setValue('purpose', value)}>
+      <Select value={form.watch('purpose') || 'all'} onValueChange={(value) => form.setValue('purpose', value === 'all' ? '' : value)}>
         <SelectTrigger><SelectValue placeholder="Any purpose" /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="">Any Purpose</SelectItem>
+          <SelectItem value="all">Any Purpose</SelectItem>
           {PROPERTY_PURPOSES.map(purpose => <SelectItem key={purpose.value} value={purpose.value}>{purpose.label}</SelectItem>)}
         </SelectContent>
       </Select>
@@ -28,7 +28,7 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({ form, togglePropertyType })
       <Label>Property Types</Label>
       <div className="flex flex-wrap gap-2">
         {PROPERTY_TYPES.map(type => (
-          <Badge key={type.value} variant={form.getValues('property_type')?.includes(type.value) ? "default" : "outline"}
+          <Badge key={type.value} variant={form.watch('property_type')?.includes(type.value) ? "default" : "outline"}
             className="cursor-pointer capitalize" onClick={() => togglePropertyType(type.value)}>
             {type.label}
           </Badge>
@@ -38,33 +38,33 @@ const BasicFilters: React.FC<BasicFiltersProps> = ({ form, togglePropertyType })
     <div className="space-y-2">
       <Label>Price Range (₹)</Label>
       <div className="flex items-center gap-2">
-        <Input type="number" placeholder="Min" {...form.register('price_min', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Min" aria-label="Minimum price" {...form.register('price_min', { valueAsNumber: true })} />
         <span>-</span>
-        <Input type="number" placeholder="Max" {...form.register('price_max', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Max" aria-label="Maximum price" {...form.register('price_max', { valueAsNumber: true })} />
       </div>
     </div>
     <div className="space-y-2">
       <Label>Bedrooms</Label>
       <div className="flex items-center gap-2">
-        <Input type="number" placeholder="Min" {...form.register('bedrooms_min', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Min" aria-label="Minimum bedrooms" {...form.register('bedrooms_min', { valueAsNumber: true })} />
         <span>-</span>
-        <Input type="number" placeholder="Max" {...form.register('bedrooms_max', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Max" aria-label="Maximum bedrooms" {...form.register('bedrooms_max', { valueAsNumber: true })} />
       </div>
     </div>
     <div className="space-y-2">
       <Label>Bathrooms</Label>
       <div className="flex items-center gap-2">
-        <Input type="number" placeholder="Min" {...form.register('bathrooms_min', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Min" aria-label="Minimum bathrooms" {...form.register('bathrooms_min', { valueAsNumber: true })} />
         <span>-</span>
-        <Input type="number" placeholder="Max" {...form.register('bathrooms_max', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Max" aria-label="Maximum bathrooms" {...form.register('bathrooms_max', { valueAsNumber: true })} />
       </div>
     </div>
     <div className="space-y-2">
       <Label>Area (sqft)</Label>
       <div className="flex items-center gap-2">
-        <Input type="number" placeholder="Min" {...form.register('area_min', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Min" aria-label="Minimum area" {...form.register('area_min', { valueAsNumber: true })} />
         <span>-</span>
-        <Input type="number" placeholder="Max" {...form.register('area_max', { valueAsNumber: true })} />
+        <Input type="number" placeholder="Max" aria-label="Maximum area" {...form.register('area_max', { valueAsNumber: true })} />
       </div>
     </div>
   </div>

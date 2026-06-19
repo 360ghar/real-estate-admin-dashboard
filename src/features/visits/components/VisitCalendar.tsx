@@ -12,7 +12,7 @@ interface VisitCalendarProps {
   selectedDate?: Date
 }
 
-const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits, onDateSelect, selectedDate }) => {
+const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits = [], onDateSelect, selectedDate }) => {
   const hasVisitOnDate = (date: Date) => {
     return visits.some(visit => {
       const visitDate = parseServerTimestamp(visit.scheduled_date)
@@ -39,11 +39,8 @@ const VisitCalendar: React.FC<VisitCalendarProps> = ({ visits, onDateSelect, sel
         modifiers={{
           hasVisit: (date) => hasVisitOnDate(date)
         }}
-        modifiersStyles={{
-          hasVisit: {
-            backgroundColor: '#3b82f6',
-            color: 'white'
-          }
+        modifiersClassNames={{
+          hasVisit: 'bg-primary text-primary-foreground',
         }}
       />
       {selectedDate && (

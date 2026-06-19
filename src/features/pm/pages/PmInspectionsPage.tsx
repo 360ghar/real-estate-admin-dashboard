@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -18,17 +18,20 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { DataTable } from '@/components/ui/data-table'
+import { ResponsiveDataTable } from '@/components/ui/responsive-data-table'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LoadingState } from '@/components/ui/loading-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { getErrorMessage } from '@/lib/errors'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { localInputToServerTimestamp, parseServerTimestamp } from '@/lib/dateTime'
+import { localInputToServerTimestamp } from '@/lib/dateTime'
+import { formatDateTime } from '@/lib/format'
 import { pmInspectionCreateSchema, type PmInspectionCreateForm } from '@/features/pm/validations'
 
 export default function PmInspectionsPage() {
@@ -39,15 +42,17 @@ export default function PmInspectionsPage() {
   const ownerId = selectedOwnerId
 
   const [limit, setLimit] = useState(50)
-  const [offset, setOffset] = useState(0)
+
+  const pager = useCursorPagination()
+  useEffect(() => { pager.reset() }, [pager, limit])
 
   const inspections = useListPmInspectionsQuery(
-    { owner_id: ownerId, limit, offset },
+    { owner_id: ownerId, limit, cursor: pager.cursor },
     { skip: role === 'agent' && !ownerId },
   )
 
   const leases = useListPmLeasesQuery(
-    { owner_id: ownerId, limit: 200, offset: 0 },
+    { owner_id: ownerId, limit: 200 },
     { skip: role === 'agent' && !ownerId },
   )
 
@@ -70,7 +75,7 @@ export default function PmInspectionsPage() {
       {
         accessorKey: 'conducted_at',
         header: 'Conducted',
-        cell: ({ row }) => parseServerTimestamp(row.original.conducted_at)?.toLocaleString() ?? '—',
+        cell: ({ row }) => formatDateTime(row.original.conducted_at),
       },
       {
         id: 'signed',
@@ -119,7 +124,7 @@ export default function PmInspectionsPage() {
   )
 
   const submitCreate = async (values: PmInspectionCreateForm) => {
-    const selectedLease = (leases.data || []).find((l) => String(l.id) === values.lease_id)
+    const selectedLease = (leases.data?.items ?? []).find((l) => String(l.id) === values.lease_id)
     if (!selectedLease) {
       toast({ title: 'Lease not found', description: 'Selected lease could not be found. Please refresh and try again.', variant: 'destructive' })
       return
@@ -150,8 +155,7 @@ export default function PmInspectionsPage() {
     }
   }
 
-  const canPrev = offset > 0
-  const canNext = (inspections.data?.length ?? 0) >= limit
+  const inspectionItems = inspections.data?.items ?? []
 
   return (
     <OwnerScopeGate>
@@ -187,7 +191,11 @@ export default function PmInspectionsPage() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {(leases.data || []).map((l) => (
+                            {leases.isLoading ? (
+                              <SelectItem value="loading" disabled>Loading leases...</SelectItem>
+                            ) : (leases.data?.items ?? []).length === 0 ? (
+                              <SelectItem value="none" disabled>No leases available</SelectItem>
+                            ) : (leases.data?.items ?? []).map((l) => (
                               <SelectItem key={l.id} value={String(l.id)}>
                                 #{l.id} • Property #{l.property_id}
                               </SelectItem>
@@ -279,31 +287,41 @@ export default function PmInspectionsPage() {
           </Card>
         )}
 
-        {inspections.isLoading && <LoadingState />}
-
-        {inspections.data && inspections.data.length === 0 && (
-          <EmptyState
-            icon={<ClipboardCheck className="h-12 w-12" />}
-            title="No inspections"
-            description="Create your first inspection to get started."
-          />
+        {inspections.isLoading && (
+          <Card>
+            <CardContent className="pt-6">
+              <LoadingState />
+            </CardContent>
+          </Card>
         )}
 
-        {inspections.data && inspections.data.length > 0 && (
+        {inspectionItems.length === 0 && !inspections.isLoading && !inspections.isError && (
+          <Card>
+            <CardContent className="pt-6">
+              <EmptyState
+                icon={<ClipboardCheck className="h-12 w-12" />}
+                title="No inspections"
+                description="Create your first inspection to get started."
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {inspectionItems.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">Inspection List</CardTitle>
               <Badge variant="secondary" className="h-fit">
                 <ClipboardCheck className="mr-1 h-3 w-3" />
-                {inspections.data.length} shown
+                {inspectionItems.length} shown
               </Badge>
             </CardHeader>
             <CardContent>
-              <DataTable columns={columns} data={inspections.data} />
+              <ResponsiveDataTable columns={columns} data={inspectionItems} />
               <div className="flex items-center justify-between pt-4">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground">Rows per page</span>
-                  <Select value={String(limit)} onValueChange={(v) => { setLimit(Number(v)); setOffset(0) }}>
+                  <Select value={String(limit)} onValueChange={(v) => setLimit(Number(v))}>
                     <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {PAGE_SIZES.map((s) => (
@@ -312,14 +330,13 @@ export default function PmInspectionsPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" disabled={!canPrev} onClick={() => setOffset(Math.max(0, offset - limit))}>
-                    Previous
-                  </Button>
-                  <Button variant="outline" size="sm" disabled={!canNext} onClick={() => setOffset(offset + limit)}>
-                    Next
-                  </Button>
-                </div>
+                <CursorPager
+                  canPrev={pager.canPrev}
+                  hasMore={inspections.data?.has_more ?? false}
+                  loading={inspections.isFetching}
+                  onPrev={pager.prev}
+                  onNext={() => inspections.data && pager.next(inspections.data.next_cursor)}
+                />
               </div>
             </CardContent>
           </Card>

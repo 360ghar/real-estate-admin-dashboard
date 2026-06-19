@@ -116,7 +116,11 @@ export function normalizePhone(phone: string): string {
   const trimmed = phone.trim().replace(/\s+/g, '')
   if (!trimmed) return ''
   if (trimmed.startsWith('+')) return trimmed
-  return `+${trimmed}`
+  const digits = trimmed.replace(/\D/g, '')
+  if (!digits) return ''
+  // 10-digit Indian mobile number → prepend +91
+  if (digits.length === 10) return `+91${digits}`
+  return `+${digits}`
 }
 
 /** Normalize the raw identifier into the canonical phone/email value to send to Supabase. */

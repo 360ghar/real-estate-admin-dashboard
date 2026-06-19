@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react'
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 
 import { mapSupabaseAuthError } from '@/lib/authErrors'
@@ -92,7 +92,7 @@ export default function ForgotPasswordPage() {
   }
 
   const onIdentifierSubmit = async (values: ForgotPasswordFormValues) => {
-    const sb = requireSupabase()
+    requireSupabase()
     setErrorMessage(null)
     setInfoMessage(null)
     setIsSubmitting(true)

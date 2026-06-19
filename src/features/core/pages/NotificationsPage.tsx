@@ -51,7 +51,7 @@ const NotificationsPage = () => {
     defaultValues: notificationComposerDefaults,
   })
   const channel = form.watch('channel')
-  const agents = useListAgentsQuery({ include_inactive: false })
+  const agents = useListAgentsQuery({ include_inactive: false }, { skip: channel !== 'segment' })
 
   const [sendBroadcast, broadcastState] = useSendMarketingBroadcastMutation()
   const [sendSegment, segmentState] = useSendMarketingToSegmentMutation()
@@ -179,7 +179,7 @@ const NotificationsPage = () => {
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="all">All agents</SelectItem>
-                            {(agents.data?.results ?? []).map((agent) => (
+                            {(agents.data?.items ?? []).map((agent) => (
                               <SelectItem key={agent.id} value={String(agent.id)}>
                                 {agent.name}
                               </SelectItem>

@@ -13,8 +13,10 @@ export const PROPERTY_PURPOSES = [
 
 export const PROPERTY_STATUSES = [
   { value: 'available', label: 'Available' },
+  { value: 'under_offer', label: 'Under Offer' },
   { value: 'rented', label: 'Rented' },
-  { value: 'inactive', label: 'Inactive' },
+  { value: 'sold', label: 'Sold' },
+  { value: 'maintenance', label: 'Maintenance' },
 ] as const
 
 export const PROPERTY_FEATURES = [

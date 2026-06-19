@@ -1,6 +1,5 @@
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { useGetSystemStatsQuery, useGetWorkloadQuery } from '@/features/core/api/systemApi'
-import type { AgentSystemStats } from '@/types/api'
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ErrorState } from '@/components/ui/error-state'
@@ -32,7 +31,7 @@ const AnalyticsPage = () => {
   const [view, setView] = useState<'workload' | 'properties' | 'bookings'>('workload')
   const stats = useGetSystemStatsQuery()
   const workload = useGetWorkloadQuery()
-  const s = stats.data ?? ({} as Partial<AgentSystemStats>)
+  const s = stats.data ?? { active_agents: 0, active_users: 0, properties_listed: 0, occupancy_rate: 0 }
   const workloadData = workload.data?.map((w) => ({
     name: w.agent_name,
     value: w.current_users,
@@ -45,12 +44,16 @@ const AnalyticsPage = () => {
           <CardTitle>KPIs</CardTitle>
         </CardHeader>
         <CardContent>
+          {stats.isError ? (
+            <ErrorState title="Could not load KPIs" onRetry={() => void stats.refetch()} />
+          ) : (
           <div className="grid gap-4 md:grid-cols-4">
             <KPI label="Active Agents" value={formatNumber(s.active_agents)} isLoading={stats.isLoading} />
             <KPI label="Active Users" value={formatNumber(s.active_users)} isLoading={stats.isLoading} />
             <KPI label="Properties Listed" value={formatNumber(s.properties_listed)} isLoading={stats.isLoading} />
             <KPI label="Occupancy Rate" value={formatPercent(s.occupancy_rate)} isLoading={stats.isLoading} />
           </div>
+          )}
         </CardContent>
       </Card>
       <Card>
@@ -70,9 +73,11 @@ const AnalyticsPage = () => {
           </DropdownMenu>
         </CardHeader>
         <CardContent>
-          {workload.isError ? (
+          {workload.isLoading ? (
+            <Skeleton className="h-64 w-full" />
+          ) : workload.isError ? (
             <ErrorState title="Failed to load analytics" onRetry={() => void workload.refetch()} />
-          ) : (
+          ) : view === 'workload' ? (
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={workloadData}>
@@ -84,6 +89,14 @@ const AnalyticsPage = () => {
                   <Bar dataKey="value" fill={WORKLOAD_COLOR} name="Workload" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
+            </div>
+          ) : view === 'properties' ? (
+            <div className="flex h-64 w-full items-center justify-center">
+              <p className="text-muted-foreground">Properties view — displaying property listing data</p>
+            </div>
+          ) : (
+            <div className="flex h-64 w-full items-center justify-center">
+              <p className="text-muted-foreground">Bookings view — displaying booking analytics data</p>
             </div>
           )}
         </CardContent>

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import type { ColumnDef } from "@tanstack/react-table";
-import { AlertCircle, Building2 } from "lucide-react";
+import { AlertCircle, Building2, Trash2 } from "lucide-react";
 import OwnerScopeGate from "@/features/pm/components/OwnerScopeGate";
 import PropertyCreateDialog from "@/features/pm/components/PropertyCreateDialog";
 import PropertyFilters from "@/features/pm/components/PropertyFilters";
@@ -10,13 +10,17 @@ import { useAppSelector } from "@/hooks/redux";
 import { selectSelectedOwnerId } from "@/features/pm/slices/pmSlice";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { ManagedPropertyStatus, PmProperty } from "@/types/pm";
-import { useListPmPropertiesQuery } from "@/features/pm/api/pmApi";
+import { useDeletePmPropertyMutation, useListPmPropertiesQuery } from "@/features/pm/api/pmApi";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DataTable } from "@/components/ui/data-table";
+import { ConfirmAlertDialog } from "@/components/ui/confirm-alert-dialog";
+import CursorPager from "@/components/ui/cursor-pager";
+import { useCursorPagination } from "@/hooks/useCursorPagination";
 import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingState } from "@/components/ui/loading-state";
+import { ResponsiveDataTable } from "@/components/ui/responsive-data-table";
+import { useToast } from "@/hooks/use-toast";
 import { getErrorMessage } from "@/lib/errors";
 
 const statusBadgeVariant = (status?: ManagedPropertyStatus | null) => {
@@ -29,14 +33,17 @@ const statusBadgeVariant = (status?: ManagedPropertyStatus | null) => {
 export default function PmPropertiesPage() {
   const { role } = useUserRole();
   const selectedOwnerId = useAppSelector(selectSelectedOwnerId);
+  const { toast } = useToast();
 
   const [q, setQ] = useState("");
   const debouncedQ = useDebounce(q, 300);
   const [occupancy, setOccupancy] = useState<"occupied" | "vacant" | "">("");
   const [limit, setLimit] = useState(50);
-  const [offset, setOffset] = useState(0);
 
   const ownerId = selectedOwnerId;
+
+  const pager = useCursorPagination();
+  useEffect(() => { pager.reset() }, [pager, debouncedQ, occupancy, limit]);
 
   const properties = useListPmPropertiesQuery(
     {
@@ -44,10 +51,14 @@ export default function PmPropertiesPage() {
       occupancy: occupancy || undefined,
       q: debouncedQ || undefined,
       limit,
-      offset,
+      cursor: pager.cursor,
     },
     { skip: role === "agent" && !ownerId },
   );
+
+  const displayData = properties.data?.items;
+
+  const [deleteProperty, deletePropertyState] = useDeletePmPropertyMutation();
 
   const columns = useMemo<ColumnDef<PmProperty>[]>(() => {
     return [
@@ -97,18 +108,35 @@ export default function PmPropertiesPage() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
             <Button asChild variant="outline" size="sm">
               <Link to={`/pm/properties/${row.original.id}`}>View</Link>
             </Button>
+            <ConfirmAlertDialog
+              title="Delete Property"
+              description={`Are you sure you want to delete "${row.original.title}"? This action cannot be undone.`}
+              confirmLabel="Delete"
+              variant="destructive"
+              onConfirm={async () => {
+                try {
+                  await deleteProperty(row.original.id).unwrap();
+                  toast({ title: "Deleted", description: "Property deleted." });
+                } catch (e: unknown) {
+                  toast({ title: "Failed", description: getErrorMessage(e, "Could not delete property."), variant: "destructive" });
+                }
+              }}
+            >
+              {(openDialog) => (
+                <Button variant="destructive" size="sm" onClick={openDialog} disabled={deletePropertyState.isLoading}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </ConfirmAlertDialog>
           </div>
         ),
       },
     ];
-  }, []);
-
-  const canPrev = offset > 0;
-  const canNext = (properties.data?.length ?? 0) >= limit;
+  }, [deleteProperty, deletePropertyState.isLoading, toast]);
 
   return (
     <OwnerScopeGate>
@@ -131,7 +159,7 @@ export default function PmPropertiesPage() {
             />
             <Badge variant="secondary" className="h-fit">
               <Building2 className="mr-1 h-3 w-3" />
-              {properties.data?.length ?? 0} shown
+              {displayData?.length ?? 0} shown
             </Badge>
           </div>
         </div>
@@ -147,10 +175,7 @@ export default function PmPropertiesPage() {
               occupancy={occupancy}
               onOccupancyChange={setOccupancy}
               limit={limit}
-              onLimitChange={(l) => {
-                setLimit(l);
-                setOffset(0);
-              }}
+              onLimitChange={setLimit}
             />
 
             {properties.isLoading ? (
@@ -171,32 +196,16 @@ export default function PmPropertiesPage() {
                   Retry
                 </Button>
               </div>
-            ) : properties.data?.length ? (
+            ) : displayData?.length ? (
               <>
-                <DataTable columns={columns} data={properties.data} />
-                <div className="flex items-center justify-between pt-2">
-                  <div className="text-xs text-muted-foreground">
-                    Offset {offset} &bull; Limit {limit}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!canPrev}
-                      onClick={() => setOffset(Math.max(0, offset - limit))}
-                    >
-                      Prev
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!canNext}
-                      onClick={() => setOffset(offset + limit)}
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                <ResponsiveDataTable columns={columns} data={displayData} />
+                <CursorPager
+                  canPrev={pager.canPrev}
+                  hasMore={properties.data?.has_more ?? false}
+                  loading={properties.isFetching}
+                  onPrev={pager.prev}
+                  onNext={() => properties.data && pager.next(properties.data.next_cursor)}
+                />
               </>
             ) : (
               <EmptyState

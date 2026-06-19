@@ -22,7 +22,7 @@ export default function OwnerSelector() {
   const debouncedQuery = useDebounce(query, 250)
 
   const usersQuery = useGetUsersQuery(
-    { q: debouncedQuery || undefined, page: 1, limit: 20 },
+    { q: debouncedQuery || undefined, limit: 20 },
     { skip: !open },
   )
 
@@ -36,11 +36,10 @@ export default function OwnerSelector() {
   useEffect(() => {
     if (!isAgent) return
     if (!selected?.id) return
-    if (!open) return
     if (usersQuery.isFetching || !usersQuery.data) return
     const accessibleIds = new Set(items.map((i) => i.id).filter((id): id is number => typeof id === 'number'))
     if (!accessibleIds.has(selected.id)) dispatch(setSelectedOwner(null))
-  }, [dispatch, isAgent, items, open, selected?.id, usersQuery.data, usersQuery.isFetching])
+  }, [dispatch, isAgent, items, selected?.id, usersQuery.data, usersQuery.isFetching])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

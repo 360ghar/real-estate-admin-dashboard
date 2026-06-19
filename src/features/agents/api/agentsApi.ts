@@ -24,20 +24,16 @@ export interface AgentSummary {
 
 export const agentsApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // List agents (admin only) - transform to results for existing UI
-    listAgents: builder.query<{ results: AgentSummary[]; count?: number }, { include_inactive?: boolean; page?: number; limit?: number } | void>({
+    // List agents (admin only) — uniform cursor-paginated response
+    listAgents: builder.query<PaginatedResponse<AgentSummary>, { include_inactive?: boolean; cursor?: string | null; limit?: number } | void>({
       query: (params) => ({
         url: '/agents/',
-        params: { page: 1, limit: 20, ...(params || {}) } as Record<string, unknown>
-      }),
-      transformResponse: (response: PaginatedResponse<AgentSummary>) => ({
-        results: response.items,
-        count: response.total,
+        params: { limit: 20, ...(params || {}) } as Record<string, unknown>
       }),
       providesTags: (res) =>
-        res?.results
+        res?.items
           ? [
-              ...res.results.map((a) => ({ type: 'Agent' as const, id: a.id })),
+              ...res.items.map((a) => ({ type: 'Agent' as const, id: a.id })),
               { type: 'Agent' as const, id: 'LIST' },
             ]
           : [{ type: 'Agent' as const, id: 'LIST' }],
@@ -58,7 +54,7 @@ export const agentsApi = api.injectEndpoints({
     // Update agent (admin only)
     updateAgent: builder.mutation<Agent, { id: number; data: Partial<Agent> }>({
       query: ({ id, data }) => ({ url: `/agents/${id}/`, method: 'PUT', body: data }),
-      invalidatesTags: (_res, _e, { id }) => [{ type: 'Agent', id }],
+      invalidatesTags: (_res, _e, { id }) => [{ type: 'Agent', id }, { type: 'Agent', id: 'LIST' }],
     }),
 
     // Delete agent (soft delete, admin only)
@@ -72,7 +68,7 @@ export const agentsApi = api.injectEndpoints({
       query: ({ agentId, isAvailable }) => ({
         url: `/agents/${agentId}/availability/`,
         method: 'PATCH',
-        params: { is_available: isAvailable }
+        body: { is_available: isAvailable }
       }),
       invalidatesTags: (_res, _e, { agentId }) => [{ type: 'Agent', id: agentId }],
     }),
@@ -100,10 +96,10 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get available agents
-    getAvailableAgents: builder.query<PaginatedResponse<Agent>, { specialization?: string; agentType?: string; page?: number; limit?: number }>({
+    getAvailableAgents: builder.query<PaginatedResponse<Agent>, { specialization?: string; agentType?: string; cursor?: string | null; limit?: number }>({
       query: (params) => ({
         url: '/agents/available/',
-        params: { page: 1, limit: 20, ...(params || {}) }
+        params: { limit: 20, ...(params || {}) }
       }),
       providesTags: (result) => result?.items
         ? [...result.items.map((a) => ({type: 'Agent' as const, id: a.id})), {type: 'Agent' as const, id: 'LIST'}]
@@ -117,19 +113,19 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get visits handled by agent
-    getAgentVisits: builder.query<PaginatedResponse<Visit>, { agentId: number; page?: number; limit?: number }>({
+    getAgentVisits: builder.query<PaginatedResponse<Visit>, { agentId: number; cursor?: string | null; limit?: number }>({
       query: ({ agentId, ...params }) => ({
         url: `/agents/${agentId}/visits/`,
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, ...params }
       }),
       providesTags: [{type: 'Agent' as const, id: 'LIST'}, {type: 'Visit' as const, id: 'LIST'}]
     }),
 
     // Get agents by type
-    getAgentsByType: builder.query<PaginatedResponse<Agent>, { agentType: string; page?: number; limit?: number }>({
+    getAgentsByType: builder.query<PaginatedResponse<Agent>, { agentType: string; cursor?: string | null; limit?: number }>({
       query: ({ agentType, ...params }) => ({
         url: `/agents/types/${agentType}`,
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, ...params }
       }),
       providesTags: (result) => result?.items
         ? [...result.items.map((a) => ({type: 'Agent' as const, id: a.id})), {type: 'Agent' as const, id: 'LIST'}]
@@ -137,10 +133,10 @@ export const agentsApi = api.injectEndpoints({
     }),
 
     // Get agents by specialization
-    getAgentsBySpecialization: builder.query<PaginatedResponse<Agent>, { specialization: string; page?: number; limit?: number }>({
+    getAgentsBySpecialization: builder.query<PaginatedResponse<Agent>, { specialization: string; cursor?: string | null; limit?: number }>({
       query: ({ specialization, ...params }) => ({
         url: `/agents/specializations/${specialization}`,
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, ...params }
       }),
       providesTags: (result) => result?.items
         ? [...result.items.map((a) => ({type: 'Agent' as const, id: a.id})), {type: 'Agent' as const, id: 'LIST'}]

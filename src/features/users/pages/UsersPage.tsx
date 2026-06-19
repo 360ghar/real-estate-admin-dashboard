@@ -7,10 +7,39 @@ import { Badge } from '@/components/ui/badge'
 import { Link } from 'react-router-dom'
 import { useUserRole } from '@/hooks/useUserRole'
 import ErrorBoundary from '@/components/common/ErrorBoundary'
+import { useGetUsersQuery } from '@/features/users/api/usersApi'
+import { useListAgentsQuery } from '@/features/agents/api/agentsApi'
+import { useGetSystemStatsQuery } from '@/features/core/api/systemApi'
+import { useMemo } from 'react'
 
 const UsersPage = ({ mode }: { mode?: 'detail' }) => {
   const params = useParams()
   const { role } = useUserRole()
+
+  // Cursor-paginated endpoints no longer expose a `total` field, so the Total
+  // Users / Agents stat cards are derived from a bounded sample (limit=100).
+  // Active / Phone Verified counts are derived client-side from the same sample
+  // unless the admin system-stats endpoint exposes them directly.
+  const { data: usersSample, isFetching: usersFetching } = useGetUsersQuery({ limit: 100 })
+  const { data: systemStats } = useGetSystemStatsQuery(undefined, { skip: role !== 'admin' })
+  const { data: agentsData } = useListAgentsQuery(
+    { include_inactive: false, limit: 100 },
+    { skip: role !== 'admin' }
+  )
+
+  const totalUsers = usersSample?.items.length ?? 0
+  const activeUsers = useMemo(() => {
+    if (role === 'admin' && typeof systemStats?.active_users === 'number') {
+      return systemStats.active_users
+    }
+    return usersSample?.items?.filter((u) => u.is_active).length ?? 0
+  }, [role, systemStats, usersSample])
+
+  const phoneVerified = useMemo(() => {
+    return usersSample?.items?.filter((u) => u.phone_verified).length ?? 0
+  }, [usersSample])
+
+  const totalAgents = agentsData?.items.length ?? 0
 
   if (mode === 'detail') {
     const id = Number(params.id)
@@ -60,7 +89,7 @@ const UsersPage = ({ mode }: { mode?: 'detail' }) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total Users</p>
-                <p className="text-2xl font-bold">--</p>
+                <p className="text-2xl font-bold">{usersFetching ? '...' : totalUsers}</p>
               </div>
             </div>
 
@@ -70,7 +99,7 @@ const UsersPage = ({ mode }: { mode?: 'detail' }) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Active Users</p>
-                <p className="text-2xl font-bold text-green-600 dark:text-green-400">--</p>
+                <p className="text-2xl font-bold text-green-600 dark:text-green-400">{usersFetching ? '...' : activeUsers}</p>
               </div>
             </div>
 
@@ -80,7 +109,7 @@ const UsersPage = ({ mode }: { mode?: 'detail' }) => {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Phone Verified</p>
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">--</p>
+                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{usersFetching ? '...' : phoneVerified}</p>
               </div>
             </div>
 
@@ -91,7 +120,7 @@ const UsersPage = ({ mode }: { mode?: 'detail' }) => {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Agents</p>
-                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">--</p>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{totalAgents}</p>
                 </div>
               </div>
             )}

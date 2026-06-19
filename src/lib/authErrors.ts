@@ -48,8 +48,8 @@ export function mapSupabaseAuthError(error: unknown): string {
   if (message.includes('rate limit')) {
     return 'Too many requests. Please wait and try again.'
   }
-  if (message.includes('password')) {
-    return 'Password error. Please try a different password.'
+  if (message.includes('password is incorrect') || message.includes('wrong password')) {
+    return 'Incorrect password. Please try again.'
   }
   if (message.includes('network')) {
     return 'Network error. Check your connection and try again.'

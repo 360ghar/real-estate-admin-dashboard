@@ -55,16 +55,10 @@ export interface PropertyResponse {
 }
 
 export interface PaginatedPropertyResponse {
-  properties: PropertyResponse[]
-  total: number
-  page: number
+  items: PropertyResponse[]
+  next_cursor: string | null
+  has_more: boolean
   limit: number
-  total_pages: number
-  filters_applied?: Record<string, unknown>
-  search_center?: {
-    latitude: number
-    longitude: number
-  }
 }
 
 export interface PropertySearchParams {
@@ -104,8 +98,8 @@ export interface PropertySearchParams {
   guests?: number
   // Sorting
   sort_by?: string
-  // Pagination
-  page?: number
+  // Pagination (cursor-based)
+  cursor?: string | null
   limit?: number
   // Auth-aware
   exclude_swiped?: boolean
@@ -140,9 +134,9 @@ export const propertiesApi = api.injectEndpoints({
         params: toSearchParams(params)
       }),
       providesTags: (res) =>
-        res?.properties
+        res?.items
           ? [
-              ...res.properties.map((p) => ({ type: 'Property' as const, id: p.id })),
+              ...res.items.map((p) => ({ type: 'Property' as const, id: p.id })),
               { type: 'Property' as const, id: 'LIST' },
             ]
           : [{ type: 'Property' as const, id: 'LIST' }],
@@ -181,8 +175,8 @@ export const propertiesApi = api.injectEndpoints({
       invalidatesTags: (_res, _e, id) => [{ type: 'Property', id }, { type: 'Property', id: 'LIST' }],
     }),
 
-    // Get property recommendations
-    getRecommendations: builder.query<PropertyResponse[], { limit?: number }>({
+    // Get property recommendations (uniform cursor-paginated shape)
+    getRecommendations: builder.query<PaginatedPropertyResponse, { limit?: number; cursor?: string | null }>({
       query: (params) => ({
         url: '/properties/recommendations/',
         params: { limit: 10, ...params }
@@ -196,9 +190,9 @@ export const propertiesApi = api.injectEndpoints({
         params: toSearchParams(params)
       }),
       providesTags: (res) =>
-        res?.properties
+        res?.items
           ? [
-              ...res.properties.map((p) => ({ type: 'Property' as const, id: p.id })),
+              ...res.items.map((p) => ({ type: 'Property' as const, id: p.id })),
               { type: 'Property' as const, id: 'LIST' },
             ]
           : [{ type: 'Property' as const, id: 'LIST' }],

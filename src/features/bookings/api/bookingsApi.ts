@@ -3,16 +3,16 @@ import type {
   Booking,
   BookingCreate,
   BookingUpdate,
-  BookingList,
   BookingAvailability,
   AvailabilityInfo,
   BookingPricing,
   BookingPayment,
-  BookingReview
+  BookingReview,
+  PaginatedResponse,
 } from '@/types/api'
 
 export interface BookingsQuery {
-  page?: number
+  cursor?: string | null
   limit?: number
   status?: string
   agent_id?: number
@@ -35,19 +35,19 @@ export const bookingsApi = api.injectEndpoints({
     }),
 
     // Get current user's bookings
-    getUserBookings: builder.query<BookingList, void>({
+    getUserBookings: builder.query<PaginatedResponse<Booking>, void>({
       query: () => '/bookings/',
       providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Get upcoming bookings for current user
-    getUpcomingBookings: builder.query<{ bookings: Booking[]; total: number }, void>({
+    getUpcomingBookings: builder.query<PaginatedResponse<Booking>, void>({
       query: () => '/bookings/upcoming/',
       providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
 
     // Get past bookings for current user
-    getPastBookings: builder.query<{ bookings: Booking[]; total: number }, void>({
+    getPastBookings: builder.query<PaginatedResponse<Booking>, void>({
       query: () => '/bookings/past/',
       providesTags: [{type: 'Booking' as const, id: 'LIST'}]
     }),
@@ -83,7 +83,7 @@ export const bookingsApi = api.injectEndpoints({
         method: 'PUT',
         body: data
       }),
-      invalidatesTags: (res, _e, { id }) => [{ type: 'Booking', id }]
+      invalidatesTags: (res, _e, { id }) => [{ type: 'Booking', id }, { type: 'Booking', id: 'LIST' }]
     }),
 
     // Cancel a booking
@@ -96,7 +96,7 @@ export const bookingsApi = api.injectEndpoints({
           reason,
         }
       }),
-      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }]
+      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, { type: 'Booking', id: 'LIST' }]
     }),
 
     // Process payment for booking
@@ -109,7 +109,7 @@ export const bookingsApi = api.injectEndpoints({
           ...paymentData,
         }
       }),
-      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }]
+      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, { type: 'Booking', id: 'LIST' }]
     }),
 
     // Add review to booking
@@ -125,19 +125,19 @@ export const bookingsApi = api.injectEndpoints({
           }
         }
       },
-      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, {type: 'Property', id: 'LIST'}]
+      invalidatesTags: (res, _e, { bookingId }) => [{ type: 'Booking', id: bookingId }, { type: 'Booking', id: 'LIST' }, {type: 'Property', id: 'LIST'}]
     }),
 
     // Get all bookings (admin/agent view)
-    getAllBookings: builder.query<BookingList, BookingsQuery>({
+    getAllBookings: builder.query<PaginatedResponse<Booking>, BookingsQuery>({
       query: (params) => ({
         url: '/bookings/all/',
-        params: { page: 1, limit: 20, ...params }
+        params: { limit: 20, ...params }
       }),
       providesTags: (res) =>
-        res?.bookings
+        res?.items
           ? [
-              ...res.bookings.map((b) => ({ type: 'Booking' as const, id: b.id })),
+              ...res.items.map((b) => ({ type: 'Booking' as const, id: b.id })),
               { type: 'Booking' as const, id: 'LIST' },
             ]
           : [{ type: 'Booking' as const, id: 'LIST' }],

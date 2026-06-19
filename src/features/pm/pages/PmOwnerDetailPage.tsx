@@ -13,6 +13,7 @@ import {
   useListMaintenanceRequestsQuery,
   useListPmDocumentsQuery,
 } from "@/features/pm/api/pmApi";
+import { formatDateTime } from "@/lib/format";
 import { useGetUserQuery, useUpdateUserMutation } from "@/features/users/api/usersApi";
 import AssignAgent from "@/features/users/components/assign/AssignAgent";
 import { Badge } from "@/components/ui/badge";
@@ -45,11 +46,11 @@ export default function PmOwnerDetailPage() {
   const overview = useGetPmDashboardOverviewQuery({ owner_id: ownerUserId }, { skip: !ownerUserId });
   const activity = useGetPmDashboardActivityQuery({ owner_id: ownerUserId, limit: 20 }, { skip: !ownerUserId });
   const maintenance = useListMaintenanceRequestsQuery(
-    { owner_id: ownerUserId, limit: 10, offset: 0 },
+    { owner_id: ownerUserId, limit: 10 },
     { skip: !ownerUserId },
   );
   const kycDocs = useListPmDocumentsQuery(
-    { owner_id: ownerUserId, user_id: ownerUserId, limit: 10, offset: 0 },
+    { owner_id: ownerUserId, user_id: ownerUserId, limit: 10 },
     { skip: !ownerUserId },
   );
 
@@ -169,8 +170,9 @@ export default function PmOwnerDetailPage() {
               {maintenance.isLoading ? (
                 <Skeleton className="h-8 w-16" />
               ) : (
-                <div className="text-2xl font-bold">{maintenance.data?.length ?? 0}</div>
+                <div className="text-2xl font-bold">{maintenance.data?.items?.length ?? 0}</div>
               )}
+              <p className="text-xs text-muted-foreground mt-1">Recent (last 10)</p>
               <Button asChild variant="link" className="h-auto p-0 text-xs mt-2">
                 <Link to="/pm/maintenance">View maintenance</Link>
               </Button>
@@ -189,9 +191,9 @@ export default function PmOwnerDetailPage() {
                   <Skeleton className="h-4 w-full" />
                   <Skeleton className="h-4 w-5/6" />
                 </div>
-              ) : activity.data?.length ? (
+              ) : activity.data?.items?.length ? (
                 <div className="space-y-2">
-                  {activity.data.map((a, idx) => (
+                  {activity.data.items.map((a, idx) => (
                     <div key={`${a.type}-${a.at}-${idx}`} className="flex items-center justify-between gap-4 text-sm">
                       <div className="min-w-0">
                         <span className="font-medium">{a.type}</span>
@@ -199,7 +201,7 @@ export default function PmOwnerDetailPage() {
                         {a.amount ? <span className="text-muted-foreground"> • {formatINR(a.amount)}</span> : null}
                       </div>
                       <div className="shrink-0 text-xs text-muted-foreground">
-                        {new Date(a.at).toLocaleString()}
+                        {formatDateTime(a.at)}
                       </div>
                     </div>
                   ))}

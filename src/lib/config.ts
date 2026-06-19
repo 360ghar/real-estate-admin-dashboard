@@ -3,6 +3,14 @@ export const API_BASE_URL =
   'http://localhost:3600/api/v1'
 
 /**
+ * Optional realtime endpoint (SSE or WebSocket) for live cache invalidation.
+ * When unset, the realtime hook is a no-op. Example:
+ *   VITE_REALTIME_URL=https://api.example.com/api/v1/realtime
+ */
+export const REALTIME_URL: string | undefined =
+  (import.meta.env.VITE_REALTIME_URL as string | undefined) ?? undefined
+
+/**
  * Optional email-domain allowlist for Google sign-in into the admin/agent
  * portal. When non-empty, a Google sign-in whose email domain is not in this
  * list is signed out at the callback with a clear message (defence-in-depth on

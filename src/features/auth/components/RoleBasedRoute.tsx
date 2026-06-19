@@ -16,7 +16,7 @@ const RoleBasedRoute = ({ allowedRoles }: RoleBasedRouteProps) => {
 
   // Prefer explicit role from API; fall back for older payloads
   if (!allowedRoles.includes(role)) {
-    return <Navigate to="/access-denied" replace />
+    return <Navigate to="/access-denied" replace state={{ reason: 'forbidden' }} />
   }
 
   return <Outlet />

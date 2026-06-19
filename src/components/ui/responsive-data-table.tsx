@@ -10,13 +10,19 @@ import {
 import {
   flexRender,
   getCoreRowModel,
+  getSortedRowModel,
   useReactTable,
   type ColumnDef,
+  type SortingState,
+  type RowSelectionState,
 } from "@tanstack/react-table"
 import { Card } from './card'
 import { ViewToggle, useViewMode, type ViewMode } from './view-toggle'
 import { useIsMobile } from '@/hooks/useMediaQuery'
 import { cn } from '@/lib/utils'
+import { LoadingState } from './loading-state'
+import { ErrorState } from './error-state'
+import { useEffect } from 'react'
 
 interface ResponsiveDataTableProps<TData, TValue> {
   /** Column definitions for table view */
@@ -37,6 +43,20 @@ interface ResponsiveDataTableProps<TData, TValue> {
   className?: string
   /** Callback when a row is clicked */
   onRowClick?: (row: TData) => void
+  /** Show loading skeleton instead of data */
+  isLoading?: boolean
+  /** Error object to show error state */
+  error?: unknown
+  /** Retry callback for error state */
+  onRetry?: () => void
+  /** Number of skeleton rows when loading */
+  tableRows?: number
+  /** Enable client-side column sorting. Default: false. */
+  enableSorting?: boolean
+  /** Enable row selection via TanStack Table. Parent must add a checkbox column. */
+  enableRowSelection?: boolean
+  /** Called with the selected rows' original data whenever selection changes. */
+  onSelectionChange?: (selectedRows: TData[]) => void
 }
 
 export function ResponsiveDataTable<TData, TValue>({
@@ -49,9 +69,18 @@ export function ResponsiveDataTable<TData, TValue>({
   emptyMessage = 'No results.',
   className,
   onRowClick,
+  isLoading,
+  error,
+  onRetry,
+  tableRows = 5,
+  enableSorting = false,
+  enableRowSelection = false,
+  onSelectionChange,
 }: ResponsiveDataTableProps<TData, TValue>) {
   const isMobile = useIsMobile()
   const [storedView, setStoredView] = useViewMode(viewStorageKey)
+  const [sorting, setSorting] = React.useState<SortingState>([])
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
 
   // Determine current view mode
   const currentView: ViewMode = React.useMemo(() => {
@@ -66,7 +95,35 @@ export function ResponsiveDataTable<TData, TValue>({
     data,
     columns,
     getCoreRowModel: getCoreRowModel(),
+    ...(enableSorting
+      ? {
+          state: { sorting },
+          onSortingChange: setSorting,
+          getSortedRowModel: getSortedRowModel(),
+          enableSortingRemoval: true,
+        }
+      : {}),
+    ...(enableRowSelection
+      ? {
+          enableRowSelection: true,
+          state: { sorting, rowSelection },
+          onRowSelectionChange: setRowSelection,
+        }
+      : {}),
   })
+
+  useEffect(() => {
+    if (!enableRowSelection || !onSelectionChange) return
+    onSelectionChange(table.getSelectedRowModel().rows.map((r) => r.original))
+  }, [enableRowSelection, onSelectionChange, rowSelection, table])
+
+  if (isLoading) {
+    return <LoadingState type="table" rows={tableRows} columns={columns.length} className={className} />
+  }
+
+  if (error) {
+    return <ErrorState error={error} onRetry={onRetry} className={className} />
+  }
 
   // Render table view
   const renderTable = () => (
