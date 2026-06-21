@@ -20,6 +20,7 @@ export interface BookingsQuery {
   user_id?: number
   q?: string
   payment_status?: string
+  include_total?: boolean
 }
 
 export interface BookingsCursorQuery {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -14,6 +14,8 @@ import { Bug, AlertTriangle, CheckCircle, Clock, Download } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { LoadingState } from '@/components/ui/loading-state'
 import { ErrorState } from '@/components/ui/error-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import type { BugReportUpdate } from '@/types/api'
 import { BugReportCard } from '@/features/core/components/bug-reports/BugReportCard'
 import { CreateBugReportDialog } from '@/features/core/components/bug-reports/CreateBugReportDialog'
@@ -26,9 +28,16 @@ const BugReportsPage: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
+  const pager = useCursorPagination()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, statusFilter, typeFilter])
+
   const { data: bugReports, isLoading, isError, refetch } = useGetBugReportsQuery({
     status: statusFilter === 'all' ? undefined : statusFilter,
     bug_type: typeFilter === 'all' ? undefined : typeFilter,
+    cursor: pager.cursor,
+    limit: 20,
+    include_total: true,
   })
 
   const [updateBugReport] = useUpdateBugReportMutation()
@@ -66,7 +75,7 @@ const BugReportsPage: React.FC = () => {
 
   // Statistics
   const stats = {
-    total: reports.length,
+    total: bugReports?.total ?? reports.length,
     open: reports.filter(r => r.status === 'open').length,
     inProgress: reports.filter(r => r.status === 'in_progress').length,
     resolved: reports.filter(r => r.status === 'resolved').length,
@@ -216,6 +225,13 @@ const BugReportsPage: React.FC = () => {
           ))
         )}
       </div>
+      <CursorPager
+        hasMore={bugReports?.has_more ?? false}
+        canPrev={pager.canPrev}
+        onNext={() => pager.next(bugReports?.next_cursor ?? null)}
+        onPrev={pager.prev}
+        loading={isLoading}
+      />
     </div>
   )
 }

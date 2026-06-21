@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Edit, Download, Smartphone, Monitor, CheckCircle, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
 import { formatDate } from '@/lib/format'
@@ -24,7 +26,14 @@ const AppUpdatesPage: React.FC = () => {
   const [editingUpdate, setEditingUpdate] = useState<AppUpdate | null>(null)
   const [formData, setFormData] = useState<AppUpdateFormData>({ ...defaultFormData })
 
-  const { data: updatesData, isLoading, refetch } = useGetAppUpdatesQuery()
+  const pager = useCursorPagination()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, filterPlatform, filterStatus])
+
+  const { data: updatesData, isLoading, refetch } = useGetAppUpdatesQuery({
+    cursor: pager.cursor,
+    limit: 20,
+  })
   const [updateUpdate] = useUpdateAppUpdateMutation()
 
   const filteredUpdates = (updatesData?.items ?? []).filter((update) => {
@@ -101,6 +110,13 @@ const AppUpdatesPage: React.FC = () => {
           </CardContent></Card>
         ))}</div>
       )}
+      <CursorPager
+        hasMore={updatesData?.has_more ?? false}
+        canPrev={pager.canPrev}
+        onNext={() => pager.next(updatesData?.next_cursor ?? null)}
+        onPrev={pager.prev}
+        loading={isLoading}
+      />
       <AppUpdateFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} editingUpdate={editingUpdate} formData={formData} setFormData={setFormData} onSuccess={() => { setEditingUpdate(null); setFormData({ ...defaultFormData }); void refetch() }} />
     </div>
   )

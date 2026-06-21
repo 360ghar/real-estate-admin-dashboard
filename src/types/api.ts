@@ -13,14 +13,15 @@ export interface ApiResponse<T> {
 /**
  * Uniform cursor-paginated response shape returned by every backend list endpoint.
  * `next_cursor` is an opaque base64 token (null on the terminal page); `has_more`
- * is the authoritative end-of-list signal. There is no `total` field — the client
- * never requests `include_total`.
+ * is the authoritative end-of-list signal. When the query includes
+ * `include_total: true`, the backend also returns `total` as an integer.
  */
 export interface PaginatedResponse<T> {
   items: T[]
   next_cursor: string | null
   has_more: boolean
   limit: number
+  total?: number
 }
 
 // User Types
@@ -491,6 +492,7 @@ export interface BugReportsQuery {
   bug_type?: string
   limit?: number
   cursor?: string | null
+  include_total?: boolean
 }
 
 // Pages Types

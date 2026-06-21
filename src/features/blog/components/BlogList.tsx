@@ -50,7 +50,6 @@ const BlogList = () => {
       title: p.title,
       slug: p.slug,
       status: resolveBlogStatus(p),
-      active: p.active,
       scheduled_at: p.scheduled_at ?? '',
       created_at: p.created_at,
       categories: (p.categories ?? []).map((c) => c.slug).join('|'),
@@ -138,7 +137,8 @@ const BlogList = () => {
       ),
     },
     {
-      accessorKey: 'active',
+      accessorFn: (row) => resolveBlogStatus(row),
+      id: 'status',
       header: ({ column }) => <SortableHeader column={column}>Status</SortableHeader>,
       cell: ({ row }) => {
         const post = row.original

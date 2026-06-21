@@ -20,11 +20,11 @@ const StatCard = ({ icon, label, value, tone }: { icon: React.ReactNode; label: 
 const BookingsPage = ({ mode }: { mode?: 'detail' }) => {
   const params = useParams()
   const { role } = useUserRole()
-  const { data, isFetching } = useGetAllBookingsQuery({ limit: 1000 }, { skip: mode === 'detail' })
+  const { data, isFetching } = useGetAllBookingsQuery({ limit: 1000, include_total: true }, { skip: mode === 'detail' })
 
   const counts = useMemo(() => {
     const items = data?.items ?? []
-    const total = items.length
+    const total = data?.total ?? items.length
     const upcoming = items.filter((b) => ['pending', 'confirmed'].includes(b.booking_status)).length
     const completed = items.filter((b) => b.booking_status === 'completed').length
     const cancelled = items.filter((b) => b.booking_status === 'cancelled').length
@@ -80,7 +80,7 @@ const BookingsPage = ({ mode }: { mode?: 'detail' }) => {
             tone="bg-red-500/10"
           />
         </div>
-        <p className="text-xs text-muted-foreground">Counts from the most recent bookings (sample).</p>
+        <p className="text-xs text-muted-foreground">Status breakdowns from the most recent 1000 bookings.</p>
       </div>
 
       <BookingList />

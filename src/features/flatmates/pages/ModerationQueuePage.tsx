@@ -6,6 +6,8 @@ import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { ModerationActionDialog } from '../components/ModerationActionDialog'
 import { ModerationListingCard } from '../components/ModerationListingCard'
 import { useGetPendingListingsQuery, useModerateListingMutation } from '../api/flatmatesApi'
@@ -20,8 +22,11 @@ export function ModerationQueuePage() {
   const [reason, setReason] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
+  const pager = useCursorPagination()
   const { data, isLoading, error } = useGetPendingListingsQuery({
     status: 'pending_review',
+    cursor: pager.cursor,
+    limit: 20,
   })
   const [moderateListing, { isLoading: isModerating }] =
     useModerateListingMutation()
@@ -103,6 +108,14 @@ export function ModerationQueuePage() {
           ))}
         </div>
       )}
+
+      <CursorPager
+        hasMore={data?.has_more ?? false}
+        canPrev={pager.canPrev}
+        onNext={() => pager.next(data?.next_cursor ?? null)}
+        onPrev={pager.prev}
+        loading={isLoading}
+      />
 
       <ModerationActionDialog
         open={isDialogOpen}

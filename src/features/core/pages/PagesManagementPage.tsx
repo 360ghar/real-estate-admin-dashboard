@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Plus, Edit, Eye, X, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { LoadingState } from '@/components/ui/loading-state'
 import { EmptyState } from '@/components/ui/empty-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { useToast } from '@/hooks/use-toast'
 import { getErrorMessage } from '@/lib/errors'
 import { formatDate } from '@/lib/format'
@@ -27,7 +29,14 @@ const PagesManagementPage: React.FC = () => {
   const [previewMode, setPreviewMode] = useState(false)
   const [formData, setFormData] = useState<PageFormData>({ ...defaultFormData })
 
-  const { data: pagesData, isLoading, refetch } = useGetPagesQuery()
+  const pager = useCursorPagination()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, filterType])
+
+  const { data: pagesData, isLoading, refetch } = useGetPagesQuery({
+    cursor: pager.cursor,
+    limit: 20,
+  })
   const [deletePage, { isLoading: isDeleting }] = useDeletePageMutation()
 
   const pages = pagesData?.items ?? []
@@ -100,6 +109,13 @@ const PagesManagementPage: React.FC = () => {
           </CardContent></Card>
         ))}</div>
       )}
+      <CursorPager
+        hasMore={pagesData?.has_more ?? false}
+        canPrev={pager.canPrev}
+        onNext={() => pager.next(pagesData?.next_cursor ?? null)}
+        onPrev={pager.prev}
+        loading={isLoading}
+      />
       <PageFormDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} editingPage={editingPage} formData={formData} setFormData={setFormData} onSuccess={() => { setEditingPage(null); setFormData({ ...defaultFormData }); void refetch() }} />
       {previewMode && editingPage && <PagePreviewDialog open={previewMode} onOpenChange={setPreviewMode} title={formData.title} content={formData.content} uniqueName={formData.unique_name} format={formData.format} />}
     </div>

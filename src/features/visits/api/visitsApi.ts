@@ -14,6 +14,7 @@ export interface VisitsQuery {
   property_id?: number
   user_id?: number
   q?: string
+  include_total?: boolean
 }
 
 /**
@@ -24,6 +25,7 @@ export interface VisitsQuery {
 export interface VisitsCursorQuery {
   cursor?: string | null
   limit?: number
+  include_total?: boolean
 }
 
 const DEFAULT_VISITS_LIMIT = 20
@@ -42,9 +44,9 @@ export const visitsApi = api.injectEndpoints({
 
     // Get current user's visits
     getUserVisits: builder.query<PaginatedResponse<Visit>, VisitsCursorQuery>({
-      query: ({ cursor, limit }) => ({
+      query: ({ cursor, limit, include_total }) => ({
         url: '/visits/',
-        params: { limit: limit ?? DEFAULT_VISITS_LIMIT, cursor: cursor ?? undefined }
+        params: { limit: limit ?? DEFAULT_VISITS_LIMIT, cursor: cursor ?? undefined, ...(include_total ? { include_total: true } : {}) }
       }),
       providesTags: [{type: 'Visit' as const, id: 'LIST'}]
     }),

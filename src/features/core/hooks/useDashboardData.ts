@@ -29,26 +29,24 @@ export interface PropertyStatusBreakdown {
 }
 
 /**
- * Property counts per status. The platform has no grouped-count endpoint and
- * the cursor-paginated list endpoints no longer return a `total`, so we fetch
- * a bounded sample (`limit: 100`) per status and count the returned items as a
- * best-effort breakdown. Hooks are called statically (one per status) to
- * satisfy the rules of hooks.
+ * Property counts per status. We pass `include_total: true` so the backend
+ * returns the exact count per status rather than relying on the page size.
+ * Hooks are called statically (one per status) to satisfy the rules of hooks.
  */
 export function usePropertyStatusBreakdown(): PropertyStatusBreakdown {
-  const available = useSearchPropertiesQuery({ status: 'available', limit: 100 })
-  const rented = useSearchPropertiesQuery({ status: 'rented', limit: 100 })
-  const sold = useSearchPropertiesQuery({ status: 'sold', limit: 100 })
-  const underOffer = useSearchPropertiesQuery({ status: 'under_offer', limit: 100 })
-  const maintenance = useSearchPropertiesQuery({ status: 'maintenance', limit: 100 })
+  const available = useSearchPropertiesQuery({ status: 'available', limit: 1, include_total: true })
+  const rented = useSearchPropertiesQuery({ status: 'rented', limit: 1, include_total: true })
+  const sold = useSearchPropertiesQuery({ status: 'sold', limit: 1, include_total: true })
+  const underOffer = useSearchPropertiesQuery({ status: 'under_offer', limit: 1, include_total: true })
+  const maintenance = useSearchPropertiesQuery({ status: 'maintenance', limit: 1, include_total: true })
 
   const queries = [available, rented, sold, underOffer, maintenance]
   const totals = [
-    available.data?.items.length,
-    rented.data?.items.length,
-    sold.data?.items.length,
-    underOffer.data?.items.length,
-    maintenance.data?.items.length,
+    available.data?.total ?? available.data?.items.length,
+    rented.data?.total ?? rented.data?.items.length,
+    sold.data?.total ?? sold.data?.items.length,
+    underOffer.data?.total ?? underOffer.data?.items.length,
+    maintenance.data?.total ?? maintenance.data?.items.length,
   ]
 
   const data = PROPERTY_STATUS_META.map((meta, i) => ({ ...meta, count: totals[i] ?? 0 }))

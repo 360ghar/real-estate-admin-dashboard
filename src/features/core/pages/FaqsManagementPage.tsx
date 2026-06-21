@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Edit, HelpCircle, Plus, Trash2 } from 'lucide-react'
@@ -20,6 +20,8 @@ import { getErrorMessage } from '@/lib/errors'
 import { applyServerValidation } from '@/lib/formErrors'
 import { formatDate } from '@/lib/format'
 import { faqSchema, type FaqFormValues } from '@/features/core/validations'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import {
   useCreateFaqMutation,
   useDeleteFaqMutation,
@@ -39,12 +41,18 @@ const defaultValues: FaqFormValues = {
 
 const FaqsManagementPage = () => {
   const { toast } = useToast()
-  const { data, isLoading, isError, refetch } = useGetFaqsQuery()
+  const pager = useCursorPagination()
+  const { data, isLoading, isError, refetch } = useGetFaqsQuery({
+    cursor: pager.cursor,
+    limit: 20,
+  })
   const [createFaq] = useCreateFaqMutation()
   const [updateFaq] = useUpdateFaqMutation()
   const [deleteFaq, { isLoading: isDeleting }] = useDeleteFaqMutation()
 
   const [search, setSearch] = useState('')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { pager.reset() }, [pager.reset, search])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Faq | null>(null)
 
@@ -195,6 +203,14 @@ const FaqsManagementPage = () => {
           ))}
         </div>
       )}
+
+      <CursorPager
+        hasMore={data?.has_more ?? false}
+        canPrev={pager.canPrev}
+        onNext={() => pager.next(data?.next_cursor ?? null)}
+        onPrev={pager.prev}
+        loading={isLoading}
+      />
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">

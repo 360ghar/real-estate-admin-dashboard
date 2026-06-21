@@ -59,6 +59,7 @@ export interface PaginatedPropertyResponse {
   next_cursor: string | null
   has_more: boolean
   limit: number
+  total?: number
 }
 
 export interface PropertySearchParams {
@@ -105,6 +106,8 @@ export interface PropertySearchParams {
   exclude_swiped?: boolean
   // Semantic search
   semantic_search?: boolean
+  // Total count
+  include_total?: boolean
 }
 
 // PropertyCreate and PropertyUpdate are imported from @/types/api

@@ -20,6 +20,8 @@ import { getErrorMessage } from '@/lib/errors'
 import { LoadingState } from '@/components/ui/loading-state'
 import { LoadingSpinner } from '@/components/ui/loading-spinner'
 import { EmptyState } from '@/components/ui/empty-state'
+import CursorPager from '@/components/ui/cursor-pager'
+import { useCursorPagination } from '@/hooks/useCursorPagination'
 import { useGetPendingReportsQuery, useModerateReportMutation } from '../api/flatmatesApi'
 import type { FlatmatesReport } from '../types'
 
@@ -45,8 +47,11 @@ export function ReportsReviewPage() {
   const [notes, setNotes] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
 
+  const pager = useCursorPagination()
   const { data, isLoading, error, refetch } = useGetPendingReportsQuery({
     status: 'open',
+    cursor: pager.cursor,
+    limit: 20,
   })
   const [moderateReport, { isLoading: isModerating }] =
     useModerateReportMutation()
@@ -211,6 +216,14 @@ export function ReportsReviewPage() {
           ))}
         </div>
       )}
+
+      <CursorPager
+        hasMore={data?.has_more ?? false}
+        canPrev={pager.canPrev}
+        onNext={() => pager.next(data?.next_cursor ?? null)}
+        onPrev={pager.prev}
+        loading={isLoading}
+      />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-xl">

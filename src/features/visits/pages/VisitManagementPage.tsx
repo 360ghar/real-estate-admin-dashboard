@@ -56,7 +56,7 @@ const VisitManagementPage: React.FC = () => {
   // High-limit query for stats KPI cards (not paginated, no cursor) so counts
   // reflect the full dataset rather than only the current page.
   const { data: userVisitsStats } = useGetUserVisitsQuery(
-    { limit: 1000 },
+    { limit: 1000, include_total: true },
     { skip: user?.role !== 'user' }
   )
 
@@ -147,7 +147,7 @@ const VisitManagementPage: React.FC = () => {
               <CardTitle className="text-sm font-medium">Total Visits</CardTitle>
               <CalendarIcon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent><div className="text-2xl font-bold">{userVisitsStats.items.length}</div></CardContent>
+            <CardContent><div className="text-2xl font-bold">{userVisitsStats.total ?? userVisitsStats.items.length}</div></CardContent>
           </Card>
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

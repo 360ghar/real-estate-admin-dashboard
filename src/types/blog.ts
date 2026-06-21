@@ -40,7 +40,7 @@ export interface BlogPost {
   /** Shared secret token allowing unauthenticated preview of draft/scheduled posts. */
   preview_token?: string | null
   /** @deprecated Replaced by `status`. Backend keeps it in sync: `active === (status === 'published')`. */
-  active: boolean
+  active?: boolean
   categories?: BlogCategory[]
   tags?: BlogTag[]
   author_id?: number
